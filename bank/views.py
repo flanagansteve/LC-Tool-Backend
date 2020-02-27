@@ -12,7 +12,7 @@ def index(request):
         all_banks = Bank.objects.all()
         all_banks_json = serializers.serialize('json', all_banks)
         return HttpResponse(all_banks_json, content_type="application/json")
-    elif request.method = "POST":
+    elif request.method == "POST":
         json_data = json.loads(request.body)
         try:
             # 1. create the bank
@@ -24,8 +24,10 @@ def index(request):
             except KeyError:
                 # TODO freak tf out
                 pass
-            # TODO 3. register the first employee
-            # TODO what to return back to front end?
+                # TODO 3. register the first employee
+                # TODO what to return back to front end?
+        except:
+            pass
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, POST")
 

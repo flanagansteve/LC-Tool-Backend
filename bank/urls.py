@@ -13,7 +13,7 @@ urlpatterns = [
 
     # Invite new employee by POST-ing with {email:'some@address.com'}
     # /bank/{bank_id}/invite_teammate
-    url(r'^(?P<bank_id>[0-9]+)/invite_teammate', views.invite_teammate, name='invite_teammate')
+    url(r'^(?P<bank_id>[0-9]+)/invite_teammate', views.invite_teammate, name='invite_teammate'),
 
     # RUD a bank's employees
     # /bank/{bank_id}/{employee_id}
