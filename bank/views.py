@@ -28,6 +28,11 @@ def index(request):
                 pass
                 # TODO 3. register the first employee
                 # TODO what to return back to front end?
+            # 3. create a User for this first employee
+            first_user = User.objects.create(username = new_user_data['email'],
+                email = new_user_data['email'])
+            first_user.set_password(new_user_data['password')
+            # 4. TODO return something
         except:
             pass
     else:
@@ -71,6 +76,7 @@ def invite_teammate(request, bank_id):
     json_data = json.loads(request.body)
     try:
         bank.bankemployee_set.create(email = json_data['invitee_email'], bank = bank.id)
+        # TODO send an invite email
     except KeyError:
         # TODO freak tf out
         pass

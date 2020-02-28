@@ -11,7 +11,7 @@ urlpatterns = [
     # /bank/{bank_id}
     url(r'^(?P<bank_id>[0-9]+)/$', views.rud_bank, name='rud_bank'),
 
-    # Invite new employee by POST-ing with {email:'some@address.com'}
+    # Invite new employee by POST-ing with {invitee_email:'some@address.com'}
     # /bank/{bank_id}/invite_teammate
     url(r'^(?P<bank_id>[0-9]+)/invite_teammate', views.invite_teammate, name='invite_teammate'),
 
