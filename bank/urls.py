@@ -21,10 +21,10 @@ urlpatterns = [
 
     # register upon invitiation by supplying the fields of a BankEmployee
     # get back a User
-    # /bank/register
+    # /bank/{bank_id}/register
     url(r'^(?P<bank_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation'),
 
     # log in
-    # /bank/login
+    # /bank/{bank_id}/login
     url(r'^(?P<bank_id>[0-9]+)/login$', views.login, name='login')
 ]
