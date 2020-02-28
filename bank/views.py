@@ -101,8 +101,8 @@ def register_upon_invitation(request, bank_id):
         return HttpResponse("401: Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.")
     # 2. Register the user account
     new_user = User.objects.create(username = new_user_data['email'],
-        email = new_user_data['email'],
-        password = new_user_data['password'])
+        email = new_user_data['email'])
+    new_user.set_password(new_user_data['password')
     # 3. Update the bankemployee with full fields
     bank.bankemployee_set.update(new_employee.id,
         name = new_user_data['name'],
