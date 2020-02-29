@@ -4,10 +4,12 @@ from django.http import HttpResponseBadRequest, Http404
 from django.core import serializers
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 from .models import Bank, BankEmployee
 import json, datetime
 
 # GET all the banks, or POST a new bank
+@csrf_exempt
 def index(request):
     # TODO is there ever a situation where we GET all the banks?
     if request.method == "GET":
