@@ -153,7 +153,7 @@ def rud_bank_employee(request, bank_id, employee_id):
     # lol python has no switch(). could use a dict + lambdas, but its only 3 branches...
     if request.method == "GET":
         try:
-            return HttpResponse(serializers.serialize('json', [ bank.bankemployee_set.get(id=employee_id), ]))
+            return HttpResponse(serializers.serialize('json', [ bank.bankemployee_set.get(id=employee_id), ]), content_type="application/json")
         except BankEmployee.DoesNotExist:
             raise Http404(str(bank) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
