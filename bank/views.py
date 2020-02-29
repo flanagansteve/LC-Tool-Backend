@@ -72,6 +72,7 @@ def rud_bank(request, bank_id):
         raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
 # TODO authenticate this - whos allowed to invite teammates?
+@csrf_exempt
 def invite_teammate(request, bank_id):
     try:
         bank = Bank.objects.get(id=bank_id)
