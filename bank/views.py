@@ -31,7 +31,7 @@ def index(request):
             # 3. create a User for this first employee
             first_user = User.objects.create(username = new_user_data['email'],
                 email = new_user_data['email'])
-            first_user.set_password(new_user_data['password')
+            first_user.set_password(new_user_data['password'])
             # 4. TODO return something
         except:
             pass
@@ -108,7 +108,7 @@ def register_upon_invitation(request, bank_id):
     # 2. Register the user account
     new_user = User.objects.create(username = new_user_data['email'],
         email = new_user_data['email'])
-    new_user.set_password(new_user_data['password')
+    new_user.set_password(new_user_data['password'])
     # 3. Update the bankemployee with full fields
     bank.bankemployee_set.update(new_employee.id,
         name = new_user_data['name'],
