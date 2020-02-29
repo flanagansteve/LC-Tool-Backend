@@ -8,7 +8,9 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Bank, BankEmployee
 import json, datetime
 
-# GET all the banks, or POST a new bank
+# 1. GET all the banks
+# 2. POST [the fields of a bank and employee]
+#    and receive back [the bank obj u created and a user]
 @csrf_exempt
 def index(request):
     # TODO is there ever a situation where we GET all the banks?
@@ -18,25 +20,24 @@ def index(request):
         return HttpResponse(all_banks_json, content_type="application/json")
     elif request.method == "POST":
         json_data = json.loads(request.body)
+        # 1. create the bank
         try:
-            # 1. create the bank
             bank = Bank(name = json_data['new_bank_name'])
             bank.save()
-            # 2. create the first employee (must be sent as well)
-            try:
-                bank.bankemployee_set.create(name = json_data['name'], title = json_data['title'], email = json_data['email'])
-            except KeyError:
-                # TODO freak tf out
-                pass
-                # TODO 3. register the first employee
-                # TODO what to return back to front end?
-            # 3. create a User for this first employee
-            first_user = User.objects.create(username = new_user_data['email'],
-                email = new_user_data['email'])
-            first_user.set_password(new_user_data['password'])
-            # 4. TODO return something
         except:
             pass
+        # 2. create the first employee (must be sent as well)
+        try:
+            bank.bankemployee_set.create(name = json_data['name'], title = json_data['title'], email = json_data['email'])
+        except KeyError:
+            # TODO freak tf out
+            pass
+        # 3. create a User for this first employee
+        first_user = User.objects.create(username = json_data['email'],
+            email = json_data['email'])
+        first_user.set_password(json_data['password'])
+        # 4. return the user object, as well as the bank id
+        return HttpResponse(serializers.serialize('json', [ bank, first_user, ]))
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, POST")
 
