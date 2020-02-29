@@ -10,7 +10,7 @@ import json, datetime
 
 # 1. GET all the banks
 # 2. POST [the fields of a bank and employee]
-#    and receive back [the bank obj u created and a user]
+#    and receive back [a session, and the objects_created [the bank obj u created and the new user]]
 @csrf_exempt
 def index(request):
     # TODO is there ever a situation where we GET all the banks?
@@ -36,8 +36,10 @@ def index(request):
         first_user = User.objects.create(username = json_data['email'],
             email = json_data['email'])
         first_user.set_password(json_data['password'])
-        # 4. return the user object, as well as the bank id
-        return HttpResponse(serializers.serialize('json', [ bank, first_user, ]))
+        # 4. return the objects_created (user object, bank) as well as a session obj
+        now = str(datetime.datetime.now())
+        return HttpResponse("{\"bountium_access_token\":\"" + first_user.username + now + "\"," +
+            "\"objects_created\":" + serializers.serialize('json', [ bank, first_user, ]) + "}")
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, POST")
 
@@ -49,7 +51,7 @@ def rud_bank(request, bank_id):
             bank = Bank.objects.get(id=bank_id)
         except Bank.DoesNotExist:
             raise Http404("No bank with id " + bank_id)
-        return HttpResponse(serializers.serialize('json', [ bank, ]))
+        return HttpResponse(serializers.serialize('json', [ bank, ]), content_type="application/json")
     elif request.method == "DELETE":
         try:
             Bank.objects.delete(bank_id)
@@ -67,7 +69,7 @@ def rud_bank(request, bank_id):
         except KeyError:
             return HttpResponseBadRequest("Badly formatted json to update a bank employee. Required fields are XXX")
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, POST, DELETE, PUT")
+        raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
 # TODO authenticate this - whos allowed to invite teammates?
 def invite_teammate(request, bank_id):
@@ -75,15 +77,30 @@ def invite_teammate(request, bank_id):
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         raise Http404("No bank with id " + bank_id + " for you to invite a teammate to")
-    # TODO exception handling - what if it aint a post, bad json, etc
+    # TODO handle empty body, bad json, or non-post-request
     json_data = json.loads(request.body)
+    # 1a. Has this teammate hasn't already been invited?
+    # TODO handle key error
+    invitee_email = json_data['invitee_email']
     try:
-        bank.bankemployee_set.create(email = json_data['invitee_email'], bank = bank.id)
-        # TODO send an invite email
-    except KeyError:
-        # TODO freak tf out
-        pass
-    # TODO return something
+        invitee = bank.bankemployee_set.get(email = invitee_email)
+        # 2. if so - have they registered?
+        if invitee.name is not None:
+            # 2a. if they have - return status:registered and the user object
+            return HttpResponse("{\"status\":\"registered\", \"employee\":" + serializers.serialize(invitee) + "}", content_type="application/json")
+        else:
+            # 2c. if they have not - re-invite, then return status:reinvited [now]
+            # TODO mail an invite
+            now = str(datetime.datetime.now())
+            return HttpResponse("{\"status\":\"re-invited on \"" + now, content_type="application/json")
+    # 1b. If they have not been invited
+    except BankEmployee.DoesNotExist:
+        # TODO 2. mail an invite
+        # 3. save them and return status:invited [now]
+        # TODO exceptions to handle here?
+        bank.bankemployee_set.create(email = invitee_email)
+        now = str(datetime.datetime.now())
+        return HttpResponse("{\"status\":\"invited on \"" + now, content_type="application/json")
 
 # POST
 # - email, both to validate the invite & create credentials
