@@ -93,7 +93,7 @@ def invite_teammate(request, bank_id):
             # 2c. if they have not - re-invite, then return status:reinvited [now]
             # TODO mail an invite
             now = str(datetime.datetime.now())
-            return HttpResponse("{\"status\":\"re-invited on \"" + now, content_type="application/json")
+            return HttpResponse("{\"status\":\"re-invited on " + now + "\"}", content_type="application/json")
     # 1b. If they have not been invited
     except BankEmployee.DoesNotExist:
         # TODO 2. mail an invite
@@ -101,7 +101,7 @@ def invite_teammate(request, bank_id):
         # TODO exceptions to handle here?
         bank.bankemployee_set.create(email = invitee_email)
         now = str(datetime.datetime.now())
-        return HttpResponse("{\"status\":\"invited on \"" + now, content_type="application/json")
+        return HttpResponse("{\"status\":\"invited on \"" + now + "\"}", content_type="application/json")
 
 # POST
 # - email, both to validate the invite & create credentials
@@ -110,6 +110,7 @@ def invite_teammate(request, bank_id):
 # and receive back
 # - a user object w/ session cookie
 # TODO handle key errors
+@csrf_exempt
 def register_upon_invitation(request, bank_id):
     new_user_data = json.loads(request.body)
     # 1. First, verify that this user has indeed been invited to the bank
