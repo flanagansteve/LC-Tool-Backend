@@ -25,7 +25,7 @@ from . import views
         },
         {
             "model": "auth.user",
-            "pk": [the id of this user among all bountium users, also will be used later],
+            "pk": [the id of this user among all bountium bank users, also will be used later],
             "fields": {
                 "password": [salted hash of this user's password],
                 "last_login": null,
