@@ -5,7 +5,7 @@ from django.core import serializers
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-from .models import LC, LCEmployee
+from .models import LC, DocumentaryRequirement
 import json, datetime
 
 # 1. GET all the lcs
@@ -24,6 +24,7 @@ def index(request):
             #TODO
             #lc = LC(name = json_data['new_lc_name'])
             #lc.save()
+            pass
         except:
             pass
         # 2. return TODO
@@ -51,6 +52,7 @@ def rud_lc(request, lc_id):
     elif request.method == "PUT":
         json_data = json.loads(request.body)
         try:
+            pass
             # TODO
             #LC.objects.update(lc_id, name = json_data['name'])
             # TODO return something
