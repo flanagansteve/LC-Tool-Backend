@@ -91,12 +91,15 @@ def invite_teammate(request, bank_id):
             return HttpResponse("{\"status\":\"registered\", \"employee\":" + serializers.serialize(invitee) + "}", content_type="application/json")
         else:
             # 2c. if they have not - re-invite, then return status:reinvited [now]
-            # TODO mail an invite
+            # TODO write the email to send as args: subject, message, from_email=None
+            User.objects.get(email = invitee_email).email_user()
             now = str(datetime.datetime.now())
             return HttpResponse("{\"status\":\"re-invited on " + now + "\"}", content_type="application/json")
     # 1b. If they have not been invited
     except BankEmployee.DoesNotExist:
         # TODO 2. mail an invite
+        # TODO write the email to send as args: subject, message, from_email=None
+        User.objects.get(email = invitee_email).email_user()
         # 3. save them and return status:invited [now]
         # TODO exceptions to handle here?
         bank.bankemployee_set.create(email = invitee_email)
@@ -136,6 +139,7 @@ def register_upon_invitation(request, bank_id):
         name = new_user_data['name'],
         title = new_user_data['title'])
     # 4. return user object w/token
+    request.session['logged_in'] = True
     # TODO what does ryan need to know after a login?
         # does he need a special cookie?
         # does he need params about the user, like which bank they're a part of?
@@ -155,14 +159,21 @@ def login(request, bank_id):
     user = authenticate(username=login_attempt['email'], password=login_attempt['password'])
     if user is not None:
         if user.is_active:
-            #login(request, user)
             # TODO what does ryan need to know after a login?
                 # does he need a special cookie?
                 # does he need params about the user, like which bank they're a part of?
                     # or will he ask for those other things as he needs them?
+            request.session['logged_in'] = True
             now = str(datetime.datetime.now())
             return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
     return HttpResponseBadRequest('401: invalid credentials')
+
+
+def logout(request, bank_id):
+    # TODO authenticate this somehow - does this work?
+    if request.user.is_authenticated():
+        request.session['logged_in'] = False
+    return HttpResponse("{\"success\":true}")
 
 # TODO authenticate this - whos allowed to R (and in what detail), and to UD?
 def rud_bank_employee(request, bank_id, employee_id):
