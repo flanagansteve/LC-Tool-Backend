@@ -155,7 +155,7 @@ def register_upon_invitation(request, bank_id):
 # TODO do we need to use bank_id? i feel like not
 # TODO handle KeyError
 @csrf_exempt
-def login(request, business_id):
+def login(request, bank_id):
     if request.method == "POST":
         login_attempt = json.loads(request.body)
         try:
@@ -176,7 +176,7 @@ def login(request, business_id):
         return HttpResponseBadRequest('400: this endpoint only supports POST requests')
 
 @csrf_exempt
-def logout(request, business_id):
+def logout(request, bank_id):
     # TODO authenticate this somehow - does this work?
     if request.method == "POST":
         if request.user.is_authenticated():
