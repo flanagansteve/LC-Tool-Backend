@@ -70,25 +70,6 @@ to register upon invitation, and receive back
 TODO
 }
 
-6./business/{business_id}/login
-POST with:
-{
-TODO
-}
-to log in, and receive back
-{
-TODO
-}
-
-7. /business/{business_id}/logout
-POST with:
-{
-TODO determine some way to only allow users to log _themselves_ out
-}
-to log out, and receive back
-{
-"success": true | false
-}
 """
 
 urlpatterns = [
@@ -105,11 +86,5 @@ urlpatterns = [
     url(r'^(?P<business_id>[0-9]+)/(?P<employee_id>[0-9]+)/$', views.rud_business_employee, name='rud_business_employee'),
 
     # /business/{business_id}/register
-    url(r'^(?P<business_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation'),
-
-    # /business/{business_id}/login
-    url(r'^(?P<business_id>[0-9]+)/login$', views.login, name='login'),
-
-    # /business/{business_id}/logout
-    url(r'^(?P<business_id>[0-9]+)/logout$', views.logout, name='logout')
+    url(r'^(?P<business_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation')
 ]

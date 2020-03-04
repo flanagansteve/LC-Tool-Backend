@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Bank, BankEmployee
 import json, datetime
 
+# TODO on a bad request, set status_code to give a specific error code
 # 1. GET all the banks
 # 2. POST [the fields of a bank and employee]
 #    and receive back [a session, and the objects_created [the bank obj u created and the new user]]
@@ -32,10 +33,12 @@ def index(request):
         except KeyError:
             # TODO freak tf out
             pass
-        # 3. create a User for this first employee
-        first_user = User.objects.create(username = json_data['email'],
-            email = json_data['email'])
-        first_user.set_password(json_data['password'])
+        # 3. create a User for this first employee, and log them in
+        first_user = User.objects.create_user(username=json_data['email'],
+                                 email=json_data['email'],
+                                 password=json_data['password'])
+        first_user = authenticate(username=json_data['email'], password=json_data['password'])
+        login(request, first_user)
         # 4. return the objects_created (user object, bank) as well as a session obj
         now = str(datetime.datetime.now())
         return HttpResponse("{\"bountium_access_token\":\"" + first_user.username + now + "\"," +
@@ -131,9 +134,11 @@ def register_upon_invitation(request, bank_id):
     if new_employee.username:
         return HttpResponse("401: Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.")
     # 2. Register the user account
-    new_user = User.objects.create(username = new_user_data['email'],
-        email = new_user_data['email'])
-    new_user.set_password(new_user_data['password'])
+    new_user = User.objects.create_user(username=new_user_data['email'],
+                             email=new_user_data['email'],
+                             password=new_user_data['password'])
+    new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
+    login(request, new_user)
     # 3. Update the bankemployee with full fields
     bank.bankemployee_set.update(new_employee.id,
         name = new_user_data['name'],
@@ -147,43 +152,6 @@ def register_upon_invitation(request, bank_id):
     # using this for testing:
     now = str(datetime.datetime.now())
     return HttpResponse('{\"bountium_access_token\":\"' + new_user.username + now + "\"}", content_type="application/json")
-
-# POST email & password, receive back one of
-# - a user object w/ session cookie
-# - a rejection for invalid creds
-# TODO upgrade to django-oauth-toolkit
-# TODO do we need to use bank_id? i feel like not
-# TODO handle KeyError
-@csrf_exempt
-def login(request, bank_id):
-    if request.method == "POST":
-        login_attempt = json.loads(request.body)
-        try:
-            user = authenticate(username=login_attempt['email'], password=login_attempt['password'])
-        except KeyError:
-            return HttpResponseBadRequest('400: you must send a JSON object with an email and password')
-        if user is not None:
-            if user.is_active:
-                # TODO what does ryan need to know after a login?
-                    # does he need a special cookie?
-                    # does he need params about the user, like which business they're a part of?
-                        # or will he ask for those other things as he needs them?
-                request.session['logged_in'] = True
-                now = str(datetime.datetime.now())
-                return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
-        return HttpResponseBadRequest('401: invalid credentials')
-    else:
-        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
-
-@csrf_exempt
-def logout(request, bank_id):
-    # TODO authenticate this somehow - does this work?
-    if request.method == "POST":
-        if request.user.is_authenticated():
-            request.session['logged_in'] = False
-        return HttpResponse("{\"success\":true}")
-    else:
-        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
 
 # TODO authenticate this - whos allowed to R (and in what detail), and to UD?
 def rud_bank_employee(request, bank_id, employee_id):
