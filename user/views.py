@@ -1,7 +1,4 @@
-from django.shortcuts import render
-
-from django.http import HttpResponse
-from django.http import HttpResponseBadRequest, Http404
+from django.http import HttpResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
@@ -19,17 +16,18 @@ def user_login(request):
         try:
             user = authenticate(request, username=login_attempt['email'], password=login_attempt['password'])
         except KeyError:
-            return HttpResponseBadRequest('400: you must send a JSON object with an email and password')
+            response = HttpResponseBadRequest('You must send a JSON object with an email and password')
+            return response
         if user is not None:
             login(request, user)
             now = str(datetime.datetime.now())
             return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
         else:
-            return HttpResponseBadRequest('403: invalid credentials')
+            return HttpResponseForbidden('Invalid credentials')
     else:
-        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
+        return HttpResponseBadRequest('This endpoint only supports POST requests')
 
-# TODO return something
+# TODO return the User, the user's employee object, & the user's employer object
 @csrf_exempt
 def user_logout(request):
     if request.method == "POST":
@@ -37,6 +35,6 @@ def user_logout(request):
             logout(request, user)
             return HttpResponse("{\"success\":true}")
         else:
-            return HttpResponseBadRequest('403: you must be logged in to log out')
+            return HttpResponseForbidden('You must be logged in to log out')
     else:
-        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
+        return HttpResponseBadRequest('This endpoint only supports POST requests')

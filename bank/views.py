@@ -1,6 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse
-from django.http import HttpResponseBadRequest, Http404
+from django.http import HttpResponse, HttpResponseBadRequest, Http404
 from django.core import serializers
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
@@ -132,7 +131,7 @@ def register_upon_invitation(request, bank_id):
     if new_employee is None:
         return Http404("There is no invitation for email " + new_user_data['emai'])
     if new_employee.username:
-        return HttpResponse("401: Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.")
+        return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
     # 2. Register the user account
     new_user = User.objects.create_user(username=new_user_data['email'],
                              email=new_user_data['email'],
