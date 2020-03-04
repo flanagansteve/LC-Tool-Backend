@@ -154,6 +154,7 @@ def register_upon_invitation(request, business_id):
 # TODO upgrade to django-oauth-toolkit
 # TODO do we need to use business_id? i feel like not
 # TODO handle KeyError
+@csrf_exempt
 def login(request, business_id):
     login_attempt = json.loads(request.body)
     user = authenticate(username=login_attempt['email'], password=login_attempt['password'])
@@ -168,7 +169,7 @@ def login(request, business_id):
             return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
     return HttpResponseBadRequest('401: invalid credentials')
 
-
+@csrf_exempt
 def logout(request, business_id):
     # TODO authenticate this somehow - does this work?
     if request.user.is_authenticated():
