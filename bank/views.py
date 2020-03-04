@@ -155,26 +155,35 @@ def register_upon_invitation(request, bank_id):
 # TODO do we need to use bank_id? i feel like not
 # TODO handle KeyError
 @csrf_exempt
-def login(request, bank_id):
-    login_attempt = json.loads(request.body)
-    user = authenticate(username=login_attempt['email'], password=login_attempt['password'])
-    if user is not None:
-        if user.is_active:
-            # TODO what does ryan need to know after a login?
-                # does he need a special cookie?
-                # does he need params about the user, like which bank they're a part of?
-                    # or will he ask for those other things as he needs them?
-            request.session['logged_in'] = True
-            now = str(datetime.datetime.now())
-            return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
-    return HttpResponseBadRequest('401: invalid credentials')
+def login(request, business_id):
+    if request.method == "POST":
+        login_attempt = json.loads(request.body)
+        try:
+            user = authenticate(username=login_attempt['email'], password=login_attempt['password'])
+        except KeyError:
+            return HttpResponseBadRequest('400: you must send a JSON object with an email and password')
+        if user is not None:
+            if user.is_active:
+                # TODO what does ryan need to know after a login?
+                    # does he need a special cookie?
+                    # does he need params about the user, like which business they're a part of?
+                        # or will he ask for those other things as he needs them?
+                request.session['logged_in'] = True
+                now = str(datetime.datetime.now())
+                return HttpResponse('{\"bountium_access_token\":\"' + user.username + now + "\"}", content_type="application/json")
+        return HttpResponseBadRequest('401: invalid credentials')
+    else:
+        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
 
 @csrf_exempt
-def logout(request, bank_id):
+def logout(request, business_id):
     # TODO authenticate this somehow - does this work?
-    if request.user.is_authenticated():
-        request.session['logged_in'] = False
-    return HttpResponse("{\"success\":true}")
+    if request.method == "POST":
+        if request.user.is_authenticated():
+            request.session['logged_in'] = False
+        return HttpResponse("{\"success\":true}")
+    else:
+        return HttpResponseBadRequest('400: this endpoint only supports POST requests')
 
 # TODO authenticate this - whos allowed to R (and in what detail), and to UD?
 def rud_bank_employee(request, bank_id, employee_id):
