@@ -85,7 +85,6 @@ def invite_teammate(request, bank_id):
             bank = Bank.objects.get(id=bank_id)
         except Bank.DoesNotExist:
             raise Http404("No bank with id " + bank_id + " for you to invite a teammate to")
-        # TODO handle empty body, bad json, or non-post-request
         json_data = json.loads(request.body)
         response = {"status" : "registered"}
         # 1a. Has this teammate already been invited?
