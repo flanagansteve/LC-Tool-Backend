@@ -24,14 +24,13 @@ def index(request):
         try:
             bank = Bank(name = json_data['new_bank_name'])
             bank.save()
-        except:
-            pass
+        except KeyError:
+            return HttpResponseBadRequest("Badly formatted json to create a bank. Need a \"new_bank_name\" field")
         # 2. create the first employee (must be sent as well)
         try:
             bank.bankemployee_set.create(name = json_data['name'], title = json_data['title'], email = json_data['email'])
         except KeyError:
-            # TODO freak tf out
-            pass
+            return HttpResponseBadRequest("Badly formatted json to create a bank. Need the parameters of the bank's first employee - \"email\", \"name\", and \"title\" fields")
         # 3. create a User for this first employee, and log them in
         first_user = User.objects.create_user(username=json_data['email'],
                                  email=json_data['email'],
