@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group, User
 
 class Bank(models.Model):
     name = models.CharField(max_length=250)
-    pdfApplicationLink = models.CharField(max_length=250)
+    pdfApplication = models.FileField(upload_to=self.name) + '/application/')
     # TODO what should the on_delete for this be?
     digitalApplication = models.ForeignKey(DigitalLCApplication, blank=True, on_delete=models.CASCADE)
 
