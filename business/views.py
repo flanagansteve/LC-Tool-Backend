@@ -106,7 +106,7 @@ def invite_teammate(request, business_id):
                 now = str(datetime.datetime.now())
                 response["status"] = "re-invited on " + now
         # 1b. If they have not been invited
-        except BankEmployee.DoesNotExist:
+        except BusinessEmployee.DoesNotExist:
             # 2. mail an invite
             # TODO write the email to send as args: subject, message, from_email=None
             User.objects.get(email = invitee_email).email_user()
