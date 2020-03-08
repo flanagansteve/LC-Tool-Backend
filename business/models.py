@@ -10,13 +10,6 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
-    def to_json(self):
-        json = '{'
-        json += '\"id\":' + str(self.id) + ','
-        json += '\"name\":\"' + self.name + '\"'
-        json += '}'
-        return json
-
 class BusinessEmployee(models.Model):
     name = models.CharField(max_length=250, blank=True)
     title = models.CharField(max_length=250, blank=True)
@@ -25,12 +18,3 @@ class BusinessEmployee(models.Model):
 
     def __str__(self):
         return self.name + ', ' + self.title + ' at ' + str(self.employer)
-
-    def to_json(self):
-        json = '{'
-        json += '\"id\":' + str(self.id) + ','
-        json += '\"name\":\"' + self.name + '\",'
-        json += '\"title\":\"' + self.title + '\",'
-        json += '\"employer\":\"' + str(self.employer) + "\""
-        json += '}'
-        return json
