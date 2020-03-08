@@ -70,5 +70,5 @@ class DocumentaryRequirement(models.Model):
     required_values = models.CharField(max_length=500)
     due_date = models.DateField()
     link_to_submitted_doc = models.CharField(max_length=250, blank=True)
-    complaints = models.CharField(max_length=1000)
+    complaints = models.CharField(max_length=1000, blank=True)
     satisfied = models.BooleanField()
