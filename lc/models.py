@@ -1,5 +1,5 @@
 from django.db import models
-from bank.models import Bank, BankEmployee, DigitalLCApplication
+from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 
 # Abstract LC from which Pdf and Digital inherit
@@ -23,29 +23,25 @@ class LC(models.Model):
         # an elegant shortcut on the back end. Idk!
     issuer_approved = models.BooleanField()
     beneficiary_approved = models.BooleanField()
+    #TODO: previous_version = models.ForeignKey(LC, )
     terms_satisfied = models.BooleanField()
     requested = models.BooleanField()
     drawn = models.BooleanField()
     paid_out = models.BooleanField()
 
+def pdf_app_response_path(lc, filename):
+    # file will be uploaded to MEDIA_ROOT/bank_<id>/client_<id>/applications/%Y/%m/%d/filename
+    return 'bank_{0}/client_{1}/applications/%Y/%m/%d/{2}'.format(instance.lc.issuer.id, instance.lc.client.id, filename)
+
+def pdf_lc_contract_path(lc, filename):
+    # file will be uploaded to MEDIA_ROOT/bank_<id>/client_<id>/contracts/%Y/%m/%d/filename
+    return 'bank_{0}/client_{1}/contracts/%Y/%m/%d/{2}'.format(instance.lc.issuer.id, instance.lc.client.id, filename)
+
 class PdfLC(LC):
-    application = models.FileField(upload_to=str(self.issuer) + '/' + str(self.client) + '/applications/%Y/%m/%d')
-    contract = models.FileField(upload_to=str(self.issuer) + '/' + str(self.client) + '/lcs/%Y/%m/%d')
+    app_response = models.FileField(upload_to=pdf_app_response_path)
+    contract = models.FileField(upload_to=pdf_lc_contract_path)
 
 class DigitalLC(LC):
-    # TODO should this cascade on delete or not?
-    for_app = models.ForeignKey(DigitalLCApplication, on_delete=models.CASCADE)
-    # TODO what should the max length of appResponseAsJSON be?
-    # We store an application response as JSON array of objects; the format is
-    """
-    {
-        'for_question': the index of the question in the corresponding DigitalLCApplication's array of questions,
-        'answer_value': the answer's value, as an int or double or text or w/e
-    }
-    """
-    # However, we also try to extract as many fields into actual data as possible
-    app_response_as_JSON = models.CharField(max_length=1000)
-
     # -- the actual data of this lc -- #
     # TODO add all the other fields in the SVB template
     # CDM can be ('Courier', 'SWIFT') or other

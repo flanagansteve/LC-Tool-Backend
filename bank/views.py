@@ -37,7 +37,8 @@ def index(request):
                                  password=json_data['password'])
         first_user = authenticate(username=json_data['email'], password=json_data['password'])
         login(request, first_user)
-        # 4. return the objects_created (user object, bank) as well as a session obj
+        # 4. TODO create bank.application and begin populating it with questions
+        # 5. return the objects_created (user object, bank) as well as a session obj
         now = str(datetime.datetime.now())
         response = {
             "bountium_access_token" : first_user.username + now,
@@ -47,7 +48,7 @@ def index(request):
         }
         return JsonResponse(response)
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, POST")
+        raise HttpResponseBadRequest("This endpoint only supports GET, POST")    
 
 # TODO authenticate this - whos allowed to R, and to UD?
 def rud_bank(request, bank_id):

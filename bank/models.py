@@ -1,21 +1,19 @@
 from django.db import models
 from django.contrib.auth.models import Group, User
 
+def pdf_app_path(bank, filename):
+    # file will be uploaded to MEDIA_ROOT/bank_<bank_id>/lc_application.pdf
+    return 'bank_{0}/lc_application.pdf'.format(instance.bank.id)
+
+# TODO decide whether to store files on our back end, or as a link to a cloud
 class Bank(models.Model):
     name = models.CharField(max_length=250)
-    pdfApplication = models.FileField(upload_to=self.name) + '/application/')
-    # TODO what should the on_delete for this be?
-    digitalApplication = models.ForeignKey(DigitalLCApplication, blank=True, on_delete=models.CASCADE)
+    pdf_application = models.FileField(upload_to=pdf_app_path, blank=True)
+    # TODO make this a list? or maybe it already is
+    #digital_application = models.ForeignKey(LCAppQuestion, blank=True, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
-
-    def to_json(self):
-        json = '{'
-        json += '\"id\":' + str(self.id) + ','
-        json += '\"name\":\"' + self.name + '\"'
-        json += '}'
-        return json
 
 class BankEmployee(models.Model):
     name = models.CharField(max_length=250, blank=True)
@@ -26,23 +24,8 @@ class BankEmployee(models.Model):
     def __str__(self):
         return self.name + ', ' + self.title + ' at ' + str(self.bank)
 
-    def to_json(self):
-        json = '{'
-        json += '\"id\":' + str(self.id) + ','
-        json += '\"name\":\"' + self.name + '\",'
-        json += '\"title\":\"' + self.title + '\",'
-        json += '\"bank\":\"' + str(self.bank) + "\""
-        json += '}'
-        return json
-
-# TODO what should the max length of each of these text fields below be?
-class DigitalLCApplication(models.Model):
-    # We store an application as JSON array of objects; the format is
-    """
-    {
-        'question_text':'the text of the question',
-        'answer_type':'integer' || 'decimal' || 'text' etc,
-        'required':true || false
-    }
-    """
-    appAsJson = models.CharField(max_length=1000)
+class LCAppQuestion(models.Model):
+    question_text = models.CharField(max_length = 250)
+    key_name = models.CharField(max_length = 250)
+    type = models.CharField(max_length = 25)
+    required = models.BooleanField()

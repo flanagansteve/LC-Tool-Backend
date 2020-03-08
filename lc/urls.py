@@ -2,9 +2,9 @@ from django.conf.urls import url
 from . import views
 
 """ Endpoints:
-1. /lc/
-# GET all the lcs (TODO: thats probably just for testing)
-# POST the following to create an LC
+1. /lc/{bank_id}
+# GET all the lcs from this bank (TODO: thats probably just for testing)
+# POST the following to create an LC at this bank
     # If its a BusinessEmployee POSTing, we expect one of
     [aFilledOutPDFApp.pdf]
     or
@@ -18,29 +18,27 @@ from . import views
     }
     # If its a BankEmployee POSTing, we expect
     [app_response_that_i_uploaded_on_behalf_of_a_client.pdf]
-    or, for creating an LC app that your client will fill out later (which bountium will notify them about), one of
-    {
-        'applicant_id' : [an int if this is a repeat LC applicant that the form autofilled]
-    }
+    or, for creating an LC app that your client will fill out later (which bountium will notify them about)
     {
         'applicant' : 'the applicants business name',
         'applicant_employee_contact' : 'someemployee@business.com'
-        [we'll create the business in our database in this case]
+        [we'll either create the Business in our database, or re-use if this is a repeat]
     }
 
-2. /lc/{lc_id} (a very busy endpoint lol)
+2. /lc/{bank_id}/{lc_id} (a very busy endpoint lol)
+# POST to respond to a created LC application
+    # If
+        !(<lc for which id == lc_id>.filledOut)
+        && (<the employee POSTing>.employer == <lc for which id == lc_id>.applicant)
+    we expect this to be the rest of the values required to create an LC - one of:
+    [aFilledOutPDFApp.pdf]
+    or
+    {
+        [the fields of a digital LC model]
+    }
 # PUT to update an LC
 # TODO this handles redlining - how are we going to save the history of redlined changes to render back to the user?
     # If its a BusinessEmployee PUTing...
-        # If
-            !(<lc for which id == lc_id>.filledOut)
-            && (<the employee PUTing>.employer == <lc for which id == lc_id>.applicant)
-        we expect this to be the rest of the values required to create an LC - one of:
-        [aFilledOutPDFApp.pdf]
-        or
-        {
-            [the fields of a digital LC model]
-        }
         # If
             !(<lc for which id == lc_id>.beneficiaryApproved)
             && (<the employee PUTing>.employer == <lc for which id == lc_id>.beneficiary)
@@ -104,14 +102,14 @@ or
 as an employee of the beneficiary to submit a DocumentaryRequirement
     if its for a PdfLC we'll be creating the DocumentaryRequirement
     if its for a DigitalLC we'll be updating the DocumentaryRequirement
-or, POST the following
+
+6. /lc/{lc_id}/doc_req/{doc_req_id}
+POST the following
 {
     'approve': true || false,
     'complaints' : 'any complaints; blank if approve == true'
 }
 as an employee of the issuing bank or client to approve/dispute a DocumentaryRequirement
-
-6. /lc/{lc_id}/doc_req/{doc_req_id}
 # GET a doc req, whether or not a doc has been submitted yet
 
 7. /lc/{lc_id}/request

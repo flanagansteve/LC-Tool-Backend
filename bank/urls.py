@@ -70,6 +70,20 @@ to register upon invitation, and receive back
 TODO
 }
 
+6. /bank/{bank_id}/pdf_app
+GET to receive back:
+pdf_application.pdf
+
+POST, as an employee of the bank, with:
+pdf_application.pdf
+
+7. /bank/{bank_id}/digital_app
+GET to receive back:
+[{ the fields of an ApplicationQuestion }]
+
+POST, as an employee of the bank, with:
+[{ the fields of an ApplicationQuestion }]
+
 """
 
 urlpatterns = [
@@ -86,5 +100,11 @@ urlpatterns = [
     url(r'^(?P<bank_id>[0-9]+)/(?P<employee_id>[0-9]+)/$', views.rud_bank_employee, name='rud_bank_employee'),
 
     # /bank/{bank_id}/register
-    url(r'^(?P<bank_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation')
+    url(r'^(?P<bank_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation'),
+
+    # TODO
+    # /bank/{bank_id}/pdf_app
+
+    # /bank/{bank_id}/digital_app
+
 ]
