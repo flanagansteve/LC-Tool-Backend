@@ -5,29 +5,28 @@ from business.models import Business, BusinessEmployee
 # Abstract LC from which Pdf and Digital inherit
 # TODO add assigning employees to an LC
 class LC(models.Model):
-    # -- the parties to an LC --
-    client = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='client')
-    beneficiary = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='beneficiary')
+    # -- the parties to an LC -- #
+    # TODO TODO TODO for some reason, django makes me provide defaults for client and beneficiary....
+    client = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_client')
+    beneficiary = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_beneficiary')
     issuer = models.ForeignKey(Bank, on_delete=models.CASCADE)
 
     # -- the status of an LC -- #
+    issuer_approved = models.BooleanField()
+    beneficiary_approved = models.BooleanField()
+    #TODO: previous_version = models.ForeignKey(LC, )
+
     # TODO do terms_satisfied & paid_out fields make sense for a Standby LC?
     # theoretically it could be 'satisfied' and 'pay out more than once' -
     # the difference is, of course, that satisfaction is a bad thing
     # and not expected.
-        # on one hand, this does work for our purposes and its
-        # an elegant framing
-        # on the other, if this isn't how people currently think
-        # about LCs, it may be counterproductive. This thinking
-        # could seep into the UX even if its only meant to be
-        # an elegant shortcut on the back end. Idk!
-    issuer_approved = models.BooleanField()
-    beneficiary_approved = models.BooleanField()
-    #TODO: previous_version = models.ForeignKey(LC, )
     terms_satisfied = models.BooleanField()
     requested = models.BooleanField()
     drawn = models.BooleanField()
     paid_out = models.BooleanField()
+
+    class Meta:
+        abstract = True
 
 def pdf_app_response_path(lc, filename):
     # file will be uploaded to MEDIA_ROOT/bank_<id>/client_<id>/applications/%Y/%m/%d/filename
@@ -56,7 +55,9 @@ class DigitalLC(LC):
 
     # TODO someday: def to_pdf()
 
+"""
 class DocumentaryRequirement(models.Model):
+    # TODO how to foreign key into a base model?? surely the solution isnt two fields for each of the two implementations....
     for_lc = models.ForeignKey(LC, on_delete=models.CASCADE)
     doc_name = models.CharField(max_length=250)
     # NOTE for now just letting users define the required values
@@ -72,3 +73,4 @@ class DocumentaryRequirement(models.Model):
     link_to_submitted_doc = models.CharField(max_length=250, blank=True)
     complaints = models.CharField(max_length=1000, blank=True)
     satisfied = models.BooleanField()
+"""

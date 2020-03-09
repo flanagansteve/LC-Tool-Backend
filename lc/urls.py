@@ -125,9 +125,6 @@ as an employee of the issuing bank or client to approve/dispute a DocumentaryReq
 
 urlpatterns = [
     # /lc/
-    url(r'^$', views.index, name='index'),
-
-    # /lc/{lc_id}
-    url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
+    url(r'^$', views.index, name='index')
 
 ]
