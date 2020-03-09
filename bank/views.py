@@ -87,7 +87,7 @@ def invite_teammate(request, bank_id):
             except Bank.DoesNotExist:
                 return Http404("No bank with id " + bank_id + " for you to invite a teammate to")
             if not bank.bankemployee_set.filter(email=request.user.username).exists():
-                return HttpResponseForbidden("You may only invite teammates to your bank")
+                return HttpResponseForbidden("You may only invite teammates to your own bank")
             json_data = json.loads(request.body)
             response = {"status" : "registered"}
             # 1a. Has this teammate already been invited?
