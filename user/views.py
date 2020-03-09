@@ -45,10 +45,7 @@ def user_login(request):
 @csrf_exempt
 def user_logout(request):
     if request.method == "POST":
-        if request.user.is_authenticated:
-            logout(request, user)
-            return JsonResponse({"success":True})
-        else:
-            return HttpResponseForbidden('You must be logged in to log out')
+        logout(request, user)
+        return JsonResponse({"success":True})
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
