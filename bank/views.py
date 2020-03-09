@@ -8,7 +8,6 @@ from django.forms.models import model_to_dict
 from .models import Bank, BankEmployee
 import json, datetime
 
-# TODO on a bad request, set status_code to give a specific error code
 # 1. GET all the banks
 # 2. POST [the fields of a bank and employee]
 #    and receive back [a session, and the objects_created [the bank obj u created and the new user]]
@@ -48,7 +47,7 @@ def index(request):
         }
         return JsonResponse(response)
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, POST")    
+        raise HttpResponseBadRequest("This endpoint only supports GET, POST")
 
 # TODO authenticate this - whos allowed to R, and to UD?
 def rud_bank(request, bank_id):
@@ -107,9 +106,10 @@ def invite_teammate(request, bank_id):
                 response["status"] = "re-invited on " + now
         # 1b. If they have not been invited
         except BankEmployee.DoesNotExist:
-            # 2. mail an invite
+            # 2. create the user and mail an invite
             # TODO write the email to send as args: subject, message, from_email=None
-            User.objects.get(email = invitee_email).email_user()
+            # TODO this gets a ConnectionRefused - use your own emailing thing, or a third party service:
+            #User.objects.get(email = invitee_email).email_user("subject", "message")
             # 3. save them and return status:invited [now]
             bank.bankemployee_set.create(email = invitee_email)
             now = str(datetime.datetime.now())
@@ -123,7 +123,9 @@ def invite_teammate(request, bank_id):
 # - password
 # - name and title (NOTE we might make this optional)
 # and receive back
-# - TODO what does ryan want back?
+# - access token
+# - the employee obj
+# - the bank obj
 @csrf_exempt
 def register_upon_invitation(request, bank_id):
     if request.method == "POST":
@@ -140,7 +142,7 @@ def register_upon_invitation(request, bank_id):
         new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
         if new_employee is None:
             return Http404("There is no invitation for email " + new_user_data['email'])
-        if new_employee.username:
+        if new_employee.name:
             return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
         # 2. Register the user account
         new_user = User.objects.create_user(username=new_user_data['email'],
@@ -149,13 +151,16 @@ def register_upon_invitation(request, bank_id):
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
         login(request, new_user)
         # 3. Update the bankemployee with full fields
-        bank.bankemployee_set.update(new_employee.id,
+        bank.bankemployee_set.filter(id=new_employee.id).update(
             name = new_user_data['name'],
             title = new_user_data['title'])
         # 4. return user object w/token
-        # using this for testing:
         now = str(datetime.datetime.now())
-        return HttpResponse('{\"bountium_access_token\":\"' + new_user.username + now + "\"}", content_type="application/json")
+        return JsonResponse({
+            "bountium_access_token" : new_user.username + now,
+            "userEmployee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
+            "usersEmployer" : model_to_dict(bank)
+        })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
 

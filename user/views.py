@@ -1,7 +1,10 @@
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
+from bank.models import Bank, BankEmployee
+from business.models import Business, BusinessEmployee
 import json, datetime
 
 # POST email & password, receive back one of
@@ -19,8 +22,20 @@ def user_login(request):
             return response
         if user is not None:
             login(request, user)
+            userEmployee = None
+            usersEmployer = None
+            if BankEmployee.objects.filter(email=user.username).exists():
+                userEmployee = BankEmployee.objects.get(email=user.username)
+                usersEmployer = userEmployee.bank
+            else:
+                userEmployee = BusinesssEmployee.objects.get(email=user.username)
+                usersEmployer = userEmployee.employer
             now = str(datetime.datetime.now())
-            return JsonResponse({"bountium_access_token" : user.username + now})
+            return JsonResponse({
+                "bountium_access_token" : user.username + now,
+                "userEmployee" : model_to_dict(userEmployee),
+                "usersEmployer" : model_to_dict(usersEmployer)
+            })
         else:
             return HttpResponseForbidden('Invalid credentials')
     else:
@@ -30,7 +45,7 @@ def user_login(request):
 @csrf_exempt
 def user_logout(request):
     if request.method == "POST":
-        if request.user.is_authenticated():
+        if request.user.is_authenticated:
             logout(request, user)
             return JsonResponse({"success":True})
         else:

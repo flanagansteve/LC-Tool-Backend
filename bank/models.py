@@ -8,6 +8,7 @@ def pdf_app_path(bank, filename):
 # TODO decide whether to store files on our back end, or as a link to a cloud
 class Bank(models.Model):
     name = models.CharField(max_length=250)
+    # TODO files aint json serialisable king, fix it
     #pdf_application = models.FileField(upload_to=pdf_app_path, blank=True)
     # TODO make this a list? or maybe it already is
     #digital_application = models.ForeignKey(LCAppQuestion, blank=True, on_delete=models.CASCADE)
