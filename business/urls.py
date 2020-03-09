@@ -63,13 +63,17 @@ from . import views
 5. /business/{business_id}/register
 POST with:
 {
-TODO
+    'email'
+    'password'
+    'name'
+    'title'
 }
 to register upon invitation, and receive back
 {
-TODO
+    'bountium_access_token'
+    'userEmployee' : { business employee obj }
+    'usersEmployer : { business obj }
 }
-
 """
 
 urlpatterns = [
