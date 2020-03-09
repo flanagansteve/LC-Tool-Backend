@@ -40,7 +40,7 @@ def index(request):
         # 5. return the objects_created (user object, bank) as well as a session obj
         now = str(datetime.datetime.now())
         response = {
-            "session_expiry" : request.session.get_expiry(),
+            "session_expiry" : request.session.get_expiry_date(),
             "objects_created" : [
                 model_to_dict(bank), model_to_dict(first_user)
             ]
@@ -77,7 +77,6 @@ def rud_bank(request, bank_id):
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
-# TODO authenticate this - whos allowed to invite teammates?
 @csrf_exempt
 def invite_teammate(request, bank_id):
     if request.method == "POST":
@@ -162,7 +161,7 @@ def register_upon_invitation(request, bank_id):
         # 4. return user object w/token
         now = str(datetime.datetime.now())
         return JsonResponse({
-            "session_expiry" : request.session.get_expiry(),
+            "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
             "users_employer" : model_to_dict(bank)
         })

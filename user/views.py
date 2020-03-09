@@ -32,7 +32,7 @@ def user_login(request):
                 users_employer = userEmployee.employer
             now = str(datetime.datetime.now())
             return JsonResponse({
-                "session_expiry" : request.session.get_expiry(),
+                "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
                 "users_employer" : model_to_dict(users_employer)
             })

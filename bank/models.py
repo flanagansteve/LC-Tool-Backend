@@ -27,6 +27,6 @@ class BankEmployee(models.Model):
 
 class LCAppQuestion(models.Model):
     question_text = models.CharField(max_length = 250)
-    key_name = models.CharField(max_length = 250)
+    key_name = models.CharField(max_length = 50)
     type = models.CharField(max_length = 25)
     required = models.BooleanField()

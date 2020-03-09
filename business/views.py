@@ -40,7 +40,7 @@ def index(request):
         # 4. return the objects_created (user object, business) as well as a session obj
         now = str(datetime.datetime.now())
         response = {
-            "session_expiry" : request.session.get_expiry(),
+            "session_expiry" : request.session.get_expiry_date(),
             "objects_created" : [
                 model_to_dict(business), model_to_dict(first_user)
             ]
@@ -161,7 +161,7 @@ def register_upon_invitation(request, business_id):
         # 4. return user object w/token
         now = str(datetime.datetime.now())
         return JsonResponse({
-            "session_expiry" : request.session.get_expiry(),
+            "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(business.businessemployee_set.get(email=new_user_data['email'])),
             "users_employer" : model_to_dict(business)
         })
