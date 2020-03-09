@@ -1,5 +1,5 @@
 from django.db import models
-from bank.models import Bank, BankEmployee
+from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
 
 # Abstract LC from which Pdf and Digital inherit
@@ -55,10 +55,15 @@ class DigitalLC(LC):
 
     # TODO someday: def to_pdf()
 
-"""
+class LCAppQuestionResponse(models.Model):
+    for_question = models.ForeignKey(LCAppQuestion, on_delete=models.CASCADE)
+    for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
+    raw_json_value = models.CharField(max_length = 5000)
+
 class DocumentaryRequirement(models.Model):
-    # TODO how to foreign key into a base model?? surely the solution isnt two fields for each of the two implementations....
-    for_lc = models.ForeignKey(LC, on_delete=models.CASCADE)
+    # TODO how to foreign key into a base model??
+        # surely the solution isnt two fields for each of the two implementations....
+    #for_lc = models.ForeignKey(LC, on_delete=models.CASCADE)
     doc_name = models.CharField(max_length=250)
     # NOTE for now just letting users define the required values
     # as a string, ie:
@@ -73,4 +78,3 @@ class DocumentaryRequirement(models.Model):
     link_to_submitted_doc = models.CharField(max_length=250, blank=True)
     complaints = models.CharField(max_length=1000, blank=True)
     satisfied = models.BooleanField()
-"""

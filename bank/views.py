@@ -36,7 +36,8 @@ def index(request):
                                  password=json_data['password'])
         first_user = authenticate(username=json_data['email'], password=json_data['password'])
         login(request, first_user)
-        # 4. TODO create bank.application and begin populating it with questions
+        # 4. Start the bank off with the default set of lc application question
+        populate_application(bank)
         # 5. return the objects_created (user object, bank) as well as a session obj
         now = str(datetime.datetime.now())
         response = {
@@ -48,6 +49,11 @@ def index(request):
         return JsonResponse(response)
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, POST")
+
+def populate_application(bank):
+    # TODO 1. if the default questions are not yet in the database, add them
+    # TODO 2. iterate through the first N questions, bc we know we have exactly N default questions, and add them to the bank's application
+    pass
 
 # TODO authenticate this - whos allowed to R, and to UD?
 def rud_bank(request, bank_id):

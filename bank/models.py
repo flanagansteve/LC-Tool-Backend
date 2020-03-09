@@ -1,5 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import Group, User
+
+class LCAppQuestion(models.Model):
+    question_text = models.CharField(max_length = 250)
+    key = models.CharField(max_length = 50)
+    type = models.CharField(max_length = 25)
+    required = models.BooleanField()
 
 def pdf_app_path(bank, filename):
     # file will be uploaded to MEDIA_ROOT/bank_<bank_id>/lc_application.pdf
@@ -11,7 +16,8 @@ class Bank(models.Model):
     # TODO files aint json serialisable king, fix it
     #pdf_application = models.FileField(upload_to=pdf_app_path, blank=True)
     # TODO make this a list? or maybe it already is
-    #digital_application = models.ForeignKey(LCAppQuestion, blank=True, on_delete=models.CASCADE)
+    digital_application = models.ManyToManyField(LCAppQuestion)
+    using_digital_app = models.BooleanField()
 
     def __str__(self):
         return self.name
@@ -24,9 +30,3 @@ class BankEmployee(models.Model):
 
     def __str__(self):
         return self.name + ', ' + self.title + ' at ' + str(self.bank)
-
-class LCAppQuestion(models.Model):
-    question_text = models.CharField(max_length = 250)
-    key_name = models.CharField(max_length = 50)
-    type = models.CharField(max_length = 25)
-    required = models.BooleanField()

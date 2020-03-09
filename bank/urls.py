@@ -88,6 +88,7 @@ GET to receive back:
 
 POST, as an employee of the bank, with:
 [{ the fields of an ApplicationQuestion }]
+to add more questions to your bank's lc application
 
 """
 

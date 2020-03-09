@@ -6,11 +6,14 @@ from . import views
 # GET all the lcs from this bank (TODO: thats probably just for testing)
 # POST the following to create an LC at this bank
     # If its a BusinessEmployee POSTing, we expect one of
-    [aFilledOutPDFApp.pdf]
-    or
-    {
-        [the fields of a DigitalLC]
-    }
+    <aFilledOutPDFApp.pdf>
+    or, a JSON arr of LCApplicationQuestionResponses
+    [
+        {
+            'for_question' : int of the questions id,
+            'user_response' : <the user's response as a json string or int or whatever>
+        }
+    ]
     # and receive back
     {
         'success' : true || false,
@@ -31,10 +34,17 @@ from . import views
         !(<lc for which id == lc_id>.filledOut)
         && (<the employee POSTing>.employer == <lc for which id == lc_id>.applicant)
     we expect this to be the rest of the values required to create an LC - one of:
-    [aFilledOutPDFApp.pdf]
-    or
+    <aFilledOutPDFApp.pdf>
+    or, a JSON arr of LCApplicationQuestionResponses
+    [
+        {
+            'for_question' : int of the questions id,
+            'user_response' : <the user's response as a json string or int or whatever>
+        }
+    ]
+    # receive back
     {
-        [the fields of a digital LC model]
+        'success' : true || false
     }
 # PUT to update an LC
 # TODO this handles redlining - how are we going to save the history of redlined changes to render back to the user?
@@ -68,11 +78,17 @@ from . import views
         3. notify the counterparty and await their approval
 # GET, and receive back
 {
-    [the fields of a DigitalLC]
+    <the fields of a DigitalLC>,
+    'other_responses' : [
+        {
+            'one of the banks non-default questions ' :
+            <the users raw json response>
+        }
+    ]
 }
 or
 {
-    [the fields of a PdfLC]
+    <the fields of a PdfLC>
 }
 
 if you are an employee of the applicant, issuing bank, or beneficiary
