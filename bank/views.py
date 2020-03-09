@@ -81,7 +81,7 @@ def rud_bank(request, bank_id):
 @csrf_exempt
 def invite_teammate(request, bank_id):
     if request.method == "POST":
-        if not request.user.is_authenticated:
+        if request.user.is_authenticated:
             try:
                 bank = Bank.objects.get(id=bank_id)
             except Bank.DoesNotExist:
