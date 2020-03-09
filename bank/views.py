@@ -40,7 +40,7 @@ def index(request):
         # 5. return the objects_created (user object, bank) as well as a session obj
         now = str(datetime.datetime.now())
         response = {
-            "bountium_access_token" : first_user.username + now,
+            "session_expiry" : request.session.get_expiry(),
             "objects_created" : [
                 model_to_dict(bank), model_to_dict(first_user)
             ]
@@ -157,9 +157,9 @@ def register_upon_invitation(request, bank_id):
         # 4. return user object w/token
         now = str(datetime.datetime.now())
         return JsonResponse({
-            "bountium_access_token" : new_user.username + now,
-            "userEmployee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
-            "usersEmployer" : model_to_dict(bank)
+            "session_expiry" : request.session.get_expiry(),
+            "user_employee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
+            "users_employer" : model_to_dict(bank)
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")

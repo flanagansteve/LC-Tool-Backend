@@ -22,19 +22,19 @@ def user_login(request):
             return response
         if user is not None:
             login(request, user)
-            userEmployee = None
-            usersEmployer = None
+            user_employee = None
+            users_employer = None
             if BankEmployee.objects.filter(email=user.username).exists():
-                userEmployee = BankEmployee.objects.get(email=user.username)
-                usersEmployer = userEmployee.bank
+                user_employee = BankEmployee.objects.get(email=user.username)
+                users_employer = userEmployee.bank
             else:
-                userEmployee = BusinesssEmployee.objects.get(email=user.username)
-                usersEmployer = userEmployee.employer
+                user_employee = BusinesssEmployee.objects.get(email=user.username)
+                users_employer = userEmployee.employer
             now = str(datetime.datetime.now())
             return JsonResponse({
-                "bountium_access_token" : user.username + now,
-                "userEmployee" : model_to_dict(userEmployee),
-                "usersEmployer" : model_to_dict(usersEmployer)
+                "session_expiry" : request.session.get_expiry(),
+                "user_employee" : model_to_dict(user_employee),
+                "users_employer" : model_to_dict(users_employer)
             })
         else:
             return HttpResponseForbidden('Invalid credentials')
