@@ -85,7 +85,6 @@ def invite_teammate(request, business_id):
             business = Business.objects.get(id=business_id)
         except Business.DoesNotExist:
             raise Http404("No business with id " + business_id + " for you to invite a teammate to")
-        # TODO handle empty body, bad json, or non-post-request
         json_data = json.loads(request.body)
         response = {"status" : "registered"}
         # 1a. Has this teammate already been invited?
@@ -107,9 +106,10 @@ def invite_teammate(request, business_id):
                 response["status"] = "re-invited on " + now
         # 1b. If they have not been invited
         except BusinessEmployee.DoesNotExist:
-            # 2. mail an invite
+            # 2. create the user and mail an invite
             # TODO write the email to send as args: subject, message, from_email=None
-            User.objects.get(email = invitee_email).email_user()
+            # TODO this gets a ConnectionRefused - use your own emailing thing, or a third party service:
+            #User.objects.get(email = invitee_email).email_user("subject", "message")
             # 3. save them and return status:invited [now]
             business.businessemployee_set.create(email = invitee_email)
             now = str(datetime.datetime.now())
@@ -123,7 +123,9 @@ def invite_teammate(request, business_id):
 # - password
 # - name and title (NOTE we might make this optional)
 # and receive back
-# - TODO what does Ryan want back
+# - access token
+# - the employee obj
+# - the bank obj
 @csrf_exempt
 def register_upon_invitation(request, business_id):
     if request.method == "POST":
@@ -140,7 +142,7 @@ def register_upon_invitation(request, business_id):
         new_employee = business.businessemployee_set.get(email=new_user_data['email'])
         if new_employee is None:
             return Http404("There is no invitation for email " + new_user_data['email'])
-        if new_employee.username:
+        if new_employee.name:
             return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
         # 2. Register the user account
         new_user = User.objects.create_user(username=new_user_data['email'],
@@ -149,16 +151,18 @@ def register_upon_invitation(request, business_id):
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
         login(request, new_user)
         # 3. Update the businessemployee_set with full fields
-        business.businessemployee_set.update(new_employee.id,
+        business.businessemployee_set.filter(id=new_employee.id).update(
             name = new_user_data['name'],
             title = new_user_data['title'])
         # 4. return user object w/token
-        # using this for testing:
         now = str(datetime.datetime.now())
-        return HttpResponse('{\"bountium_access_token\":\"' + new_user.username + now + "\"}", content_type="application/json")
+        return JsonResponse({
+            "bountium_access_token" : new_user.username + now,
+            "userEmployee" : model_to_dict(business.businessemployee_set.get(email=new_user_data['email'])),
+            "usersEmployer" : model_to_dict(business)
+        })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
-
 
 # TODO authenticate this - whos allowed to R (and in what detail), and to UD?
 def rud_business_employee(request, business_id, employee_id):
