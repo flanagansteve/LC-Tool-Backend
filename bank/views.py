@@ -81,40 +81,45 @@ def rud_bank(request, bank_id):
 @csrf_exempt
 def invite_teammate(request, bank_id):
     if request.method == "POST":
-        try:
-            bank = Bank.objects.get(id=bank_id)
-        except Bank.DoesNotExist:
-            raise Http404("No bank with id " + bank_id + " for you to invite a teammate to")
-        json_data = json.loads(request.body)
-        response = {"status" : "registered"}
-        # 1a. Has this teammate already been invited?
-        try:
-            invitee_email = json_data['invitee_email']
-        except KeyError:
-            return HttpResponseBadRequest("You must send a request with a JSON object body, with an \"invitee_email\" field")
-        try:
-            invitee = bank.bankemployee_set.get(email = invitee_email)
-            # 2. if so - have they registered?
-            if invitee.name is not None:
-                # 2a. if they have - return status:registered and the user object
-                response["employee"] = model_to_dict(invitee)
-            else:
-                # 2c. if they have not - re-invite, then return status:reinvited [now]
+        if not request.user.is_authenticated:
+            try:
+                bank = Bank.objects.get(id=bank_id)
+            except Bank.DoesNotExist:
+                return Http404("No bank with id " + bank_id + " for you to invite a teammate to")
+            if not bank.bankemployee_set.filter(email=user.username).exists():
+                return HttpResponseForbidden("You may only invite teammates to your bank")
+            json_data = json.loads(request.body)
+            response = {"status" : "registered"}
+            # 1a. Has this teammate already been invited?
+            try:
+                invitee_email = json_data['invitee_email']
+            except KeyError:
+                return HttpResponseBadRequest("You must send a request with a JSON object body, with an \"invitee_email\" field")
+            try:
+                invitee = bank.bankemployee_set.get(email = invitee_email)
+                # 2. if so - have they registered?
+                if invitee.name is not None:
+                    # 2a. if they have - return status:registered and the user object
+                    response["employee"] = model_to_dict(invitee)
+                else:
+                    # 2c. if they have not - re-invite, then return status:reinvited [now]
+                    # TODO write the email to send as args: subject, message, from_email=None
+                    User.objects.get(email = invitee_email).email_user()
+                    now = str(datetime.datetime.now())
+                    response["status"] = "re-invited on " + now
+            # 1b. If they have not been invited
+            except BankEmployee.DoesNotExist:
+                # 2. create the user and mail an invite
                 # TODO write the email to send as args: subject, message, from_email=None
-                User.objects.get(email = invitee_email).email_user()
+                # TODO this gets a ConnectionRefused - use your own emailing thing, or a third party service:
+                #User.objects.get(email = invitee_email).email_user("subject", "message")
+                # 3. save them and return status:invited [now]
+                bank.bankemployee_set.create(email = invitee_email)
                 now = str(datetime.datetime.now())
-                response["status"] = "re-invited on " + now
-        # 1b. If they have not been invited
-        except BankEmployee.DoesNotExist:
-            # 2. create the user and mail an invite
-            # TODO write the email to send as args: subject, message, from_email=None
-            # TODO this gets a ConnectionRefused - use your own emailing thing, or a third party service:
-            #User.objects.get(email = invitee_email).email_user("subject", "message")
-            # 3. save them and return status:invited [now]
-            bank.bankemployee_set.create(email = invitee_email)
-            now = str(datetime.datetime.now())
-            response["status"] = "invited on " + now
-        return JsonResponse(response)
+                response["status"] = "invited on " + now
+            return JsonResponse(response)
+        else:
+            return HttpResponseForbidden("You must be logged in to invite teammates")
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
