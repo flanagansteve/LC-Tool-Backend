@@ -47,7 +47,7 @@ def index(request):
         }
         return JsonResponse(response)
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, POST")
+        return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
 # TODO authenticate this - whos allowed to R, and to UD?
 def rud_business(request, business_id):
