@@ -6,6 +6,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
+from bank.models import Bank, BankEmployee
+from business.models import Business, BusinessEmployee
 import json, datetime
 
 # TODO only handling DigitalLCs for now
@@ -76,12 +78,18 @@ def cr_lcs(request, bank_id):
                 beneficiary_address = json_data['beneficiary_address']
                 # TODO if beneficiary.found, add them as lc.beneficiary
                 #      else, create the Business and send invite
+                del json_data['beneficiary_name']
+                del json_data['beneficiary_address']
 
                 # Question 5-8
                 lc.credit_delivery_means = json_data['credit_delivery_means']
                 lc.credit_amt_verbal = json_data['credit_amt_verbal']
                 lc.credit_amt = json_data['credit_amt']
                 lc.currency_denomination = json_data['currency_denomination']
+                del json_data['credit_delivery_means']
+                del json_data['credit_amt_verbal']
+                del json_data['credit_amt']
+                del json_data['currency_denomination']
 
                 # Question 9
                 if json_data['account_party']:
@@ -91,16 +99,22 @@ def cr_lcs(request, bank_id):
                     account_party_address = json_data['account_party_address']
                     # TODO if account_party.found, add them as lc.account_party
                     #      else, create the Business and send invite
+                    del json_data['account_party']
+                    del json_data['applicant_and_ap_j_and_s_obligated']
+                    del json_data['account_party_name']
+                    del json_data['account_party_address']
 
                 # Question 13
                 if 'advising_bank' in json_data:
                     bank_name = json_data['advising_bank']
                     # TODO if Bank.get(name=bank_name).found, add them as lc.advising_bank
                     #      else, create the Bank and send invite
+                    del json_data['advising_bank']
 
                 # Question 14
                 if 'forex_contract_num' in json_data:
                     lc.forex_contract_num = json_data['forex_contract_num']
+                    del json_data['forex_contract_num']
 
                 # Question 15-20
                 lc.exchange_rate_tolerance = json_data['exchange_rate_tolerance']
@@ -109,11 +123,167 @@ def cr_lcs(request, bank_id):
                 lc.units_purchased = json_data['units_purchased']
                 lc.unit_error_tolerance = json_data['unit_error_tolerance']
                 lc.confirmation_means = json_data['confirmation_means']
+                del json_data['exchange_rate_tolerance']
+                del json_data['purchased_item']
+                del json_data['unit_of_measure']
+                del json_data['units_purchased']
+                del json_data['unit_error_tolerance']
+                del json_data['confirmation_means']
 
-                # TODO all the other questions
+                # TODO error handling for q21-22 - really naive implementation below:
+                # Question 21
+                if json_data['paying_other_banks_fees'] == lc.beneficiary.name:
+                    lc.paying_other_banks_fees = lc.beneficiary
+                else:
+                    lc.paying_other_banks_fees = lc.client
+                del json_data['paying_other_banks_fees']
+
+                # Question 22
+                if json_data['credit_expiry_location'] == bank.name:
+                    lc.credit_expiry_location = lc.issuer
+                else:
+                    lc.credit_expiry_location = lc.advising_bank
+                del json_data['credit_expiry_location']
+
+
+                # Question 23-24
+                # TODO what format does a model.DateField have to be in?
+                lc.expiration_date = json_data['expiration_date']
+                del json_data['expiration_date']
+                # TODO could shorten this with a ternary op
+                if 'draft_presentation_date' in json_data:
+                    lc.draft_presentation_date = json_data['draft_presentation_date']
+                    del json_data['draft_presentation_date']
+                else:
+                    # TODO we're not asking for shipment date...
+                    # theotically, this should be shipment_date + 21 days
+                    # using expiration_date for now
+                    lc.draft_presentation_date = lc.expiration_date
+
+                # Question 25
+                if 'drafts_invoice_value' in json_data:
+                    lc.drafts_invoice_value = json_data['drafts_invoice_value']
+                    del json_data['drafts_invoice_value']
+
+                # Question 26
+                lc.credit_availability = json_data['credit_availability']
+                del json_data['credit_availability']
+
+                # TODO error handling - really naive implementation below:
+                # Question 27
+                if json_data['paying_acceptance_and_discount_charges'] == lc.beneficiary.name:
+                    lc.paying_acceptance_and_discount_charges = lc.beneficiary
+                else:
+                    lc.paying_acceptance_and_discount_charges = lc.client
+
+                # Question 28
+                lc.deferrerd_payment_date = json_data['deferred_payment_date']
+                del json_data['deferred_payment_date']
+
+                # Question 29
+                # TODO do something with json_data['delegated_negotiating_banks']
+                del json_data['delegated_negotiating_banks']
+
+                # Question 30
+                lc.partial_shipment_allowed = json_data['partial_shipment_allowed']
+                del json_data['partial_shipment_allowed']
+
+                # Question 31
+                lc.transshipment_allowed = json_data['transshipment_allowed']
+                del json_data['transshipment_allowed']
+
+                # Question 32
+                lc.merch_charge_location = json_data['merch_charge_location']
+                del json_data['merch_charge_location']
+
+                # Question 33
+                if 'late_charge_date' in json_data:
+                    lc.late_charge_date = json_data['late_charge_date']
+                    del json_data['late_charge_date']
+
+                # Question 34
+                lc.charge_transportation_location = json_data['charge_transportation_location']
+                del json_data['charge_transportation_location']
+
+                # Question 35
+                lc.incoterms_to_show = json_data['incoterms_to_show']
+                del json_data['incoterms_to_show']
+
+                # Question 36
+                lc.named_place_of_destination = json_data['named_place_of_destination']
+                del json_data['named_place_of_destination']
+
+                # Question 27
+                lc.draft_accompiant_invoice = json_data['draft_accompiant_invoice']
+                del json_data['draft_accompiant_invoice']
+
+                # Question 38
+                if 'draft_accompiant_transport_docs' in json_data:
+                    lc.draft_accompiant_transport_docs = json_data['draft_accompiant_transport_docs']
+                    del json_data['draft_accompiant_transport_docs']
+
+                # Question 39
+                if 'doc_reception_notifees' in json_data:
+                    lc.doc_reception_notifees = json_data['doc_reception_notifees']
+                    del json_data['doc_reception_notifees']
+
+                # Question 40
+                if 'transport_doc_marking' in json_data:
+                    lc.transport_doc_marking = json_data['transport_doc_marking']
+                    del json_data['transport_doc_marking']
+
+                # Question 41
+                if 'copies_of_packing_list' in json_data:
+                    lc.copies_of_packing_list = json_data['copies_of_packing_list']
+                    del json_data['copies_of_packing_list']
+
+                # Question 42
+                if 'copies_of_certificate_of_origin' in json_data:
+                    lc.copies_of_certificate_of_origin = json_data['copies_of_certificate_of_origin']
+                    del json_data['copies_of_certificate_of_origin']
+
+                # Question 43
+                if 'insurance_percentage' in json_data:
+                    lc.insurance_percentage = json_data['insurance_percentage']
+                    del json_data['insurance_percentage']
+
+                # Question 44
+                if 'insurance_risks_covered' in json_data:
+                    lc.insurance_risks_covered = json_data['insurance_risks_covered']
+                    del json_data['insurance_risks_covered']
+
+                # Question 45
+                if 'other_draft_accompiants' in json_data:
+                    lc.other_draft_accompiants = json_data['other_draft_accompiants']
+                    del json_data['other_draft_accompiants']
+
+                # Question 46
+                lc.arranging_own_insurance = json_data['arranging_own_insurance']
+                del json_data['arranging_own_insurance']
+
+                # Question 47
+                if 'other_instructions' in json_data:
+                    lc.other_instructions = json_data['other_instructions']
+                    del json_data['other_instructions']
+
+                # Question 48
+                lc.merch_description = json_data['merch_description']
+                del json_data['merch_description']
+
+                # Question 49
+                lc.transferability = json_data['transferability']
+                del json_data['transferability']
 
                 # 2. for any other fields left in json_data, save them as a tuple
                 #    in other_data
+                lc.other_data = json_data
+
+                # 3. save and return back!
+                lc.save()
+                return JsonResponse({
+                    'success' : True,
+                    'lc_id' : lc.id
+                })
 
             else:
                 # TODO minor, but, technically you can get to this branch by being
