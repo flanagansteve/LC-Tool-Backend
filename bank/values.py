@@ -1,3 +1,5 @@
+# TODO do we need to ask for shipment date? relevant for the default
+#      draft_presentation_date
 # TODO how to represent multiple choice? Relevant for
 # - confirmation_means
 # - paying_other_banks_fees
