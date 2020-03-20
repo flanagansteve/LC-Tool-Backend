@@ -15,16 +15,18 @@ class Bank(models.Model):
     name = models.CharField(max_length=250)
     # TODO files aint json serialisable king, fix it
     #pdf_application = models.FileField(upload_to=pdf_app_path, blank=True)
+    # The following are null-able to account for Advising Banks to an LC -
+    # they aren't using Bountium but must be looped in on an LC
     # TODO make this a list? or maybe it already is
     digital_application = models.ManyToManyField(LCAppQuestion)
-    using_digital_app = models.BooleanField()
+    using_digital_app = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
 
 class BankEmployee(models.Model):
-    name = models.CharField(max_length=250, blank=True)
-    title = models.CharField(max_length=250, blank=True)
+    name = models.CharField(max_length=250, null=True, blank=True)
+    title = models.CharField(max_length=250, null=True, blank=True)
     email = models.CharField(max_length=50)
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
 

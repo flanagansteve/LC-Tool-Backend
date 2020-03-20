@@ -7,13 +7,11 @@ from . import views
 # POST the following to create an LC at this bank
     # If its a BusinessEmployee POSTing, we expect one of
     <aFilledOutPDFApp.pdf>
-    or, a JSON arr of LCApplicationQuestionResponses
-    [
-        {
-            'for_question' : int of the questions id,
-            'user_response' : <the user's response as a json string or int or whatever>
-        }
-    ]
+    or, a JSON obj of the form
+    {
+        'string key of the application question' :
+        <the user's response as a json string or int or whatever>
+    }
     # and receive back
     {
         'success' : true || false,
@@ -140,7 +138,7 @@ as an employee of the issuing bank or client to approve/dispute a DocumentaryReq
 """
 
 urlpatterns = [
-    # /lc/
-    url(r'^$', views.index, name='index')
+    # /lc/{bank_id}
+    url(r'^(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
 ]

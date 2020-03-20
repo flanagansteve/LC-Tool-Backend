@@ -5,13 +5,16 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
-from .models import Bank, BankEmployee
+from .models import Bank, BankEmployee, LCAppQuestion
 from .values import default_questions
 import json, datetime
 
 # 1. GET all the banks
 # 2. POST [the fields of a bank and employee]
 #    and receive back [a session, and the objects_created [the bank obj u created and the new user]]
+# TODO this should do all error checking THEN save instances.
+# currently, it will save instances but return an error
+# later in the function, leading to bad data
 @csrf_exempt
 def index(request):
     # TODO is there ever a situation where we GET all the banks?
@@ -52,14 +55,18 @@ def index(request):
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
 def populate_application(bank):
+    #TODO
+    pass
+    """
     # 1. try to get the default questions and save them onto the bank
     try:
         for default_question in default_questions:
-            bank.application.add(LCAppQuestion.objects.get(key=default_question_key.key))
+            bank.digital_application.add(LCAppQuestion.objects.get(key=default_question_key.key))
     except LCAppQuestion.DoesNotExist:
         # 2. if the default questions are not yet in the database, add them, and recur
         # TODO 2. iterate through the first N questions, bc we know we have exactly N default questions, and add them to the bank's application
         pass
+    """
 
 # TODO authenticate this - whos allowed to R, and to UD?
 def rud_bank(request, bank_id):

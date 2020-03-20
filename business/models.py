@@ -12,8 +12,8 @@ class Business(models.Model):
         return self.name
 
 class BusinessEmployee(models.Model):
-    name = models.CharField(max_length=250, blank=True)
-    title = models.CharField(max_length=250, blank=True)
+    name = models.CharField(max_length=250, null=True, blank=True)
+    title = models.CharField(max_length=250, null=True, blank=True)
     email = models.CharField(max_length=50)
     employer = models.ForeignKey(Business, on_delete=models.CASCADE)
 
