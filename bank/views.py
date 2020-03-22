@@ -184,7 +184,6 @@ def register_upon_invitation(request, bank_id):
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
 
-# TODO authenticate this - whos allowed to R (and in what detail), and to UD?
 @csrf_exempt
 def rud_bank_employee(request, bank_id, employee_id):
     try:
@@ -213,13 +212,25 @@ def rud_bank_employee(request, bank_id, employee_id):
     # json obj to Django model, anyways
     elif request.method == "PUT":
         json_data = json.loads(request.body)
-        try:
-            bank.bankemployee_set.update(employee_id, name = json_data['name'], title = json_data['title'], email = json_data['email'])
+        if request.user.is_authenticated:
+            try:
+                bank_employee = bank.bankemployee_set.get(id = employee_id)
+                if request.user.username is not bank_employee.email:
+                    return HttpResponseForbidden("You may only update your own account. Ask the user with email " + bank_employee.email + " to update their account if need be.")
+                for key in json_data:
+                    if key in dir(bank_employee):
+                        setattr(bank_employee, key, json_data[key])
+                    else:
+                        # TODO log a bad field but dont flip out
+                        pass
+                bank_employee.save()
+            except BankEmployee.DoesNotExist:
+                raise Http404(str(bank) + " does not have an employee with id " + employee_id)
             return JsonResponse({
-                "user_employee" : model_to_dict(bank.bankemployee_set.get(employee_id)),
+                "user_employee" : model_to_dict(bank.bankemployee_set.get(id = employee_id)),
                 "users_employer" : model_to_dict(bank)
             })
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to update a bank employee. Required fields are name, title, and email. You can supply old values for the other fields if you plan on only updating a few.")
+        else:
+            return HttpResponseForbidden("You must be logged in to update your account.")
     else:
         raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
