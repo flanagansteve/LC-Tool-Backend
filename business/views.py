@@ -49,33 +49,46 @@ def index(request):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
-# TODO authenticate this - whos allowed to R, and to UD?
+# TODO more specifically authenticate this - who within a bank is allowed to R, and to UD?
+@csrf_exempt
 def rud_business(request, business_id):
-    # lol python has no switch(). could use a dict + lambdas, but its only 3 branches...
+    try:
+        business = Bank.objects.get(id=business_id)
+    except Business.DoesNotExist:
+        return Http404("No business with id " + business_id)
     if request.method == "GET":
-        try:
-            business = Business.objects.get(id=business_id)
-        except Business.DoesNotExist:
-            raise Http404("No business with id " + business_id)
         return JsonResponse(model_to_dict(business))
     elif request.method == "DELETE":
-        try:
-            Business.objects.delete(business_id)
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to delete a business employee. Need an ID to delete")
-        except BusinessEmployee.DoesNotExist:
-            return Http404(str(business) + " does not have an employee with id " + json_data['id'] + " to delete.")
+        if request.user.is_authenticated:
+            if business.businessemployee_set.filter(email = request.user.username).exists():
+                business.delete()
+                return JsonResponse({
+                    "success" : True
+                })
+            else:
+                return HttpResponseForbidden("You may only delete the organisation you are employed by.")
+        else:
+            return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
-        json_data = json.loads(request.body)
-        # TODO might want to make this more flexible if the business object gets more complex
-        try:
-            Business.objects.update(business_id, name = json_data['name'])
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to update a business employee. Required fields are XXX")
+        if request.user.is_authenticated:
+            if business.businessemployee_set.filter(email = request.user.username).exists():
+                for key in json_data:
+                    if key in dir(business):
+                        setattr(business, key, json_data[key])
+                    else:
+                        # TODO log a bad field but dont flip out
+                        pass
+                business.save()
+                return JsonResponse({
+                    "user_employee" : model_to_dict(business.businessemployee_set.get(email = request.user.username)),
+                    "users_employer" : model_to_dict(business)
+                })
+            else:
+                return HttpResponseForbidden("You may only update the organisation you are employed by.")
+        else:
+            return HttpResponseForbidden("You must be logged in to update your employer's profile.")
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+        return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
 @csrf_exempt
 def invite_teammate(request, business_id):
@@ -167,39 +180,55 @@ def register_upon_invitation(request, business_id):
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
-
-# TODO authenticate this - whos allowed to R (and in what detail), and to UD?
+@csrf_exempt
+# TODO don't let people update their email
 def rud_business_employee(request, business_id, employee_id):
     try:
         business = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
-        raise Http404("No business with id " + business_id)
-    # lol python has no switch(). could use a dict + lambdas, but its only 3 branches...
+        return Http404("No business with id " + business_id)
     if request.method == "GET":
         try:
             return JsonResponse(model_to_dict(business.businessemployee_set.get(id=employee_id)))
-        except BusinessEmployee.DoesNotExist:
-            raise Http404(str(business) + " does not have an employee with id " + employee_id)
+        except BankEmployee.DoesNotExist:
+            return Http404(str(business) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
-        try:
-            business.businessemployee_set.delete(id = employee_id)
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to delete a business employee. Need an ID to delete")
-        except BusinessEmployee.DoesNotExist:
-            return Http404(str(business) + " does not have an employee with id " + employee_id + " to delete.")
-    # TODO this should be more flexible, to eventually handle obj mutation like:
-        # getting assigned to LCs
-        # notifications about actions to take on an LC
-        # licenses / competencies of an employee
-    # There's probably something built-in that lets you go directly from
-    # json obj to Django model, anyways
+        if request.user.is_authenticated:
+            if business.businessemployee_set.filter(id = employee_id).exists():
+                business_employee = business.businessemployee_set.get(id = employee_id)
+                if request.user.username is not business_employee.email:
+                    return HttpResponseForbidden("You may only delete your own account. Ask the user with email " + business_employee.email + " to delete their account if need be.")
+                else:
+                    business_employee.delete()
+                    return JsonResponse({
+                        "success" : True,
+                        "users_employer" : model_to_dict(business)
+                    })
+            else:
+                return Http404(str(business) + " does not have an employee with id " + employee_id)
+        else:
+            return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
         json_data = json.loads(request.body)
-        try:
-            business.businessemployee_set.update(employee_id, name = json_data['name'], title = json_data['title'], email = json_data['email'])
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to update a business employee. Required fields are name, title, and email. You can supply old values for the other fields if you plan on only updating a few.")
+        if request.user.is_authenticated:
+            try:
+                business_employee = business.businessemployee_set.get(id = employee_id)
+                if request.user.username is not business_employee.email:
+                    return HttpResponseForbidden("You may only update your own account. Ask the user with email " + business_employee.email + " to update their account if need be.")
+                for key in json_data:
+                    if key in dir(business_employee):
+                        setattr(business_employee, key, json_data[key])
+                    else:
+                        # TODO log a bad field but dont flip out
+                        pass
+                business_employee.save()
+            except BusinessEmployee.DoesNotExist:
+                return Http404(str(business) + " does not have an employee with id " + employee_id)
+            return JsonResponse({
+                "user_employee" : model_to_dict(business.businessemployee_set.get(id = employee_id)),
+                "users_employer" : model_to_dict(business)
+            })
+        else:
+            return HttpResponseForbidden("You must be logged in to update your account.")
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+        return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")

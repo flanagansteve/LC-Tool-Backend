@@ -65,7 +65,7 @@ def populate_application(bank):
         pass
     """
 
-# TODO authenticate this - whos allowed to R, and to UD?
+# TODO more specifically authenticate this - who within a bank is allowed to R, and to UD?
 @csrf_exempt
 def rud_bank(request, bank_id):
     try:
@@ -248,4 +248,4 @@ def rud_bank_employee(request, bank_id, employee_id):
         else:
             return HttpResponseForbidden("You must be logged in to update your account.")
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+        return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
