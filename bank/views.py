@@ -43,14 +43,11 @@ def index(request):
         # 4. Start the bank off with the default set of lc application question
         populate_application(bank)
         # 5. return the objects_created (user object, bank) as well as a session obj
-        now = str(datetime.datetime.now())
-        response = {
+        return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
-            "objects_created" : [
-                model_to_dict(bank), model_to_dict(first_user)
-            ]
-        }
-        return JsonResponse(response)
+            "user_employee" : model_to_dict(bank),
+            "users_employer" : model_to_dict(bank.bankemployee_set.get(email=son_data['email']))
+        })
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
@@ -188,6 +185,7 @@ def register_upon_invitation(request, bank_id):
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
 
 # TODO authenticate this - whos allowed to R (and in what detail), and to UD?
+@csrf_exempt
 def rud_bank_employee(request, bank_id, employee_id):
     try:
         bank = Bank.objects.get(id=bank_id)
@@ -217,7 +215,10 @@ def rud_bank_employee(request, bank_id, employee_id):
         json_data = json.loads(request.body)
         try:
             bank.bankemployee_set.update(employee_id, name = json_data['name'], title = json_data['title'], email = json_data['email'])
-            # TODO return something
+            return JsonResponse({
+                "user_employee" : model_to_dict(bank.bankemployee_set.get(employee_id)),
+                "users_employer" : model_to_dict(bank)
+            })
         except KeyError:
             return HttpResponseBadRequest("Badly formatted json to update a bank employee. Required fields are name, title, and email. You can supply old values for the other fields if you plan on only updating a few.")
     else:
