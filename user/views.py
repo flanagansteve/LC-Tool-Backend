@@ -26,10 +26,10 @@ def user_login(request):
             users_employer = None
             if BankEmployee.objects.filter(email=user.username).exists():
                 user_employee = BankEmployee.objects.get(email=user.username)
-                users_employer = userEmployee.bank
+                users_employer = user_employee.bank
             else:
                 user_employee = BusinesssEmployee.objects.get(email=user.username)
-                users_employer = userEmployee.employer
+                users_employer = user_employee.employer
             now = str(datetime.datetime.now())
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
