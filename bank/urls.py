@@ -112,5 +112,7 @@ urlpatterns = [
     # /bank/{bank_id}/pdf_app
 
     # /bank/{bank_id}/digital_app
+    url(r'^(?P<bank_id>[0-9]+)/digital_app$', views.digital_app, name='digital_app'),
+
 
 ]

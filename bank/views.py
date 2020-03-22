@@ -243,3 +243,10 @@ def rud_bank_employee(request, bank_id, employee_id):
             return HttpResponseForbidden("You must be logged in to update your account.")
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+
+@csrf_exempt
+def digital_app(request, bank_id):
+    try:
+        return JsonResponse(Bank.objects.get(id=bank_id).get_lc_app(), safe=False)
+    except Bank.DoesNotExist:
+        return Http404("No bank with id " + bank_id)

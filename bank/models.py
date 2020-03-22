@@ -30,11 +30,11 @@ class Bank(models.Model):
     def toJSON(self):
         return {
             'name' : self.name,
-            'digital_application' : self.lc_app_to_list(),
+            'digital_application' : self.get_lc_app(),
             'using_digital_app' : self.using_digital_app
         }
 
-    def lc_app_to_list(self):
+    def get_lc_app(self):
         to_return = []
         for question in self.digital_application.all():
             to_return.append(model_to_dict(question))
