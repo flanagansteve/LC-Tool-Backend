@@ -66,32 +66,45 @@ def populate_application(bank):
     """
 
 # TODO authenticate this - whos allowed to R, and to UD?
+@csrf_exempt
 def rud_bank(request, bank_id):
-    # lol python has no switch(). could use a dict + lambdas, but its only 3 branches...
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with id " + bank_id)
     if request.method == "GET":
-        try:
-            bank = Bank.objects.get(id=bank_id)
-        except Bank.DoesNotExist:
-            raise Http404("No bank with id " + bank_id)
         return JsonResponse(model_to_dict(bank))
     elif request.method == "DELETE":
-        try:
-            Bank.objects.delete(bank_id)
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to delete a bank employee. Need an ID to delete")
-        except BankEmployee.DoesNotExist:
-            return Http404(str(bank) + " does not have an employee with id " + json_data['id'] + " to delete.")
+        if request.user.is_authenticated:
+            if bank.bankemployee_set.filter(email = request.user.username).exists():
+                bank.delete()
+                return JsonResponse({
+                    "success" : True
+                })
+            else:
+                return HttpResponseForbidden("You may only delete the organisation you are employed by.")
+        else:
+            return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
-        json_data = json.loads(request.body)
-        # TODO might want to make this more flexible if the bank object gets more complex
-        try:
-            Bank.objects.update(bank_id, name = json_data['name'])
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to update a bank employee. Required fields are XXX")
+        if request.user.is_authenticated:
+            if bank.bankemployee_set.filter(email = request.user.username).exists():
+                for key in json_data:
+                    if key in dir(bank):
+                        setattr(bank, key, json_data[key])
+                    else:
+                        # TODO log a bad field but dont flip out
+                        pass
+                bank.save()
+                return JsonResponse({
+                    "user_employee" : model_to_dict(bank.bankemployee_set.get(email = request.user.username)),
+                    "users_employer" : model_to_dict(bank)
+                })
+            else:
+                return HttpResponseForbidden("You may only update the organisation you are employed by.")
+        else:
+            return HttpResponseForbidden("You must be logged in to update your employer's profile.")
     else:
-        raise HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+        return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
 @csrf_exempt
 def invite_teammate(request, bank_id):
@@ -185,31 +198,33 @@ def register_upon_invitation(request, bank_id):
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
 
 @csrf_exempt
+# TODO don't let people update their email
 def rud_bank_employee(request, bank_id, employee_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        raise Http404("No bank with id " + bank_id)
-    # lol python has no switch(). could use a dict + lambdas, but its only 3 branches...
+        return Http404("No bank with id " + bank_id)
     if request.method == "GET":
         try:
             return JsonResponse(model_to_dict(bank.bankemployee_set.get(id=employee_id)))
         except BankEmployee.DoesNotExist:
-            raise Http404(str(bank) + " does not have an employee with id " + employee_id)
+            return Http404(str(bank) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
-        try:
-            bank.bankemployee_set.delete(id = employee_id)
-            # TODO return something
-        except KeyError:
-            return HttpResponseBadRequest("Badly formatted json to delete a bank employee. Need an ID to delete")
-        except BankEmployee.DoesNotExist:
-            return Http404(str(bank) + " does not have an employee with id " + employee_id + " to delete.")
-    # TODO this should be more flexible, to eventually handle obj mutation like:
-        # getting assigned to LCs
-        # notifications about actions to take on an LC
-        # licenses / competencies of an employee
-    # There's probably something built-in that lets you go directly from
-    # json obj to Django model, anyways
+        if request.user.is_authenticated:
+            if bank.bankemployee_set.filter(id = employee_id).exists():
+                bank_employee = bank.bankemployee_set.get(id = employee_id)
+                if request.user.username is not bank_employee.email:
+                    return HttpResponseForbidden("You may only delete your own account. Ask the user with email " + bank_employee.email + " to delete their account if need be.")
+                else:
+                    bank_employee.delete()
+                    return JsonResponse({
+                        "success" : True,
+                        "users_employer" : model_to_dict(bank)
+                    })
+            else:
+                return Http404(str(bank) + " does not have an employee with id " + employee_id)
+        else:
+            return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
         json_data = json.loads(request.body)
         if request.user.is_authenticated:
@@ -225,7 +240,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                         pass
                 bank_employee.save()
             except BankEmployee.DoesNotExist:
-                raise Http404(str(bank) + " does not have an employee with id " + employee_id)
+                return Http404(str(bank) + " does not have an employee with id " + employee_id)
             return JsonResponse({
                 "user_employee" : model_to_dict(bank.bankemployee_set.get(id = employee_id)),
                 "users_employer" : model_to_dict(bank)
