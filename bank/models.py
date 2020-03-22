@@ -1,4 +1,5 @@
 from django.db import models
+from django.forms.models import model_to_dict
 
 class LCAppQuestion(models.Model):
     question_text = models.CharField(max_length = 250)
@@ -23,6 +24,21 @@ class Bank(models.Model):
 
     def __str__(self):
         return self.name
+
+    # Using because django's JSON serialiser doesnt like nested
+    # serialising into LCAppQuestion
+    def toJSON(self):
+        return {
+            'name' : self.name,
+            'digital_application' : self.lc_app_to_list(),
+            'using_digital_app' : self.using_digital_app
+        }
+
+    def lc_app_to_list(self):
+        to_return = []
+        for question in self.digital_application.all():
+            to_return.append(model_to_dict(question))
+        return to_return
 
 class BankEmployee(models.Model):
     name = models.CharField(max_length=250, null=True, blank=True)

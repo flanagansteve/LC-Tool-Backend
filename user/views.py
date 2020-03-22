@@ -22,19 +22,21 @@ def user_login(request):
             return response
         if user is not None:
             login(request, user)
-            user_employee = None
-            users_employer = None
             if BankEmployee.objects.filter(email=user.username).exists():
                 user_employee = BankEmployee.objects.get(email=user.username)
                 users_employer = user_employee.bank
+                return JsonResponse({
+                    "session_expiry" : request.session.get_expiry_date(),
+                    "user_employee" : model_to_dict(user_employee),
+                    "users_employer" : user_employee.bank.toJSON()
+                })
             else:
                 user_employee = BusinesssEmployee.objects.get(email=user.username)
-                users_employer = user_employee.employer
-            return JsonResponse({
-                "session_expiry" : request.session.get_expiry_date(),
-                "user_employee" : model_to_dict(user_employee),
-                "users_employer" : model_to_dict(users_employer)
-            })
+                return JsonResponse({
+                    "session_expiry" : request.session.get_expiry_date(),
+                    "user_employee" : model_to_dict(user_employee),
+                    "users_employer" : model_to_dict(user_employee.employer)
+                })
         else:
             return HttpResponseForbidden('Invalid credentials')
     else:
