@@ -8,7 +8,7 @@ from business.models import Business, BusinessEmployee
 import json, datetime
 
 # POST email & password, receive back one of
-# - TODO return the User, the user's employee object, & the user's employer object
+# - return the User, the user's employee object, & the user's employer object
 # - a rejection for invalid creds
 # TODO upgrade to django-oauth-toolkit
 @csrf_exempt
@@ -30,7 +30,6 @@ def user_login(request):
             else:
                 user_employee = BusinesssEmployee.objects.get(email=user.username)
                 users_employer = user_employee.employer
-            now = str(datetime.datetime.now())
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
@@ -41,11 +40,22 @@ def user_login(request):
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
 
-# TODO return the User, the user's employee object, & the user's employer object
 @csrf_exempt
 def user_logout(request):
     if request.method == "POST":
         logout(request, user)
         return JsonResponse({"success":True})
+    else:
+        return HttpResponseBadRequest('This endpoint only supports POST requests')
+
+@csrf_exempt
+def change_password(request):
+    if request.method == "POST":
+        if request.user.is_authenticated:
+            this_user = User.objects.get(username=request.user.username)
+            this_user.set_password(json_data['new_password'])
+            return JsonResponse({"success":True})
+        else:
+            return HttpResponseForbidden('You must be logged in to change your password.')
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
