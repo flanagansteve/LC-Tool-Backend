@@ -67,7 +67,6 @@ def rud_bank(request, bank_id):
         return Http404("No bank with id " + bank_id)
     if request.method == "GET":
         response = bank.toJSON()
-        print(response)
         return JsonResponse(response)
     elif request.method == "DELETE":
         if request.user.is_authenticated:
