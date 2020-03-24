@@ -77,7 +77,7 @@ from . import views
 # GET, and receive back
 {
     <the fields of a DigitalLC>,
-    'other_responses' : [
+    'other_data' : [
         {
             'one of the banks non-default questions ' :
             <the users raw json response>
@@ -140,5 +140,8 @@ as an employee of the issuing bank or client to approve/dispute a DocumentaryReq
 urlpatterns = [
     # /lc/{bank_id}
     url(r'^(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
+
+    # /lc/{bank_id}/{lc_id}
+    url(r'^(?P<bank_id>[0-9]+)/(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc')
 
 ]

@@ -14,6 +14,7 @@ import json, datetime
 
 # 1. GET all the lcs from this bank
 # 2. POST
+# TODO keyerrors... unhandled key errors everywhere
 @csrf_exempt
 def cr_lcs(request, bank_id):
     if request.method == "GET":
@@ -31,26 +32,25 @@ def cr_lcs(request, bank_id):
                 #    accounts/inviting registrants where applicable
                 lc = LC(issuer = bank)
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
-                email_msg = 'fill out your app '
-                try:
-                    lc.client = Business.objects.get(name=json_data['applicant'])
+                if Business.objects.filter(name=json_data['applicant']).exists():
                     if lc.client.businessemployee_set.filter(email=json_data['applicant_employee_contact']).exists():
                         lc.tasked_client_employees.add(Business.businessemployee_set.get(email=json_data['applicant_employee_contact']))
                     else:
                         # TODO decide - either
-                            # add to the email_msg 'set your employee account up at <insert employee registration link>'
+                            # send an email 'set your employee account up at <insert employee registration link>'
                         # or return an error, since the business exists, so it
                         # was probably a mistyped email
                         pass
-                except Business.DoesNotExist:
-                    # TODO add to the email_msg 'set your business up at <insert business registration link>'
-                    pass
                 lc.save()
-                email_msg += 'at https://bountium.org/lc/' + lc.id
                 # 2. mail the applicant_employee_contact with a link to fill out
                 #    the rest of the LC via:
-                # TODO get this working
-                # mail(to=json_data['applicant_employee_contact'], subject='Finish your LC on Bountium', body=email_msg)
+                send_mail(
+                    bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
+                    "1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                    "steve@bountium.org",
+                    [json_data['applicant_employee_contact']],
+                    fail_silently=False,
+                )
                 # 3. return... TODO something
                 return HttpResponse("nice")
             elif BusinessEmployee.objects.filter(email=request.user.username).exists():
@@ -278,7 +278,9 @@ def cr_lcs(request, bank_id):
                 #    in other_data
                 lc.other_data = json_data
 
-                # 3. save and return back!
+                # 3. notify a bank employee maybe? TODO decide
+
+                # 4. save and return back!
                 lc.save()
                 return JsonResponse({
                     'success' : True,
@@ -293,3 +295,12 @@ def cr_lcs(request, bank_id):
             return HttpResponseForbidden("Must be logged in to create an LC")
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
+
+@csrf_exempt
+def rud_lc(request, bank_id, lc_id):
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except Business.DoesNotExist:
+        return Http404("No lc with id " + business_id)
+    if request.method == "GET":
+        return JsonResponse(model_to_dict(lc))
