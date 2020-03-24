@@ -84,12 +84,17 @@ pdf_application.pdf
 
 7. /bank/{bank_id}/digital_app
 GET to receive back:
-[{ the fields of an ApplicationQuestion }]
 
 POST, as an employee of the bank, with:
 [{ the fields of an ApplicationQuestion }]
 to add more questions to your bank's lc application
 
+8. /bank/{bank_id}/digital_app/{question_id}
+DeLETE as an employee of the bank to delete a non-default question
+
+PUT as an employee of the bank with:
+[{ the fields of an ApplicationQuestion }]
+to modify a non-default question
 """
 
 urlpatterns = [

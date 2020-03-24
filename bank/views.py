@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.core import serializers
+from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
@@ -125,16 +126,29 @@ def invite_teammate(request, bank_id):
                     response["employee"] = model_to_dict(invitee)
                 else:
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
-                    # TODO write the email to send as args: subject, message, from_email=None
-                    User.objects.get(email = invitee_email).email_user()
+                    # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
+                    link = "https://bountium.org/register"
+                    send_mail(
+                        bank.bankemployee_set.get(email=request.user.username).name + " has re-invited you to join their team on Bountium",
+                        "Register at " + link,
+                        'steve@bountium.org',
+                        [invitee_email],
+                        fail_silently=False,
+                    )
                     now = str(datetime.datetime.now())
                     response["status"] = "re-invited on " + now
             # 1b. If they have not been invited
             except BankEmployee.DoesNotExist:
                 # 2. create the user and mail an invite
-                # TODO write the email to send as args: subject, message, from_email=None
-                # TODO this gets a ConnectionRefused - use your own emailing thing, or a third party service:
-                #User.objects.get(email = invitee_email).email_user("subject", "message")
+                # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
+                link = "https://bountium.org/register"
+                send_mail(
+                    bank.bankemployee_set.get(email=request.user.username).name + " has invited you to join their team on Bountium!",
+                    "Register at " + link,
+                    'steve@bountium.org',
+                    [invitee_email],
+                    fail_silently=False,
+                )
                 # 3. save them and return status:invited [now]
                 bank.bankemployee_set.create(email = invitee_email)
                 now = str(datetime.datetime.now())
@@ -244,9 +258,14 @@ def rud_bank_employee(request, bank_id, employee_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
 
+# TODO pdf app
+
+# TODO POST
 @csrf_exempt
 def digital_app(request, bank_id):
     try:
         return JsonResponse(Bank.objects.get(id=bank_id).get_lc_app(), safe=False)
     except Bank.DoesNotExist:
         return Http404("No bank with id " + bank_id)
+
+# TODO PUT, DeLETE specific question on app
