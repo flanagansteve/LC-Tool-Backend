@@ -1,3 +1,3 @@
 */__pycache__
 db.sqlite3
-credentials.py
+lc_tool_backend/credentials.py
