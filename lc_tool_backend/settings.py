@@ -26,7 +26,7 @@ SECRET_KEY = '2rslu@i1v)!8jy&xx83g^p#j7#e+b2u^k39)nod_86or1)y6&p'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.1.9']
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

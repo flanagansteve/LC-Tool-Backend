@@ -22,6 +22,8 @@ class LC(models.Model):
     # -- the status of an LC -- #
     issuer_approved = models.BooleanField(default=False)
     beneficiary_approved = models.BooleanField(default=False)
+    # of the form 'On XXX date, [beneficiary or issuer] disapproved, saying:'
+    latest_version_notes = models.CharField(max_length=1000, null=True, blank=True)
     #TODO: previous_version = models.ForeignKey(LC, )
 
     # TODO do terms_satisfied & paid_out fields make sense for a Standby LC?

@@ -26,20 +26,18 @@ from . import views
         [we'll either create the Business in our database, or re-use if this is a repeat]
     }
 
-2. /lc/{bank_id}/{lc_id} (a very busy endpoint lol)
+2. /lc/{lc_id} (a very busy endpoint lol)
 # POST to respond to a created LC application
     # If
         !(<lc for which id == lc_id>.filledOut)
         && (<the employee POSTing>.employer == <lc for which id == lc_id>.applicant)
     we expect this to be the rest of the values required to create an LC - one of:
     <aFilledOutPDFApp.pdf>
-    or, a JSON arr of LCApplicationQuestionResponses
-    [
-        {
-            'for_question' : int of the questions id,
-            'user_response' : <the user's response as a json string or int or whatever>
-        }
-    ]
+    or, a JSON obj of the form
+    {
+        'string key of the application question' :
+        <the user's response as a json string or int or whatever>
+    }
     # receive back
     {
         'success' : true || false
@@ -91,13 +89,27 @@ or
 
 if you are an employee of the applicant, issuing bank, or beneficiary
 # DeLETE, if
-- you are the applicant or issuing bank, and the LC is not (beneficiary_approved && issuer_approved)
+- you are the applicant or issuing bank, and
+- the LC is not (beneficiary_approved && issuer_approved)
+and receive back either
+{
+'success':true
+} or
+{
+'success':false,
+'reason':'This LC has been approved by both the issuer and beneficiary, and may not be revoked' ||
+}
+Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
 
-3. /lc/{lc_id}/approve
-# POST to approve an LC during redlining, as either an employee of
+3. /lc/{lc_id}/evaluate
+# POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
     (<lc for which id == lc_id>.beneficiary)
+{
+    'approve': true || false,
+    'complaints' : 'any complaints; blank if approve == true'
+}
 
 4. /lc/{lc_id}/notify
 # POST the following
@@ -116,6 +128,7 @@ or
 as an employee of the beneficiary to submit a DocumentaryRequirement
     if its for a PdfLC we'll be creating the DocumentaryRequirement
     if its for a DigitalLC we'll be updating the DocumentaryRequirement
+# GET the current doc reqs and statuses
 
 6. /lc/{lc_id}/doc_req/{doc_req_id}
 POST the following
@@ -125,6 +138,8 @@ POST the following
 }
 as an employee of the issuing bank or client to approve/dispute a DocumentaryRequirement
 # GET a doc req, whether or not a doc has been submitted yet
+# PUT to update a doc req as the beneficiary, notifying the issuer of this change and reverting the doc reqs status to unapproved
+# DeLETE to delete a doc req as the issuer
 
 7. /lc/{lc_id}/request
 # POST as an employee of the beneficiary to request payment
@@ -141,7 +156,31 @@ urlpatterns = [
     # /lc/{bank_id}
     url(r'^(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
-    # /lc/{bank_id}/{lc_id}
-    url(r'^(?P<bank_id>[0-9]+)/(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc')
+    # /lc/{lc_id}
+    url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
+
+    # /lc/{lc_id}/evaluate
+    url(r'^(?P<lc_id>[0-9]+)/evaluate/$', views.evaluate_lc, name='evaluate_lc'),
+
+    # /lc/{lc_id}/notify
+    url(r'^(?P<lc_id>[0-9]+)/notify/$', views.notify_teammate, name='notify_teammate'),
+
+    # /lc/{lc_id}/doc_req
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/$', views.cr_doc_reqs, name='cr_doc_reqs'),
+
+    # /lc/{lc_id}/doc_req/{doc_req_id}
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)$', views.rud_doc_req, name='rud_doc_req'),
+
+    # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)$', views.evaluate_doc_req, name='evaluate_doc_req'),
+
+    # /lc/{lc_id}/request
+    url(r'^(?P<lc_id>[0-9]+)/request/$', views.request_lc, name='request_lc'),
+
+    # /lc/{lc_id}/draw
+    url(r'^(?P<lc_id>[0-9]+)/draw/$', views.draw_lc, name='draw_lc'),
+
+    # /lc/{lc_id}/payout
+    url(r'^(?P<lc_id>[0-9]+)/payout/$', views.payout_lc, name='payout_lc'),
 
 ]
