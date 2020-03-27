@@ -122,32 +122,81 @@ or
 5. /lc/{lc_id}/doc_req
 # POST the following
 {
-    'submitted_doc' : [the submitted doc.pdf],
-    'for_doc_req' : optional, the int of the doc req this is for. this only applies to DigitalLCs
+    'doc_name' : 'name_of_doc_req'
+    'link_to_submitted_doc' : https://somecloudhost.com/link_to_the/file.pdf
 }
-as an employee of the beneficiary to submit a DocumentaryRequirement
-    if its for a PdfLC we'll be creating the DocumentaryRequirement
-    if its for a DigitalLC we'll be updating the DocumentaryRequirement
+as an employee of the beneficiary to create & submit a DocumentaryRequirement
+    if its for a PdfLC we'll be creating the DocumentaryRequirement, and return a JSON response with its ID:
+        {
+            'doc_req_id' : int of the doc reqs id
+        }
+    if its for a DigitalLC we'll be adding this as an auxiliary DocumentaryRequirement, and return a JSON response with its ID:
+        {
+            'doc_req_id' : int of the doc reqs id
+        }
+    NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
 6. /lc/{lc_id}/doc_req/{doc_req_id}
-POST the following
+# GET a doc req, whether or not a doc has been submitted yet
+# PUT a number of options:
+- as the beneficiary
+{
+    'link_to_submitted_doc' : https://somecloudhost.com/link_to_the/file.pdf
+}
+to submit a candidate for this doc req, notifying the issuer of this change and reverting the doc reqs status to unapproved. Receive back
+{
+    'success':true || false,
+    'modified_and_notified_on':str(datetime.datetime.now()),
+    'doc_req':{the new doc_req's data and status}
+}
+- as the issuer, any subset of the following fields
+{
+    'due_date':int of the unix time of the new due date,
+    'required_values':'a new required values str'
+}
+to update the terms of this doc req, notifying the beneficiary and client. If new due_date !> old due_date, or new required_values !== old required_values, the lc will be marked as modified_and_awaiting_beneficiary_approval. Receive back
+{
+    'success':true || false,
+    'modified_and_notified_on':str(datetime.datetime.now()),
+    'doc_req':{the new doc_req's data and status}
+}
+# DeLETE to delete a doc req as the issuer, and receive back
+{
+    'success': true || false,
+    'doc_reqs':[{list of resultant doc reqs and their statuses}]
+}
+
+7. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
+# POST
+- as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
     'approve': true || false,
     'complaints' : 'any complaints; blank if approve == true'
 }
-as an employee of the issuing bank or client to approve/dispute a DocumentaryRequirement
-# GET a doc req, whether or not a doc has been submitted yet
-# PUT to update a doc req as the beneficiary, notifying the issuer of this change and reverting the doc reqs status to unapproved
-# DeLETE to delete a doc req as the issuer
+and receive back
+{
+    'success': true || false,
+    'doc_reqs':[{list of resultant doc reqs and their statuses}]
+}
+- as an employee of the beneficiary to approve/dispute any modifications made by the issuer to this doc req, if doc_req.modified_and_awaiting_beneficiary_approval, with
+{
+    'approve': true || false,
+    'complaints' : 'any complaints; blank if approve == true'
+}
+and receive back
+{
+    'success': true || false,
+    'doc_reqs':[{list of resultant doc reqs and their statuses}]
+}
 
-7. /lc/{lc_id}/request
+8. /lc/{lc_id}/request
 # POST as an employee of the beneficiary to request payment
 
-8. /lc/{lc_id}/draw
+9. /lc/{lc_id}/draw
 # POST as an employee of the beneficiary to demand a draw on the LC
 
-9. /lc/{lc_id}/payout
+10. /lc/{lc_id}/payout
 # POST as an employee of the client or bank to mark an LC as paid out
 
 """

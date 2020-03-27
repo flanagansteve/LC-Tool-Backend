@@ -146,8 +146,10 @@ class DocumentaryRequirement(models.Model):
         # "required_value_name : required_value_value"
     # so that we could intelligently scan a submitted doc req
     # for this value
-    required_values = models.CharField(max_length=500)
-    due_date = models.DateField()
+    required_values = models.CharField(max_length=500, null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
     link_to_submitted_doc = models.CharField(max_length=250, null=True, blank=True)
-    complaints = models.CharField(max_length=1000, null=True, blank=True)
-    satisfied = models.BooleanField()
+    satisfied = models.BooleanField(default=False)
+    submitted_doc_complaints = models.CharField(max_length=1000, null=True, blank=True)
+    modified_and_awaiting_beneficiary_approval = models.BooleanField(default=False)
+    modification_complaints = models.CharField(max_length=1000, null=True, blank=True)

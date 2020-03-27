@@ -11,10 +11,10 @@ from business.models import Business, BusinessEmployee
 import json, datetime
 
 # TODO only handling DigitalLCs for now
-
-# 1. GET all the lcs from this bank
-# 2. POST
+# TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
 # TODO keyerrors... unhandled key errors everywhere
+# TODO a lot more of these should be authenticated, esp GETs
+
 @csrf_exempt
 def cr_lcs(request, bank_id):
     if request.method == "GET":
@@ -248,17 +248,124 @@ def evaluate_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
+# TODO authentication
 @csrf_exempt
 def cr_doc_reqs(request, lc_id):
-    pass
+    if request.method == 'GET':
+        this_lcs_doc_reqs = LC.objects.get(id=lc_id)
+        return JsonResponse(list(this_lcs_doc_reqs.values()), safe=False)
+    elif request.method == 'POST':
+        if request.user.is_authenticated:
+            if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                try:
+                    lc = LCs.objects.get(lc=lc_id)
+                except LC.DoesNotExist:
+                    return Http404("No lc with id " + lc_id)
+                json_data = json.loads(request.body)
+                lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'], link_to_submitted_doc = json['link_to_submitted_doc'])
+                return JsonResponse({
+                    'doc_req_id' : lc.documentaryrequirement_set.get(doc_name=json_data['doc_name']).id
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the beneficiary to this LC may create documentary requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to create documentary requirements")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
 @csrf_exempt
 def rud_doc_req(request, lc_id, doc_req_id):
-    pass
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    try:
+        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
+    except DocumentaryRequirement.DoesNotExist:
+        return Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
+    if request.method == 'GET':
+        return JsonResponse(model_to_dict(doc_req))
+    elif request.method == 'PUT':
+        json_data = json.loads(request.body)
+        if request.user.is_authenticated:
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                if 'due_date' in json_date:
+                    if json_data['due_date'] > lc.due_date:
+                        doc_req.modified_and_awaiting_beneficiary_approval = True
+                    doc_req.due_date = json_data['due_date']
+                if 'required_values' in json_data:
+                    if json_data['required_values'] != lc.required_values:
+                        doc_req.modified_and_awaiting_beneficiary_approval = True
+                    doc_req.required_values = json_data['required_values']
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'modified_and_notified_on':str(datetime.datetime.now()),
+                    'doc_req':model_to_dict(doc_req)
+                })
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                doc_req.link_to_submitted_doc = json_data['link_to_submitted_doc']
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'submitted_and_notified_on':str(datetime.datetime.now()),
+                    'doc_req':model_to_dict(doc_req)
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update documentary requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a documentary requirement deletion")
+    elif request.method == 'DELETE':
+        if request.user.is_authenticated:
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                doc_req.delete()
+                return JsonResponse({
+                    'success':True,
+                    'doc_reqs':list(lc.documentaryrequirement_set)
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC may delete documentary requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a documentary requirement deletion")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, PUT, DELETE")
 
+# TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
-    pass
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    try:
+        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
+    except DocumentaryRequirement.DoesNotExist:
+        return Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            json_data = json.loads(request.body)
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                doc_req.satisfied = json_data['approve']
+                if 'complaints' in json_data:
+                    doc_req.submitted_doc_complaints = json_data['complaints']
+                return JsonResponse({
+                    'success':True,
+                    'doc_reqs':list(lc.documentaryrequirement_set)
+                })
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                doc_req.modified_and_awaiting_beneficiary_approval = json_data['approve']
+                if 'complaints' in json_data:
+                    doc_req.modification_complaints = json_data['complaints']
+                return JsonResponse({
+                    'success':True,
+                    'doc_reqs':list(lc.documentaryrequirement_set)
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or an employee to the beneficiary of thsi LC, may evaluate documentary requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a documentary requirement evaluation")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports POST")
 
 @csrf_exempt
 def request_lc(request, lc_id):
@@ -323,7 +430,7 @@ def payout_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
-
+# TODO handle doc reqs!
 def set_lc_specifications(lc, json_data):
     # Question 5-8
     lc.credit_delivery_means = json_data['credit_delivery_means']
@@ -522,7 +629,5 @@ def set_lc_specifications(lc, json_data):
     #    in other_data
     lc.other_data = json_data
 
-    # 3. notify a bank employee maybe? TODO decide
-
-    # 4. save and return back!
+    # 3. save and return back!
     lc.save()
