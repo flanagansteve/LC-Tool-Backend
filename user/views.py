@@ -61,3 +61,25 @@ def change_password(request):
             return HttpResponseForbidden('You must be logged in to change your password.')
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
+
+@csrf_exempt
+def this_users_info(request):
+    if request.user.is_authenticated:
+        if BusinesssEmployee.objects.filter(email=request.user.username).exists():
+            user_employee = BusinesssEmployee.objects.get(email=request.user.username)
+            return JsonResponse({
+                "session_expiry" : request.session.get_expiry_date(),
+                "user_employee" : model_to_dict(user_employee),
+                "users_employer" : model_to_dict(user_employee.employer)
+            })
+        elif BankEmployee.objects.filter(email=request.user.username).exists():
+            user_employee = BankEmployee.objects.get(email=request.user.username)
+            return JsonResponse({
+                "session_expiry" : request.session.get_expiry_date(),
+                "user_employee" : model_to_dict(user_employee),
+                "users_employer" : model_to_dict(user_employee.bank)
+            })
+        else:
+            return Http404("No business or bank employee found with email " + request.user.username)
+    else:
+        return HttpResponseForbidden("Must be logged in to get your user's info")
