@@ -77,7 +77,7 @@ def this_users_info(request):
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
-                "users_employer" : model_to_dict(user_employee.bank)
+                "users_employer" : user_employee.bank.toJSON()
             })
         else:
             return Http404("No business or bank employee found with email " + request.user.username)
