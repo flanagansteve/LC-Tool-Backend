@@ -30,6 +30,7 @@ class Bank(models.Model):
     def toJSON(self):
         return {
             'name' : self.name,
+            'id' : self.id,
             'digital_application' : self.get_lc_app(),
             'using_digital_app' : self.using_digital_app
         }
