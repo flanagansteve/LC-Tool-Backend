@@ -65,8 +65,8 @@ def change_password(request):
 @csrf_exempt
 def this_users_info(request):
     if request.user.is_authenticated:
-        if BusinesssEmployee.objects.filter(email=request.user.username).exists():
-            user_employee = BusinesssEmployee.objects.get(email=request.user.username)
+        if BusinessEmployee.objects.filter(email=request.user.username).exists():
+            user_employee = BusinessEmployee.objects.get(email=request.user.username)
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
