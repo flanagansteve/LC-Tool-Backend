@@ -260,12 +260,52 @@ def rud_bank_employee(request, bank_id, employee_id):
 
 # TODO pdf app
 
-# TODO POST
 @csrf_exempt
-def digital_app(request, bank_id):
+def cr_digital_app(request, bank_id):
     try:
-        return JsonResponse(Bank.objects.get(id=bank_id).get_lc_app(), safe=False)
+        bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         return Http404("No bank with id " + bank_id)
+    if request.method == 'GET':
+        return JsonResponse(bank.get_lc_app(), safe=False)
+    elif request.method == 'POST':
+        json_data = json.loads(request.body)
+        LCAppQuestion.objects.create(**json_data)
+        bank.digital_application.add(LCAppQuestion.objects.get(key=json_data['key']))
+        return JsonResponse({
+            'success':True,
+            'new_app':bank.get_lc_app()
+        })
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, POST")
+
+@csrf_exempt
+def ud_digital_app(request, bank_id, question_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with id " + bank_id)
+    if request.method == 'PUT':
+        json_data = json.loads(request.body)
+        question = bank.digital_application.get(id=question_id)
+        for key in json_data:
+            if key in dir(question):
+                setattr(question, key, json_data[key])
+            else:
+                # TODO log a bad field but dont flip out
+                pass
+        question.save()
+        return JsonResponse({
+            'success':True,
+            'new_app':bank.get_lc_app()
+        })
+    elif request.method == 'DELETE':
+        bank.digital_application.get(id=question_id).delete()
+        return JsonResponse({
+            'success':True,
+            'new_app':bank.get_lc_app()
+        })
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT, DELETE")
 
 # TODO PUT, DeLETE specific question on app

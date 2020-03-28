@@ -36,7 +36,7 @@ from . import views
 # RUD a bank's employees
 
 5. /bank/{bank_id}/register
-POST with:
+# POST with:
 {
     'email'
     'password'
@@ -51,25 +51,51 @@ to register upon invitation, and receive back
 }
 
 6. /bank/{bank_id}/pdf_app
-GET to receive back:
+# GET to receive back:
 pdf_application.pdf
 
-POST, as an employee of the bank, with:
+# POST, as an employee of the bank, with:
 pdf_application.pdf
 
 7. /bank/{bank_id}/digital_app
-GET to receive back:
+# GET to receive back:
+[
+    {the LCAppQuestion obj of each question in this banks app}
+]
 
-POST, as an employee of the bank, with:
-[{ the fields of an ApplicationQuestion }]
-to add more questions to your bank's lc application
+# POST, as an employee of the bank, with:
+{
+    question_text : 'the text of the question',
+    key : 'the key of the question',
+    type : 'text' || 'number' || 'decimal' || 'boolean' || 'date',
+    required : true || false
+}
+to add more questions to your bank's lc application, and receive back
+{
+    'success' : true || false,
+    'new_app' : [{the LCAppQuestion obj of each question in this banks app}]
+}
 
 8. /bank/{bank_id}/digital_app/{question_id}
-DeLETE as an employee of the bank to delete a non-default question
+# DeLETE as an employee of the bank to delete a non-default question
+receive back
+{
+    'success' : true || false,
+    'new_app' : [{the LCAppQuestion obj of each question in this banks app}]
+}
 
-PUT as an employee of the bank with:
-[{ the fields of an ApplicationQuestion }]
-to modify a non-default question
+# PUT as an employee of the bank with:
+{
+    question_text : 'the text of the question',
+    key : 'the key of the question',
+    type : 'text' || 'number' || 'decimal' || 'boolean' || 'date',
+    required : true || false
+}
+to modify a non-default question, and receive back
+{
+    'success' : true || false,
+    'new_app' : [{the LCAppQuestion obj of each question in this banks app}]
+}
 """
 
 urlpatterns = [
@@ -92,7 +118,9 @@ urlpatterns = [
     # /bank/{bank_id}/pdf_app
 
     # /bank/{bank_id}/digital_app
-    url(r'^(?P<bank_id>[0-9]+)/digital_app$', views.digital_app, name='digital_app'),
+    url(r'^(?P<bank_id>[0-9]+)/digital_app$', views.cr_digital_app, name='cr_digital_app'),
 
+    # /bank/{bank_id}/digital_app/{question_id}
+    url(r'^(?P<bank_id>[0-9]+)/digital_app/(?P<question_id>[0-9]+)/$', views.ud_digital_app, name='ud_digital_app'),
 
 ]
