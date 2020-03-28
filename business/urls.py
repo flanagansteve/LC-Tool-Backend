@@ -14,34 +14,9 @@ from . import views
 }
 # and receive back
 {
-    "bountium_access_token":"keyboard@dumb.com2020-02-29 16:33:40.776840",
-    "objects_created":[
-        {
-            "model": "business.business",
-            "pk": [your new businesss primary key, which will be used to identify it],
-            "fields": {
-                "name": "some business"
-            }
-        },
-        {
-            "model": "auth.user",
-            "pk": [the id of this user among all bountium business users, also will be used later],
-            "fields": {
-                "password": [salted hash of this user's password],
-                "last_login": null,
-                "is_superuser": false,
-                "username": "firstemployeesname@somebusiness.com",
-                "first_name": "",
-                "last_name": "",
-                "email": "firstemployeesname@somebusiness.com",
-                "is_staff": false,
-                "is_active": true,
-                "date_joined": "2020-02-29T16:33:40.602Z",
-                "groups": [],
-                "user_permissions": []
-            }
-        }
-    ]
+    "session_expiry" : request.session.get_expiry_date(),
+    "user_employee" : model_to_dict(business.businessemployee_set.get(email=json_data['email'])),
+    "users_employer" : model_to_dict(business)
 }
 
 2. /business/{business_id}
@@ -71,8 +46,8 @@ POST with:
 to register upon invitation, and receive back
 {
     'bountium_access_token'
-    'userEmployee' : { business employee obj }
-    'usersEmployer : { business obj }
+    'user_employee' : { business employee obj }
+    'users_employer : { business obj }
 }
 """
 

@@ -37,15 +37,12 @@ def index(request):
                                  password=json_data['password'])
         first_user = authenticate(username=json_data['email'], password=json_data['password'])
         login(request, first_user)
-        # 4. return the objects_created (user object, business) as well as a session obj
-        now = str(datetime.datetime.now())
-        response = {
+        # 4. return the objects created (user object, business) as well as a session obj
+        return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
-            "objects_created" : [
-                model_to_dict(business), model_to_dict(first_user)
-            ]
-        }
-        return JsonResponse(response)
+            "user_employee" : model_to_dict(business.businessemployee_set.get(email=json_data['email'])),
+            "users_employer" : model_to_dict(business)
+        })
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 

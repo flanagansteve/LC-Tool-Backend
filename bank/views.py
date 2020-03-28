@@ -43,7 +43,7 @@ def index(request):
         login(request, first_user)
         # 4. Start the bank off with the default set of lc application question
         populate_application(bank)
-        # 5. return the objects_created (user object, bank) as well as a session obj
+        # 5. return the objects created (user object, bank) as well as a session obj
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(bank.bankemployee_set.get(email=json_data['email'])),

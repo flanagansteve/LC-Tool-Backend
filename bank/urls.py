@@ -14,34 +14,9 @@ from . import views
 }
 # and receive back
 {
-    "bountium_access_token":"keyboard@dumb.com2020-02-29 16:33:40.776840",
-    "objects_created":[
-        {
-            "model": "bank.bank",
-            "pk": [your new banks primary key, which will be used to identify it],
-            "fields": {
-                "name": "some bank"
-            }
-        },
-        {
-            "model": "auth.user",
-            "pk": [the id of this user among all bountium bank users, also will be used later],
-            "fields": {
-                "password": [salted hash of this user's password],
-                "last_login": null,
-                "is_superuser": false,
-                "username": "firstemployeesname@somebank.com",
-                "first_name": "",
-                "last_name": "",
-                "email": "firstemployeesname@somebank.com",
-                "is_staff": false,
-                "is_active": true,
-                "date_joined": "2020-02-29T16:33:40.602Z",
-                "groups": [],
-                "user_permissions": []
-            }
-        }
-    ]
+    "session_expiry":request.session.get_expiry_date(),
+    "user_employee":{the BankEmployee of this user},
+    "users_employer":{the Bank this user just created}
 }
 
 2. /bank/{bank_id}
@@ -70,9 +45,9 @@ POST with:
 }
 to register upon invitation, and receive back
 {
-    'bountium_access_token'
-    'userEmployee' : { bank employee obj }
-    'usersEmployer' : { the bank }
+    "session_expiry":request.session.get_expiry_date(),
+    "user_employee":{the BankEmployee of this user},
+    "users_employer":{the Bank this user just created}
 }
 
 6. /bank/{bank_id}/pdf_app
