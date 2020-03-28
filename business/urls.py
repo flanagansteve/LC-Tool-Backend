@@ -14,9 +14,9 @@ from . import views
 }
 # and receive back
 {
-    "session_expiry" : request.session.get_expiry_date(),
-    "user_employee" : model_to_dict(business.businessemployee_set.get(email=json_data['email'])),
-    "users_employer" : model_to_dict(business)
+    'session_expiry' : request.session.get_expiry_date(),
+    'user_employee' : { business employee obj }
+    'users_employer : { business obj }
 }
 
 2. /business/{business_id}
@@ -45,7 +45,7 @@ POST with:
 }
 to register upon invitation, and receive back
 {
-    'bountium_access_token'
+    'session_expiry' : request.session.get_expiry_date(),
     'user_employee' : { business employee obj }
     'users_employer : { business obj }
 }
