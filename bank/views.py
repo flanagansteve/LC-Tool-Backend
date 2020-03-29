@@ -67,8 +67,7 @@ def rud_bank(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with id " + bank_id)
     if request.method == "GET":
-        response = bank.toJSON()
-        return JsonResponse(response)
+        return JsonResponse(bank.toJSON())
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email = request.user.username).exists():
@@ -307,5 +306,3 @@ def ud_digital_app(request, bank_id, question_id):
         })
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT, DELETE")
-
-# TODO PUT, DeLETE specific question on app
