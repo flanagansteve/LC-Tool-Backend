@@ -181,7 +181,6 @@ def register_upon_invitation(request, business_id):
             name = new_user_data['name'],
             title = new_user_data['title'])
         # 4. return user object w/token
-        now = str(datetime.datetime.now())
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(business.businessemployee_set.get(email=new_user_data['email'])),
@@ -206,7 +205,7 @@ def rud_business_employee(request, business_id, employee_id):
         if request.user.is_authenticated:
             if business.businessemployee_set.filter(id = employee_id).exists():
                 business_employee = business.businessemployee_set.get(id = employee_id)
-                if request.user.username is not business_employee.email:
+                if request.user.username != business_employee.email:
                     return HttpResponseForbidden("You may only delete your own account. Ask the user with email " + business_employee.email + " to delete their account if need be.")
                 else:
                     business_employee.delete()
@@ -223,7 +222,7 @@ def rud_business_employee(request, business_id, employee_id):
         if request.user.is_authenticated:
             try:
                 business_employee = business.businessemployee_set.get(id = employee_id)
-                if request.user.username is not business_employee.email:
+                if request.user.username != business_employee.email:
                     return HttpResponseForbidden("You may only update your own account. Ask the user with email " + business_employee.email + " to update their account if need be.")
                 for key in json_data:
                     if key in dir(business_employee):

@@ -220,7 +220,7 @@ def rud_bank_employee(request, bank_id, employee_id):
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(id = employee_id).exists():
                 bank_employee = bank.bankemployee_set.get(id = employee_id)
-                if request.user.username is not bank_employee.email:
+                if request.user.username != bank_employee.email:
                     return HttpResponseForbidden("You may only delete your own account. Ask the user with email " + bank_employee.email + " to delete their account if need be.")
                 else:
                     bank_employee.delete()
@@ -235,9 +235,11 @@ def rud_bank_employee(request, bank_id, employee_id):
     elif request.method == "PUT":
         json_data = json.loads(request.body)
         if request.user.is_authenticated:
+            print("Requesters email: " + request.user.username)
             try:
                 bank_employee = bank.bankemployee_set.get(id = employee_id)
-                if request.user.username is not bank_employee.email:
+                print(employee_id + "'s email: " + bank_employee.email)
+                if request.user.username != bank_employee.email:
                     return HttpResponseForbidden("You may only update your own account. Ask the user with email " + bank_employee.email + " to update their account if need be.")
                 for key in json_data:
                     if key in dir(bank_employee):

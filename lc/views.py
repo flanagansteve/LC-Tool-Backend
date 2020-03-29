@@ -238,7 +238,7 @@ def evaluate_lc(request, lc_id):
         lc = LCs.objects.get(lc=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
-    if request.method=="POST":
+    if request.method == "POST":
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
