@@ -8,7 +8,6 @@ from django.forms.models import model_to_dict
 from .models import Business, BusinessEmployee
 import json, datetime
 
-# TODO on a bad request, set status_code to give a specific error code
 # 1. GET all the businesses
 # 2. POST [the fields of a business and employee]
 #    and receive back [a session, and the objects_created [the business obj u created and the new user]]
