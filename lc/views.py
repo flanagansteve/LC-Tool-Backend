@@ -13,7 +13,6 @@ import json, datetime
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
 # TODO keyerrors... unhandled key errors everywhere
-# TODO a lot more of these should be authenticated, esp GETs
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
