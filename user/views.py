@@ -1,5 +1,5 @@
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
@@ -45,7 +45,7 @@ def user_login(request):
 @csrf_exempt
 def user_logout(request):
     if request.method == "POST":
-        logout(request, user)
+        logout(request)
         return JsonResponse({"success":True})
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
