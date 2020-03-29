@@ -15,7 +15,7 @@ from . import views
     # and receive back
     {
         'success' : true || false,
-        'lc_id' : an integer of the ID of your lc
+        'created_lc' : {the lc obj you just made, with an id field}
     }
     # If its a BankEmployee POSTing, we expect
     [app_response_that_i_uploaded_on_behalf_of_a_client.pdf]
@@ -24,6 +24,11 @@ from . import views
         'applicant' : 'the applicants business name',
         'applicant_employee_contact' : 'someemployee@business.com'
         [we'll either create the Business in our database, or re-use if this is a repeat]
+    }
+    and receive back
+    {
+        'success' : true || false,
+        'created_lc' : {the lc obj you just made, with an id field}
     }
 
 2. /lc/{lc_id} (a very busy endpoint lol)

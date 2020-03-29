@@ -17,14 +17,20 @@ import json, datetime
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with that id found")
     if request.method == "GET":
-        this_banks_lcs = LC.objects.filter(issuer=bank_id)
-        return JsonResponse(list(this_banks_lcs.values()), safe=False)
+        if request.user.is_authenticated:
+            if bank.bankemployee_set.filter(email=request.user.username).exists():
+                this_banks_lcs = LC.objects.filter(issuer=bank_id)
+                return JsonResponse(list(this_banks_lcs.values()), safe=False)
+            else:
+                return HttpResponseForbidden("Must be an employee of the bank to see all the LCs this bank has issued")
+        else:
+            return HttpResponseForbidden("Must be logged in to see your bank's issued LCs")
     elif request.method == "POST":
-        try:
-            bank = Bank.objects.get(id=bank_id)
-        except Bank.DoesNotExist:
-            return Http404("No bank with id " + bank_id + " found")
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
             if bank.bankemployee_set.filter(email=request.user.username).exists():
@@ -51,8 +57,11 @@ def cr_lcs(request, bank_id):
                     [json_data['applicant_employee_contact']],
                     fail_silently=False,
                 )
-                # 3. return... TODO something
-                return HttpResponse("nice")
+                # 3. return success & the created lc
+                return JsonResponse({
+                    'success':True,
+                    'created_lc':model_to_dict(lc)
+                })
             elif BusinessEmployee.objects.filter(email=request.user.username).exists():
                 employee_applying = BusinessEmployee.objects.get(email=request.user.username)
                 # 1. for each of the default questions,
@@ -89,7 +98,7 @@ def cr_lcs(request, bank_id):
                 lc.save()
                 return JsonResponse({
                     'success' : True,
-                    'lc_id' : lc.id
+                    'created_lc' : model_to_dict(lc)
                 })
 
             else:
@@ -106,9 +115,17 @@ def rud_lc(request, lc_id):
     try:
         lc = LCs.objects.get(lc=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        return Http404("No lc with that id")
     if request.method == "GET":
-        return JsonResponse(model_to_dict(lc))
+        if request.user.is_authenticated:
+            if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
+                or lc.client.businessemployee_set.filter(email=request.user.username).exists()
+                or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
+                return JsonResponse(model_to_dict(lc))
+            else:
+                return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
+        else:
+            return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == "POST":
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
@@ -167,17 +184,18 @@ def rud_lc(request, lc_id):
                 return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may modify it')
     elif request.method == "DELETE":
         if request.user.is_authenticated:
-            if lc.issuer_approved and lc.beneficiary_approved:
-                return JsonResponse({
-                    'success':False,
-                    'reason':'This LC has been approved by both the issuer and beneficiary, and may not be revoked'
-                })
-            elif lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or lc.client.businessemployee_set.filter(email=request.user.username).exists():
-                # TODO should probably notify everybody of this deletion
-                lc.delete()
-                return JsonResponse({
-                    'success':True
-                })
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or lc.client.businessemployee_set.filter(email=request.user.username).exists():
+                if lc.issuer_approved and lc.beneficiary_approved:
+                    return JsonResponse({
+                        'success':False,
+                        'reason':'This LC has been approved by both the issuer and beneficiary, and may not be revoked'
+                    })
+                else:
+                    # TODO should probably notify everybody of this deletion
+                    lc.delete()
+                    return JsonResponse({
+                        'success':True
+                    })
             else:
                 return HttpResponseForbidden('Only an employee of either the issuer or applicant to the LC may delete it')
         else:
@@ -205,7 +223,7 @@ def notify_teammate(request, lc_id):
                     [json_data['to_notify']],
                     fail_silently=False,
                 )
-            # TODO do we want to let the client or beneficiary notify their teammates to?
+            # TODO do we want to let the client or beneficiary notify their teammates too?
             #elif lc.client.businessemployee_set...
             else:
                 return HttpResponseForbidden("Only employees of this LC's issuing bank may notify teammates about it")
@@ -252,8 +270,16 @@ def evaluate_lc(request, lc_id):
 @csrf_exempt
 def cr_doc_reqs(request, lc_id):
     if request.method == 'GET':
-        this_lcs_doc_reqs = LC.objects.get(id=lc_id)
-        return JsonResponse(list(this_lcs_doc_reqs.values()), safe=False)
+        if request.user.is_authenticated:
+            if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
+                or lc.client.businessemployee_set.filter(email=request.user.username).exists()
+                or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
+                this_lcs_doc_reqs = LC.objects.get(id=lc_id)
+                return JsonResponse(list(this_lcs_doc_reqs.values()), safe=False)
+            else:
+                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
+        else:
+            return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'POST':
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
@@ -284,7 +310,15 @@ def rud_doc_req(request, lc_id, doc_req_id):
     except DocumentaryRequirement.DoesNotExist:
         return Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
     if request.method == 'GET':
-        return JsonResponse(model_to_dict(doc_req))
+        if request.user.is_authenticated:
+            if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
+                or lc.client.businessemployee_set.filter(email=request.user.username).exists()
+                or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
+                return JsonResponse(model_to_dict(doc_req))
+            else:
+                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
+        else:
+            return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'PUT':
         json_data = json.loads(request.body)
         if request.user.is_authenticated:
