@@ -6,6 +6,13 @@ class LCAppQuestion(models.Model):
     key = models.CharField(max_length = 50)
     type = models.CharField(max_length = 25)
     required = models.BooleanField()
+    # Used for type=radio or type=checkbox questions; blank for all others
+    # The internet says the best way to do a list of strs as a django field
+    # (w/o making a class of literally just a string)
+    # is, to literally, make a separated-value string...
+    # and re/denormalise it whenever needed : ( wtf
+    # https://stackoverflow.com/questions/1110153/what-is-the-most-efficient-way-to-store-a-list-in-the-django-models
+    options = models.CharField(max_length = 500, blank=True, default=True)
 
 def pdf_app_path(bank, filename):
     # file will be uploaded to MEDIA_ROOT/bank_<bank_id>/lc_application.pdf

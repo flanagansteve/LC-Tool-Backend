@@ -71,11 +71,9 @@ def cr_lcs(request, bank_id):
                 # Questions 1 and 2
                 applicant_name = json_data['applicant_name']
                 applicant_address = json_data['applicant_address']
-                # TODO check if applicant_name == employee_applying.employer.name &&
-                #               applicant_address == employee_applying.employer
-                #               create the lc and proceed
-                #            else
-                #               return forbidden
+                if (applicant_name != employee_applying.employer.name
+                    or applicant_address != employee_applying.employer.address):
+                    return HttpResponseForbidden("You may only apply for an LC on behalf of your own business. Check the submitted applicant_name and applicant_address for correctness - one or both differed from the business name and address associated with this user\'s employer")
                 lc = LC(issuer = bank)
                 lc.client = employee_applying.employer
                 del json_data['applicant_name']
@@ -84,8 +82,18 @@ def cr_lcs(request, bank_id):
                 # Questions 3 and 4
                 beneficiary_name = json_data['beneficiary_name']
                 beneficiary_address = json_data['beneficiary_address']
-                # TODO if beneficiary.found, add them as lc.beneficiary
-                #      else, create the Business and send invite
+                if Business.objects.filter(name=beneficiary_name).exists():
+                    lc.beneficiary = Business.objects.get(name=beneficiary_name)
+                else:
+                    # TODO we need to think through how to let a beneficiary not yet on Bountium
+                    # set their account up and "claim" the LC
+                    send_mail(
+                        employee_applying.employer.name + " has created their LC to work with you on Bountium",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment in Bountium. 1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                        "steve@bountium.org",
+                        [employee_applying.email],
+                        fail_silently=False,
+                    )
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
 
@@ -101,9 +109,7 @@ def cr_lcs(request, bank_id):
                 })
 
             else:
-                # TODO minor, but, technically you can get to this branch by being
-                # a BankEmployee of a bank other than bank_id.
-                return HttpResponseForbidden("Only employees of businesses or banks on Bountium can create LCs")
+                return HttpResponseForbidden("You may only create LCs with the bank of the ID at this endpoint by being a member of this bank, or by being a business requesting an LC from this bank")
         else:
             return HttpResponseForbidden("Must be logged in to create an LC")
     else:
@@ -265,7 +271,6 @@ def evaluate_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
-# TODO authentication
 @csrf_exempt
 def cr_doc_reqs(request, lc_id):
     if request.method == 'GET':
@@ -463,7 +468,6 @@ def payout_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
-# TODO handle doc reqs!
 def set_lc_specifications(lc, json_data):
     # Question 5-8
     lc.credit_delivery_means = json_data['credit_delivery_means']
@@ -481,8 +485,18 @@ def set_lc_specifications(lc, json_data):
         lc.applicant_and_ap_j_and_s_obligated = json_data['applicant_and_ap_j_and_s_obligated']
         account_party_name = json_data['account_party_name']
         account_party_address = json_data['account_party_address']
-        # TODO if account_party.found, add them as lc.account_party
-        #      else, create the Business and send invite
+        if Business.objects.filter(name=account_party_name).exists():
+            lc.account_party = Business.objects.get(name=account_party_name)
+        else:
+            # TODO we need to think through how to let an account party not yet on Bountium
+            # set their account up and "claim" the LC
+            send_mail(
+                employee_applying.employer.name + " has created their LC to work with you on Bountium",
+                employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment in Bountium. 1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                "steve@bountium.org",
+                [employee_applying.email],
+                fail_silently=False,
+            )
         del json_data['account_party']
         del json_data['applicant_and_ap_j_and_s_obligated']
         del json_data['account_party_name']
@@ -491,8 +505,11 @@ def set_lc_specifications(lc, json_data):
     # Question 13
     if 'advising_bank' in json_data:
         bank_name = json_data['advising_bank']
-        # TODO if Bank.get(name=bank_name).found, add them as lc.advising_bank
-        #      else, create the Bank and send invite
+        if Bank.objects.filter(name=bank_name).exists():
+            lc.advising_bank = Bank.objects.get(name=bank_name)
+        else:
+            # TODO invite the advising bank
+            pass
         del json_data['advising_bank']
 
     # Question 14
@@ -514,18 +531,19 @@ def set_lc_specifications(lc, json_data):
     del json_data['unit_error_tolerance']
     del json_data['confirmation_means']
 
-    # TODO error handling for q21-22 - really naive implementation below:
     # Question 21
-    if json_data['paying_other_banks_fees'] == lc.beneficiary.name:
+    if json_data['paying_other_banks_fees'] == "The beneficiary":
         lc.paying_other_banks_fees = lc.beneficiary
     else:
         lc.paying_other_banks_fees = lc.client
     del json_data['paying_other_banks_fees']
 
     # Question 22
-    if json_data['credit_expiry_location'] == bank.name:
+    if json_data['credit_expiry_location'] == "Issuing bank\'s office":
         lc.credit_expiry_location = lc.issuer
     else:
+        # TODO this assumes that the advising bank and confirming bank are one and the same.
+            # See Justins email around March 20 or so... isnt always the case.
         lc.credit_expiry_location = lc.advising_bank
     del json_data['credit_expiry_location']
 
@@ -534,7 +552,6 @@ def set_lc_specifications(lc, json_data):
     # TODO what format does a model.DateField have to be in?
     lc.expiration_date = json_data['expiration_date']
     del json_data['expiration_date']
-    # TODO could shorten this with a ternary op
     if 'draft_presentation_date' in json_data:
         lc.draft_presentation_date = json_data['draft_presentation_date']
         del json_data['draft_presentation_date']
@@ -553,19 +570,22 @@ def set_lc_specifications(lc, json_data):
     lc.credit_availability = json_data['credit_availability']
     del json_data['credit_availability']
 
-    # TODO error handling - really naive implementation below:
     # Question 27
-    if json_data['paying_acceptance_and_discount_charges'] == lc.beneficiary.name:
+    if json_data['paying_acceptance_and_discount_charges'] == "The beneficiary":
         lc.paying_acceptance_and_discount_charges = lc.beneficiary
     else:
         lc.paying_acceptance_and_discount_charges = lc.client
 
     # Question 28
-    lc.deferrerd_payment_date = json_data['deferred_payment_date']
+    lc.deferred_payment_date = json_data['deferred_payment_date']
     del json_data['deferred_payment_date']
 
     # Question 29
-    # TODO do something with json_data['delegated_negotiating_banks']
+    for delegated_negotiating_bank in json_data['delegated_negotiating_banks']:
+        # TODO look up each named bank;
+            # if they're there, lc.delegated_negotiating_banks.add
+            # otherwise, invite them and let them 'claim' it in the same fashion as other invitees to an LC
+        pass
     del json_data['delegated_negotiating_banks']
 
     # Question 30
@@ -590,14 +610,16 @@ def set_lc_specifications(lc, json_data):
     del json_data['charge_transportation_location']
 
     # Question 35
-    lc.incoterms_to_show = json_data['incoterms_to_show']
+    lc.incoterms_to_show = json.dumps(json_data['incoterms_to_show'])
     del json_data['incoterms_to_show']
 
     # Question 36
     lc.named_place_of_destination = json_data['named_place_of_destination']
     del json_data['named_place_of_destination']
 
-    # Question 27
+    # TODO TODO doc reqs start here! Next 10 Qs
+
+    # Question 37
     lc.draft_accompiant_invoice = json_data['draft_accompiant_invoice']
     del json_data['draft_accompiant_invoice']
 
@@ -613,7 +635,7 @@ def set_lc_specifications(lc, json_data):
 
     # Question 40
     if 'transport_doc_marking' in json_data:
-        lc.transport_doc_marking = json_data['transport_doc_marking']
+        lc.transport_doc_marking = json.dumps(json_data['transport_doc_marking'])
         del json_data['transport_doc_marking']
 
     # Question 41
@@ -632,30 +654,39 @@ def set_lc_specifications(lc, json_data):
         del json_data['insurance_percentage']
 
     # Question 44
-    if 'insurance_risks_covered' in json_data:
-        lc.insurance_risks_covered = json_data['insurance_risks_covered']
-        del json_data['insurance_risks_covered']
+    if 'selected_insurance_risks_covered' in json_data:
+        selected_risks = json_data['selected_insurance_risks_covered']
+        # Question 45
+        if 'other_insurance_risks_covered' in json_data:
+            selected_risks.append(json_data['other_insurance_risks_covered'])
+            del json_data['other_insurance_risks_covered']
+        lc.insruance_selected_risks = json.dumps(selected_risks)
+        del json_data['selected_insurance_risks_covered']
 
-    # Question 45
+    # Question 46
+    # TODO expect an arr of DocReq objs; parse here
     if 'other_draft_accompiants' in json_data:
         lc.other_draft_accompiants = json_data['other_draft_accompiants']
         del json_data['other_draft_accompiants']
 
-    # Question 46
+    # Question 47
     lc.arranging_own_insurance = json_data['arranging_own_insurance']
     del json_data['arranging_own_insurance']
 
-    # Question 47
+    # Question 48
     if 'other_instructions' in json_data:
         lc.other_instructions = json_data['other_instructions']
         del json_data['other_instructions']
 
-    # Question 48
+    # Question 49
     lc.merch_description = json_data['merch_description']
     del json_data['merch_description']
 
-    # Question 49
-    lc.transferability = json_data['transferability']
+    # Question 50
+    if json_data["transferability"] == "Transferable to the applicant\'s account":
+        lc.transferable_to_applicant = True
+    elif json_data["transferability"] == "Transferable to the beneficiary\'s account":
+        lc.transferable_to_beneficiary = True
     del json_data['transferability']
 
     # 2. for any other fields left in json_data, save them as a tuple

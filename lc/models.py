@@ -76,6 +76,7 @@ class DigitalLC(LC):
     # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
     unit_error_tolerance = models.DecimalField(max_digits=6, decimal_places=5, null=True, blank=True)
     # NOTE this might be converted to an enum
+    # One of: ["No Confirmation", "Confirmation by a bank selected by the beneficiary", "Confirmation by a bank selected by SVB in the beneficiary\'s country"]
     confirmation_means = models.CharField(max_length=1000, default='No Confirmation')
     # almost always either the applicant or the beneficiary
     paying_other_banks_fees = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_paying_other_banks_fees', null=True, blank=True)
@@ -88,32 +89,31 @@ class DigitalLC(LC):
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_paying_acceptance_and_discount_charges', null=True, blank=True)
     deferred_payment_date = models.DateField(null=True, blank=True)
-    # TODO could make this a ManyToManyField? and create any new banks listed here?
     delegated_negotiating_banks = models.ManyToManyField(Bank)
     partial_shipment_allowed = models.BooleanField(default=False)
     transshipment_allowed = models.BooleanField(default=False)
     merch_charge_location = models.CharField(max_length=250, null=True, blank=True)
     late_charge_date = models.DateField(null=True, blank=True)
     charge_transportation_location = models.CharField(max_length=250, null=True, blank=True)
-    # NOTE this might be converted to an enum
+    # NOTE list, stored as string of JSON array of strings
     incoterms_to_show = models.CharField(max_length=250, null=True, blank=True)
     named_place_of_destination = models.CharField(max_length=250, null=True, blank=True)
     # NOTE this might be converted to an enum
+    # One of: ["Yes, Original", "Yes, Original and Copy", "No"]
     draft_accompiant_invoice = models.CharField(max_length=250, null=True, blank=True)
     # NOTE this might be converted to an enum
+    # One of: ["Full set original clean on board Marine Bills of Lading or multimodal or combined transport Bill of Lading issued to order of shipper, endorsed in blank", "Clean Air Waybill consigned to the \'Applicant\'", "Clean Truck / Rail Bill of Lading consigned to the \'Applicant\'"]
     draft_accompiant_transport_docs = models.CharField(max_length=250, null=True, blank=True)
     # TODO should this be a ManyToManyField on Business????
     doc_reception_notifees = models.CharField(max_length=250, null=True, blank=True)
-    # NOTE this might be a list of enums - 0-2 of ['Freight Collect', 'Freight Prepaid']
+    # NOTE list, stored as string of JSON array of strings
     transport_doc_marking = models.CharField(max_length=250, null=True, blank=True)
     copies_of_packing_list = models.IntegerField(default=0)
     copies_of_certificate_of_origin = models.IntegerField(default=0)
     copies_of_inspection_certificate = models.IntegerField(default=0)
     # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
     insurance_percentage = models.DecimalField(max_digits=6, decimal_places=5, default=0.00000)
-    # NOTE this might be a list of enums - 0-5 of:
-    # ['Marine Risk', 'Air Risk', 'War Risk, 'Theft/Pilferage/Non-Delivery Risks', 'All Risks']
-        # but tricky bcuz user could possibly add others...
+    # NOTE list, stored as string of JSON array of strings
     insurance_risks_covered = models.CharField(max_length=250, null=True, blank=True)
     other_draft_accompiants = models.CharField(max_length=1000, null=True, blank=True)
     arranging_own_insurance = models.BooleanField(default=False)
