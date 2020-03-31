@@ -126,7 +126,7 @@ or
     'to_notify' : 'email_of_teammate@issuingbank.com',
     'note' : 'optionally, send a note with the request'
 }
-# as a currently assigned employee of the issuer, client, or beneficiary,
+# as an employee of the issuer, client, or beneficiary,
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
 

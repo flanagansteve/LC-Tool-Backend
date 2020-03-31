@@ -8,6 +8,11 @@ class Business(models.Model):
     name = models.CharField(max_length=250)
     address = models.CharField(max_length=250)
 
+    # Goes up to 999T,999B,999M,999K,999.99
+    annual_cashflow = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    balance_available = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    approved_credit = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+
     def __str__(self):
         return self.name
 
