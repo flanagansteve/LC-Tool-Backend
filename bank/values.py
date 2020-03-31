@@ -253,25 +253,25 @@ default_questions = [
         'options' : ''
     },
     {
-        'question_text' : 'Should Drafts be accompanied by the Original, and/or a copy, of the Signed Commercial Invoice?',
-        'key' : 'draft_accompiant_invoice',
+        'question_text' : 'Should Drafts be accompanied by the Original, and/or copies, of the Signed Commercial Invoice?',
+        'key' : 'commercial_invoice_required',
         'type' : 'radio',
         'required' : True,
-        'options' : '["Yes, Original", "Yes, Original and Copy", "No"]'
+        'options' : '["Yes, Original", "Yes, Copies", "Yes, Original and Copies", "No"]'
+    },
+    {
+        'question_text' : 'If applicable - how many copies of the Commercial Invoice must accompany the Drafts?',
+        'key' : 'commercial_invoice_copies',
+        'type' : 'number',
+        'required' : False,
+        'options' : ''
     },
     {
         'question_text' : 'What, if any, Transport Documents should accompany the Drafts?',
-        'key' : 'draft_accompiant_transport_docs',
-        'type' : 'text',
+        'key' : 'required_transport_docs',
+        'type' : 'checkbox',
         'required' : False,
         'options' : '["Full set original clean on board Marine Bills of Lading or multimodal or combined transport Bill of Lading issued to order of shipper, endorsed in blank", "Clean Air Waybill consigned to the \'Applicant\'", "Clean Truck / Rail Bill of Lading consigned to the \'Applicant\'"]'
-    },
-    {
-        'question_text' : 'Who should be notified when Drafts and accompanying documents are received? We will notify the Applicant unless otherwise specified.',
-        'key' : 'doc_reception_notifees',
-        'type' : 'text',
-        'required' : False,
-        'options' : ''
     },
     {
         'question_text' : 'The transport document must be marked',
@@ -302,7 +302,7 @@ default_questions = [
         'options' : ''
     },
     {
-        'question_text' : 'If you\'d like your beneficiary to arrange insurance on this purchase, what percentage of the invoice value would you like to have insured by a Negotiable Inusrance Policy or Certificate? Specify 0% or skip if this is unnecessary for this transaction. 110% is standard.',
+        'question_text' : 'If you\'d like your beneficiary to arrange insurance on this purchase, what percentage of the invoice value would you like to have insured by a Negotiable Insurance Policy or Certificate? Specify 0% or skip if this is unnecessary for this transaction. 110% is standard.',
         'key' : 'insurance_percentage',
         'type' : 'decimal',
         'required' : False,
@@ -326,6 +326,13 @@ default_questions = [
     {
         'question_text' : 'Are there any other documents which you\'d like the Drafts to be accompanied with?',
         'key' : 'other_draft_accompiants',
+        'type' : 'array_of_objs',
+        'required' : False,
+        'options' : ''
+    },
+    {
+        'question_text' : 'Who should be notified when Drafts and accompanying documents are received? We will notify the Applicant unless otherwise specified.',
+        'key' : 'doc_reception_notifees',
         'type' : 'text',
         'required' : False,
         'options' : ''
@@ -352,10 +359,10 @@ default_questions = [
         'options' : ''
     },
     {
-        'question_text' : 'Should this Credit be transferable, and if so, should it be transferable to the Applicant or Beneficiary\'s account?',
+        'question_text' : 'Should this Credit be transferable, and if so, to whose account should transfer charges be?',
         'key' : 'transferability',
         'type' : 'radio',
         'required' : True,
-        'options' : '["Transferable to the applicant\'s account", "Transferable to the beneficiary\'s account", "Non-transferable"]'
+        'options' : '["Transferable, fees charged to the applicant\'s account", "Transferable, fees charged to the beneficiary\'s account", "Non-transferable"]'
     }
 ]

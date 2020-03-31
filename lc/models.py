@@ -98,24 +98,8 @@ class DigitalLC(LC):
     # NOTE list, stored as string of JSON array of strings
     incoterms_to_show = models.CharField(max_length=250, null=True, blank=True)
     named_place_of_destination = models.CharField(max_length=250, null=True, blank=True)
-    # NOTE this might be converted to an enum
-    # One of: ["Yes, Original", "Yes, Original and Copy", "No"]
-    draft_accompiant_invoice = models.CharField(max_length=250, null=True, blank=True)
-    # NOTE this might be converted to an enum
-    # One of: ["Full set original clean on board Marine Bills of Lading or multimodal or combined transport Bill of Lading issued to order of shipper, endorsed in blank", "Clean Air Waybill consigned to the \'Applicant\'", "Clean Truck / Rail Bill of Lading consigned to the \'Applicant\'"]
-    draft_accompiant_transport_docs = models.CharField(max_length=250, null=True, blank=True)
     # TODO should this be a ManyToManyField on Business????
     doc_reception_notifees = models.CharField(max_length=250, null=True, blank=True)
-    # NOTE list, stored as string of JSON array of strings
-    transport_doc_marking = models.CharField(max_length=250, null=True, blank=True)
-    copies_of_packing_list = models.IntegerField(default=0)
-    copies_of_certificate_of_origin = models.IntegerField(default=0)
-    copies_of_inspection_certificate = models.IntegerField(default=0)
-    # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
-    insurance_percentage = models.DecimalField(max_digits=6, decimal_places=5, default=0.00000)
-    # NOTE list, stored as string of JSON array of strings
-    insurance_risks_covered = models.CharField(max_length=250, null=True, blank=True)
-    other_draft_accompiants = models.CharField(max_length=1000, null=True, blank=True)
     arranging_own_insurance = models.BooleanField(default=False)
     other_instructions = models.CharField(max_length=2000, null=True, blank=True)
     merch_description = models.CharField(max_length=2000, null=True, blank=True)

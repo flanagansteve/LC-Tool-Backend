@@ -468,6 +468,8 @@ def payout_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
+# TODO should probably log received checkbox or radio values that are not one
+# of the options they're supposed to be
 def set_lc_specifications(lc, json_data):
     # Question 5-8
     lc.credit_delivery_means = json_data['credit_delivery_means']
@@ -617,75 +619,113 @@ def set_lc_specifications(lc, json_data):
     lc.named_place_of_destination = json_data['named_place_of_destination']
     del json_data['named_place_of_destination']
 
-    # TODO TODO doc reqs start here! Next 10 Qs
-
     # Question 37
-    lc.draft_accompiant_invoice = json_data['draft_accompiant_invoice']
-    del json_data['draft_accompiant_invoice']
+    if json_data['commecial_invoice_required'] != "No":
+        required_values = (
+            "Version required: " + json_data['commecial_invoice_required'][5:]
+            + "\nIncoterms to show: " + lc.incoterms_to_show
+            + "\nNamed place of destination: " + lc.named_place_of_destination
+        )
+        required_values += '\nCopies: ' + json_data['commercial_invoice_copies']
+        del json_data['commercial_invoice_copies']
+        lc.documentaryrequirement_set.create(
+            doc_name="Commercial Invoice",
+            required_values=required_values,
+            due_date=lc.draft_presentation_date
+        )
+    del json_data['commecial_invoice_required']
 
     # Question 38
-    if 'draft_accompiant_transport_docs' in json_data:
-        lc.draft_accompiant_transport_docs = json_data['draft_accompiant_transport_docs']
-        del json_data['draft_accompiant_transport_docs']
+    if 'required_transport_docs' in json_data:
+        required_values = ""
+        # Question 39
+        for transport_doc_marking in json_data['transport_doc_marking']:
+            required_values += "Marked " + transport_doc_marking + "\n"
+        required_values = required_values[:-1]
+        del json_data['transport_doc_marking']
+        for required_transport_doc in json_data['required_transport_docs']:
+            lc.documentaryrequirement_set.create(
+                doc_name=required_transport_doc,
+                due_date=lc.draft_presentation_date,
+                required_values=required_values
+            )
+        del json_data['required_transport_docs']
 
-    # Question 39
+    # Question 40
+    if 'copies_of_packing_list' in json_data:
+        if json_data['copies_of_packing_list'] != 0:
+            lc.documentaryrequirement_set.create(
+                doc_name="Packing List",
+                due_date=lc.draft_presentation_date
+            )
+        del json_data['copies_of_packing_list']
+
+    # Question 41
+    if 'copies_of_certificate_of_origin' in json_data:
+        if json_data['copies_of_certificate_of_origin'] != 0:
+            lc.documentaryrequirement_set.create(
+                doc_name="Certificate of Origin",
+                due_date=lc.draft_presentation_date
+            )
+        del json_data['copies_of_certificate_of_origin']
+
+    # Question 42
+    if 'copies_of_inspection_certificate' in json_data:
+        if json_data['copies_of_inspection_certificate'] != 0:
+            lc.documentaryrequirement_set.create(
+                doc_name="Inspection Certificate",
+                due_date=lc.draft_presentation_date
+            )
+        del json_data['copies_of_inspection_certificate']
+
+    # Question 43
+    if 'insurance_percentage' in json_data:
+        if json_data['insurance_percentage'] != 0:
+            # Queston 44 and 45
+            risks_covered = json_data['selected_insurance_risks_covered']
+            if 'other_insurance_risks_covered' in json_data:
+                risks_covered.append(json_data['other_insurance_risks_covered'])
+            required_values = "Insurance percentage: " + json_data['insurance_percentage']
+            for risk_covered in risks_covered:
+                required_values += "\nCovers " + risk_covered
+            lc.documentaryrequirement_set.create(
+                doc_name="Negotiable Insurance Policy or Certificate",
+                due_date=lc.draft_presentation_date,
+                required_values=required_values
+            )
+            del json_data['other_insurance_risks_covered']
+            del json_data['selected_insurance_risks_covered']
+        del json_data['insurance_percentage']
+
+    # Question 46
+    if 'other_draft_accompiants' in json_data:
+        for doc_req in json_data['other_draft_accompiants']:
+            lc.documentaryrequirement_set.create(**doc_req)
+        del json_data['other_draft_accompiants']
+
+    # Question 47
+    # TODO this might be parsed into a OneToMany, LC->Business
     if 'doc_reception_notifees' in json_data:
         lc.doc_reception_notifees = json_data['doc_reception_notifees']
         del json_data['doc_reception_notifees']
 
-    # Question 40
-    if 'transport_doc_marking' in json_data:
-        lc.transport_doc_marking = json.dumps(json_data['transport_doc_marking'])
-        del json_data['transport_doc_marking']
-
-    # Question 41
-    if 'copies_of_packing_list' in json_data:
-        lc.copies_of_packing_list = json_data['copies_of_packing_list']
-        del json_data['copies_of_packing_list']
-
-    # Question 42
-    if 'copies_of_certificate_of_origin' in json_data:
-        lc.copies_of_certificate_of_origin = json_data['copies_of_certificate_of_origin']
-        del json_data['copies_of_certificate_of_origin']
-
-    # Question 43
-    if 'insurance_percentage' in json_data:
-        lc.insurance_percentage = json_data['insurance_percentage']
-        del json_data['insurance_percentage']
-
-    # Question 44
-    if 'selected_insurance_risks_covered' in json_data:
-        selected_risks = json_data['selected_insurance_risks_covered']
-        # Question 45
-        if 'other_insurance_risks_covered' in json_data:
-            selected_risks.append(json_data['other_insurance_risks_covered'])
-            del json_data['other_insurance_risks_covered']
-        lc.insruance_selected_risks = json.dumps(selected_risks)
-        del json_data['selected_insurance_risks_covered']
-
-    # Question 46
-    # TODO expect an arr of DocReq objs; parse here
-    if 'other_draft_accompiants' in json_data:
-        lc.other_draft_accompiants = json_data['other_draft_accompiants']
-        del json_data['other_draft_accompiants']
-
-    # Question 47
+    # Question 48
     lc.arranging_own_insurance = json_data['arranging_own_insurance']
     del json_data['arranging_own_insurance']
 
-    # Question 48
+    # Question 49
     if 'other_instructions' in json_data:
         lc.other_instructions = json_data['other_instructions']
         del json_data['other_instructions']
 
-    # Question 49
+    # Question 50
     lc.merch_description = json_data['merch_description']
     del json_data['merch_description']
 
-    # Question 50
-    if json_data["transferability"] == "Transferable to the applicant\'s account":
+    # Question 51
+    if json_data["transferability"] == "Transferable, fees charged to the applicant\'s account":
         lc.transferable_to_applicant = True
-    elif json_data["transferability"] == "Transferable to the beneficiary\'s account":
+    elif json_data["transferability"] == "Transferable, fees charged to the beneficiary\'s account":
         lc.transferable_to_beneficiary = True
     del json_data['transferability']
 
