@@ -3,7 +3,6 @@ from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
 
 # Abstract LC from which Pdf and Digital inherit
-# TODO add assigning employees to an LC
 class LC(models.Model):
     # -- the parties to an LC -- #
     client = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_client', null=True, blank=True)
@@ -34,10 +33,6 @@ class LC(models.Model):
     requested = models.BooleanField(default=False)
     drawn = models.BooleanField(default=False)
     paid_out = models.BooleanField(default=False)
-    """
-    class Meta:
-        abstract = True
-    """
 
 def pdf_app_response_path(lc, filename):
     # file will be uploaded to MEDIA_ROOT/bank_<id>/client_<id>/applications/%Y/%m/%d/filename
@@ -57,7 +52,6 @@ class DigitalLC(LC):
     type = models.CharField(max_length=20, default='Commercial')
 
     # -- the user-provided data of this lc per our default questions -- #
-    # TODO add all the other fields in the SVB template
     # CDM can be ('Courier', 'SWIFT') or other
     credit_delivery_means = models.CharField(max_length=250, null=True, blank=True)
     credit_amt_verbal = models.CharField(max_length=250, null=True, blank=True)

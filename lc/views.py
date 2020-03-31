@@ -13,6 +13,10 @@ import json, datetime
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
 # TODO keyerrors... unhandled key errors everywhere
+# TODO currently only allowing the issuer, client, and beneficiary to do stuff - ignoring the account_party and advising_bank, even though we are setting() them
+# TODO for claiming beneficiary / advising_bank / account_party status, we should somehow ensure the claimant is the party they claim to be.
+    # could check logged_in_user.employer.name == name submitted by applicant
+    # Could let client or issuer approve
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
@@ -76,6 +80,7 @@ def cr_lcs(request, bank_id):
                     return HttpResponseForbidden("You may only apply for an LC on behalf of your own business. Check the submitted applicant_name and applicant_address for correctness - one or both differed from the business name and address associated with this user\'s employer")
                 lc = LC(issuer = bank)
                 lc.client = employee_applying.employer
+                lc.tasked_client_employees = employee_applying
                 del json_data['applicant_name']
                 del json_data['applicant_address']
 
@@ -85,11 +90,9 @@ def cr_lcs(request, bank_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
-                    # TODO we need to think through how to let a beneficiary not yet on Bountium
-                    # set their account up and "claim" the LC
                     send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment in Bountium. 1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/register_business, 2. Claim your beneficiary status at https://bountium.org/lc/" + lc.id + "/claim_beneficiary",
                         "steve@bountium.org",
                         [employee_applying.email],
                         fail_silently=False,
@@ -139,8 +142,16 @@ def rud_lc(request, lc_id):
                 # Questions 3 and 4
                 beneficiary_name = json_data['beneficiary_name']
                 beneficiary_address = json_data['beneficiary_address']
-                # TODO if beneficiary.found, add them as lc.beneficiary
-                #      else, create the Business and send invite
+                if Business.objects.filter(name=beneficiary_name).exists():
+                    lc.beneficiary = Business.objects.get(name=beneficiary_name)
+                else:
+                    send_mail(
+                        employee_applying.employer.name + " has created their LC to work with you on Bountium",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/register_business, 2. Claim your beneficiary status at https://bountium.org/lc/" + lc.id + "/claim_beneficiary",
+                        "steve@bountium.org",
+                        [request.user.username],
+                        fail_silently=False,
+                    )
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
 
@@ -216,9 +227,9 @@ def notify_teammate(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
         if request.user.is_authenticated:
+            json_data = json.loads(request.body)
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                json_data = json.loads(request.body)
-                note = lc.issuer.bankemployee_set.get(email=request.user.username).name + ' would you like to examine the LC at https://bountium.org/lc/' + lc_id
+                note = lc.issuer.bankemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
                 if 'note' in json_data:
                     note = json_data['note']
                 send_mail(
@@ -228,12 +239,107 @@ def notify_teammate(request, lc_id):
                     [json_data['to_notify']],
                     fail_silently=False,
                 )
-            # TODO do we want to let the client or beneficiary notify their teammates too?
-            #elif lc.client.businessemployee_set...
+                lc.tasked_issuer_employees.add(json_data['to_notify'])
+            elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
+                note = lc.client.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
+                if 'note' in json_data:
+                    note = json_data['note']
+                send_mail(
+                    lc.client.businessemployee_set.get(email=request.user.username).name + ' sent a notification on Bountium',
+                    note,
+                    'steve@bountium.org',
+                    [json_data['to_notify']],
+                    fail_silently=False,
+                )
+                lc.tasked_client_employees.add(json_data['to_notify'])
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                note = lc.beneficiary.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
+                if 'note' in json_data:
+                    note = json_data['note']
+                send_mail(
+                    lc.beneficiary.businessemployee_set.get(email=request.user.username).name + ' sent a notification on Bountium',
+                    note,
+                    'steve@bountium.org',
+                    [json_data['to_notify']],
+                    fail_silently=False,
+                )
+                lc.tasked_beneficiary_employees.add(json_data['to_notify'])
             else:
-                return HttpResponseForbidden("Only employees of this LC's issuing bank may notify teammates about it")
+                return HttpResponseForbidden("Only employees of this LC's issuer, client, or beneficiary may notify teammates about it")
         else:
             return HttpResponseForbidden("Must be logged in to notify teammates about an LC")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports POST")
+
+@csrf_exempt
+def claim_beneficiary(request, lc_id):
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    if request.method == "POST":
+        if request.user.is_authenticated:
+            if BusinessEmployee.objects.filter(request.user.username).exists():
+                beneficiary_employee = BusinessEmployee.objects.get(email=request.user.username)
+                lc.beneficiary = beneficiary_employee.employer
+                lc.tasked_beneficiary_employees.add(beneficiary_employee)
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'claimed_on':datetime.datetime.now()
+                })
+            else:
+                return HttpResponseForbidden('Only a business registered on Bountium may claim beneficiary status')
+        else:
+            return HttpResponseForbidden('You must be logged in to claim beneficiary status')
+    else:
+        return HttpResponseBadRequest("This endpoint only supports POST")
+
+@csrf_exempt
+def claim_account_party(request, lc_id):
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    if request.method == "POST":
+        if request.user.is_authenticated:
+            if BusinessEmployee.objects.filter(request.user.username).exists():
+                account_party_employee = BusinessEmployee.objects.get(email=request.user.username)
+                lc.account_party = account_party_employee.employer
+                lc.tasked_account_party_employees.add(account_party_employee)
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'claimed_on':datetime.datetime.now()
+                })
+            else:
+                return HttpResponseForbidden('Only a business registered on Bountium may claim account party status')
+        else:
+            return HttpResponseForbidden('You must be logged in to claim account party status')
+    else:
+        return HttpResponseBadRequest("This endpoint only supports POST")
+
+@csrf_exempt
+def claim_advising(request, lc_id):
+    try:
+        lc = LCs.objects.get(lc=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    if request.method == "POST":
+        if request.user.is_authenticated:
+            if BankEmployee.objects.filter(request.user.username).exists():
+                advising_bank_employee = BankEmployee.objects.get(email=request.user.username)
+                lc.advising_bank = advising_bank_employee.bank
+                lc.tasked_advising_bank_employees.add(advising_bank_employee)
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'claimed_on':datetime.datetime.now()
+                })
+            else:
+                return HttpResponseForbidden('Only a bank registered on Bountium may claim advising bank status')
+        else:
+            return HttpResponseForbidden('You must be logged in to claim advising bank status')
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
@@ -469,7 +575,7 @@ def payout_lc(request, lc_id):
         return HttpResponseBadRequest("This endpoint only supports POST")
 
 # TODO should probably log received checkbox or radio values that are not one
-# of the options they're supposed to be
+# of the options they're supposed to be - thats an error, but easily fixable if we know thats what happened
 def set_lc_specifications(lc, json_data):
     # Question 5-8
     lc.credit_delivery_means = json_data['credit_delivery_means']
@@ -490,13 +596,11 @@ def set_lc_specifications(lc, json_data):
         if Business.objects.filter(name=account_party_name).exists():
             lc.account_party = Business.objects.get(name=account_party_name)
         else:
-            # TODO we need to think through how to let an account party not yet on Bountium
-            # set their account up and "claim" the LC
             send_mail(
-                employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment in Bountium. 1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                lc.client.name + " has created their LC to work with you on Bountium",
+                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://bountium.org/register_business, 2. Claim your acccount party status at https://bountium.org/lc/" + lc.id + "/claim_account_party",
                 "steve@bountium.org",
-                [employee_applying.email],
+                [list(lc.tasked_client_employees.all())[0]],
                 fail_silently=False,
             )
         del json_data['account_party']
@@ -510,7 +614,13 @@ def set_lc_specifications(lc, json_data):
         if Bank.objects.filter(name=bank_name).exists():
             lc.advising_bank = Bank.objects.get(name=bank_name)
         else:
-            # TODO invite the advising bank
+            send_mail(
+                lc.issuer.name + " has created an LC to work with you on Bountium",
+                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://bountium.org/register_bank, 2. Claim your advising bank status at https://bountium.org/lc/" + lc.id + "/claim_advising",
+                "steve@bountium.org",
+                [list(lc.tasked_issuer_employees.all())[0]],
+                fail_silently=False,
+            )
             pass
         del json_data['advising_bank']
 

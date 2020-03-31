@@ -106,7 +106,11 @@ and receive back either
 }
 Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
 
-3. /lc/{lc_id}/evaluate
+3. /lc/{lc_id}/claim_beneficiary
+4. /lc/{lc_id}/claim_account_party
+5. /lc/{lc_id}/claim_advising
+
+6. /lc/{lc_id}/evaluate
 # POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
@@ -116,15 +120,17 @@ or
     'complaints' : 'any complaints; blank if approve == true'
 }
 
-4. /lc/{lc_id}/notify
+7. /lc/{lc_id}/notify
 # POST the following
 {
     'to_notify' : 'email_of_teammate@issuingbank.com',
     'note' : 'optionally, send a note with the request'
 }
-# as a currently assigned BankEmployee of the issuing bank to notify a teammate of some need on the LC. If the teammate is not yet assigned to this LC, this will assign them to it.
+# as a currently assigned employee of the issuer, client, or beneficiary,
+# to notify a teammate of some need on the LC.
+# If the teammate is not yet assigned to this LC, this will assign them to it.
 
-5. /lc/{lc_id}/doc_req
+8. /lc/{lc_id}/doc_req
 # POST the following
 {
     'doc_name' : 'name_of_doc_req'
@@ -142,7 +148,7 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
     NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
-6. /lc/{lc_id}/doc_req/{doc_req_id}
+9. /lc/{lc_id}/doc_req/{doc_req_id}
 # GET a doc req, whether or not a doc has been submitted yet
 # PUT a number of options:
 - as the beneficiary
@@ -172,7 +178,7 @@ to update the terms of this doc req, notifying the beneficiary and client. If ne
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-7. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
+10. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
 # POST
 - as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
@@ -195,13 +201,13 @@ and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-8. /lc/{lc_id}/request
+11. /lc/{lc_id}/request
 # POST as an employee of the beneficiary to request payment
 
-9. /lc/{lc_id}/draw
+12. /lc/{lc_id}/draw
 # POST as an employee of the beneficiary to demand a draw on the LC
 
-10. /lc/{lc_id}/payout
+13. /lc/{lc_id}/payout
 # POST as an employee of the client or bank to mark an LC as paid out
 
 """
@@ -212,6 +218,15 @@ urlpatterns = [
 
     # /lc/{lc_id}
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
+
+    # /lc/{lc_id}/claim_beneficiary
+    url(r'^(?P<lc_id>[0-9]+)/claim_beneficiary/$', views.claim_beneficiary, name='claim_beneficiary'),
+
+    # /lc/{lc_id}/claim_account_party
+    url(r'^(?P<lc_id>[0-9]+)/claim_account_party/$', views.claim_account_party, name='claim_account_party'),
+
+    # /lc/{lc_id}/claim_advising
+    url(r'^(?P<lc_id>[0-9]+)/claim_advising/$', views.claim_advising, name='claim_advising'),
 
     # /lc/{lc_id}/evaluate
     url(r'^(?P<lc_id>[0-9]+)/evaluate/$', views.evaluate_lc, name='evaluate_lc'),
