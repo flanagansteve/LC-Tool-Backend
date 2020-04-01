@@ -2,7 +2,7 @@ from django.conf.urls import url
 from . import views
 
 """ Endpoints:
-1. /lc/{bank_id}
+1. /lc/{bank_id}/
 # GET all the lcs from this bank (TODO: thats probably just for testing)
 # POST the following to create an LC at this bank
     # If its a BusinessEmployee POSTing, we expect one of
@@ -31,7 +31,7 @@ from . import views
         'created_lc' : {the lc obj you just made, with an id field}
     }
 
-2. /lc/{lc_id} (a very busy endpoint lol)
+2. /lc/{lc_id}/ (a very busy endpoint lol)
 # POST to respond to a created LC application
     # If
         !(<lc for which id == lc_id>.filledOut)
@@ -106,11 +106,11 @@ and receive back either
 }
 Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
 
-3. /lc/{lc_id}/claim_beneficiary
-4. /lc/{lc_id}/claim_account_party
-5. /lc/{lc_id}/claim_advising
+3. /lc/{lc_id}/claim_beneficiary/
+4. /lc/{lc_id}/claim_account_party/
+5. /lc/{lc_id}/claim_advising/
 
-6. /lc/{lc_id}/evaluate
+6. /lc/{lc_id}/evaluate/
 # POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
@@ -120,7 +120,7 @@ or
     'complaints' : 'any complaints; blank if approve == true'
 }
 
-7. /lc/{lc_id}/notify
+7. /lc/{lc_id}/notify/
 # POST the following
 {
     'to_notify' : 'email_of_teammate@issuingbank.com',
@@ -130,7 +130,7 @@ or
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
 
-8. /lc/{lc_id}/doc_req
+8. /lc/{lc_id}/doc_req/
 # POST the following
 {
     'doc_name' : 'name_of_doc_req'
@@ -148,7 +148,7 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
     NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
-9. /lc/{lc_id}/doc_req/{doc_req_id}
+9. /lc/{lc_id}/doc_req/{doc_req_id}/
 # GET a doc req, whether or not a doc has been submitted yet
 # PUT a number of options:
 - as the beneficiary
@@ -178,7 +178,7 @@ to update the terms of this doc req, notifying the beneficiary and client. If ne
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-10. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
+10. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
 # POST
 - as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
@@ -201,55 +201,55 @@ and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-11. /lc/{lc_id}/request
+11. /lc/{lc_id}/request/
 # POST as an employee of the beneficiary to request payment
 
-12. /lc/{lc_id}/draw
+12. /lc/{lc_id}/draw/
 # POST as an employee of the beneficiary to demand a draw on the LC
 
-13. /lc/{lc_id}/payout
+13. /lc/{lc_id}/payout/
 # POST as an employee of the client or bank to mark an LC as paid out
 
 """
 
 urlpatterns = [
-    # /lc/{bank_id}
+    # /lc/{bank_id}/
     url(r'^(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
-    # /lc/{lc_id}
+    # /lc/{lc_id}/
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
 
-    # /lc/{lc_id}/claim_beneficiary
+    # /lc/{lc_id}/claim_beneficiary/
     url(r'^(?P<lc_id>[0-9]+)/claim_beneficiary/$', views.claim_beneficiary, name='claim_beneficiary'),
 
-    # /lc/{lc_id}/claim_account_party
+    # /lc/{lc_id}/claim_account_party/
     url(r'^(?P<lc_id>[0-9]+)/claim_account_party/$', views.claim_account_party, name='claim_account_party'),
 
-    # /lc/{lc_id}/claim_advising
+    # /lc/{lc_id}/claim_advising/
     url(r'^(?P<lc_id>[0-9]+)/claim_advising/$', views.claim_advising, name='claim_advising'),
 
-    # /lc/{lc_id}/evaluate
+    # /lc/{lc_id}/evaluate/
     url(r'^(?P<lc_id>[0-9]+)/evaluate/$', views.evaluate_lc, name='evaluate_lc'),
 
-    # /lc/{lc_id}/notify
+    # /lc/{lc_id}/notify/
     url(r'^(?P<lc_id>[0-9]+)/notify/$', views.notify_teammate, name='notify_teammate'),
 
-    # /lc/{lc_id}/doc_req
+    # /lc/{lc_id}/doc_req/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/$', views.cr_doc_reqs, name='cr_doc_reqs'),
 
-    # /lc/{lc_id}/doc_req/{doc_req_id}
-    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)$', views.rud_doc_req, name='rud_doc_req'),
+    # /lc/{lc_id}/doc_req/{doc_req_id}/
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/$', views.rud_doc_req, name='rud_doc_req'),
 
-    # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate
-    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)$', views.evaluate_doc_req, name='evaluate_doc_req'),
+    # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/$', views.evaluate_doc_req, name='evaluate_doc_req'),
 
-    # /lc/{lc_id}/request
+    # /lc/{lc_id}/request/
     url(r'^(?P<lc_id>[0-9]+)/request/$', views.request_lc, name='request_lc'),
 
-    # /lc/{lc_id}/draw
+    # /lc/{lc_id}/draw/
     url(r'^(?P<lc_id>[0-9]+)/draw/$', views.draw_lc, name='draw_lc'),
 
-    # /lc/{lc_id}/payout
+    # /lc/{lc_id}/payout/
     url(r'^(?P<lc_id>[0-9]+)/payout/$', views.payout_lc, name='payout_lc'),
 
 ]

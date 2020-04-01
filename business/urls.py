@@ -19,10 +19,10 @@ from . import views
     'users_employer : { business obj }
 }
 
-2. /business/{business_id}
+2. /business/{business_id}/
 # GET/PUT/Delete to Read/Update/Delete businesses
 
-3. # /business/{business_id}/invite_teammate
+3. # /business/{business_id}/invite_teammate/
 # POST with
 {"invitee_email":"some@address.com"}
 # to invite a teammate, and receive back the invitation status as one of:
@@ -32,10 +32,10 @@ from . import views
     "employee" : {the employee object with that email}
 }
 
-4. /business/{business_id}/{employee_id}
+4. /business/{business_id}/{employee_id}/
 # RUD a business's employees
 
-5. /business/{business_id}/register
+5. /business/{business_id}/register/
 POST with:
 {
     'email'
@@ -58,12 +58,12 @@ urlpatterns = [
     # /business/{business_id}
     url(r'^(?P<business_id>[0-9]+)/$', views.rud_business, name='rud_business'),
 
-    # /business/{business_id}/invite_teammate
-    url(r'^(?P<business_id>[0-9]+)/invite_teammate', views.invite_teammate, name='invite_teammate'),
+    # /business/{business_id}/invite_teammate/
+    url(r'^(?P<business_id>[0-9]+)/invite_teammate/', views.invite_teammate, name='invite_teammate'),
 
-    # /business/{business_id}/{employee_id}
+    # /business/{business_id}/{employee_id}/
     url(r'^(?P<business_id>[0-9]+)/(?P<employee_id>[0-9]+)/$', views.rud_business_employee, name='rud_business_employee'),
 
-    # /business/{business_id}/register
-    url(r'^(?P<business_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation')
+    # /business/{business_id}/register/
+    url(r'^(?P<business_id>[0-9]+)/register/$', views.register_upon_invitation, name='register_upon_invitation')
 ]

@@ -19,10 +19,10 @@ from . import views
     "users_employer":{the Bank this user just created}
 }
 
-2. /bank/{bank_id}
+2. /bank/{bank_id}/
 # GET/PUT/Delete to Read/Update/Delete banks
 
-3. # /bank/{bank_id}/invite_teammate
+3. # /bank/{bank_id}/invite_teammate/
 # POST with
 {"invitee_email":"some@address.com"}
 # to invite a teammate, and receive back the invitation status as one of:
@@ -32,10 +32,10 @@ from . import views
     "employee" : {the employee object with that email}
 }
 
-4. /bank/{bank_id}/{employee_id}
+4. /bank/{bank_id}/{employee_id}/
 # RUD a bank's employees
 
-5. /bank/{bank_id}/register
+5. /bank/{bank_id}/register/
 # POST with:
 {
     'email'
@@ -50,14 +50,14 @@ to register upon invitation, and receive back
     "users_employer":{the Bank this user just created}
 }
 
-6. /bank/{bank_id}/pdf_app
+6. /bank/{bank_id}/pdf_app/
 # GET to receive back:
 pdf_application.pdf
 
 # POST, as an employee of the bank, with:
 pdf_application.pdf
 
-7. /bank/{bank_id}/digital_app
+7. /bank/{bank_id}/digital_app/
 # GET to receive back:
 [
     {the LCAppQuestion obj of each question in this banks app}
@@ -76,7 +76,7 @@ to add more questions to your bank's lc application, and receive back
     'new_app' : [{the LCAppQuestion obj of each question in this banks app}]
 }
 
-8. /bank/{bank_id}/digital_app/{question_id}
+8. /bank/{bank_id}/digital_app/{question_id}/
 # DeLETE as an employee of the bank to delete a non-default question
 receive back
 {
@@ -102,23 +102,23 @@ urlpatterns = [
     # /bank/
     url(r'^$', views.index, name='index'),
 
-    # /bank/{bank_id}
+    # /bank/{bank_id}/
     url(r'^(?P<bank_id>[0-9]+)/$', views.rud_bank, name='rud_bank'),
 
     # /bank/{bank_id}/invite_teammate
-    url(r'^(?P<bank_id>[0-9]+)/invite_teammate', views.invite_teammate, name='invite_teammate'),
+    url(r'^(?P<bank_id>[0-9]+)/invite_teammate/', views.invite_teammate, name='invite_teammate'),
 
     # /bank/{bank_id}/{employee_id}
     url(r'^(?P<bank_id>[0-9]+)/(?P<employee_id>[0-9]+)/$', views.rud_bank_employee, name='rud_bank_employee'),
 
     # /bank/{bank_id}/register
-    url(r'^(?P<bank_id>[0-9]+)/register$', views.register_upon_invitation, name='register_upon_invitation'),
+    url(r'^(?P<bank_id>[0-9]+)/register/$', views.register_upon_invitation, name='register_upon_invitation'),
 
     # TODO
     # /bank/{bank_id}/pdf_app
 
     # /bank/{bank_id}/digital_app
-    url(r'^(?P<bank_id>[0-9]+)/digital_app$', views.cr_digital_app, name='cr_digital_app'),
+    url(r'^(?P<bank_id>[0-9]+)/digital_app/$', views.cr_digital_app, name='cr_digital_app'),
 
     # /bank/{bank_id}/digital_app/{question_id}
     url(r'^(?P<bank_id>[0-9]+)/digital_app/(?P<question_id>[0-9]+)/$', views.ud_digital_app, name='ud_digital_app'),
