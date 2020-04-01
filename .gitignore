@@ -1,3 +1,4 @@
 */__pycache__
+*/migrations/__pycache__
 db.sqlite3
 lc_tool_backend/credentials.py
