@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
 from django.core import serializers
+from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
@@ -113,13 +114,13 @@ def invite_teammate(request, business_id):
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
                     # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
                     link = "https://bountium.org/register"
-                    send_mail(
+                    """send_mail(
                         business.businessemployee_set.get(email=request.user.username).name + " has re-invited you to join their team on Bountium",
                         "Register at " + link,
                         'steve@bountium.org',
                         [invitee_email],
                         fail_silently=False,
-                    )
+                    )"""
                     now = str(datetime.datetime.now())
                     response["status"] = "re-invited on " + now
             # 1b. If they have not been invited
@@ -127,13 +128,13 @@ def invite_teammate(request, business_id):
                 # 2. create the user and mail an invite
                 # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
                 link = "https://bountium.org/register"
-                send_mail(
+                """send_mail(
                     business.businessemployee_set.get(email=request.user.username).name + " has invited you to join their team on Bountium!",
                     "Register at " + link,
                     'steve@bountium.org',
                     [invitee_email],
                     fail_silently=False,
-                )
+                )"""
                 # 3. save them and return status:invited [now]
                 business.businessemployee_set.create(email = invitee_email)
                 now = str(datetime.datetime.now())
