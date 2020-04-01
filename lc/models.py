@@ -2,6 +2,8 @@ from django.db import models
 from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
 
+# TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
+
 # Abstract LC from which Pdf and Digital inherit
 class LC(models.Model):
     # -- the parties to an LC -- #
@@ -19,6 +21,7 @@ class LC(models.Model):
     tasked_advising_bank_employees = models.ManyToManyField(BankEmployee, related_name='%(app_label)s_%(class)s_tasked_advising_bank_employees')
 
     # -- the status of an LC -- #
+    client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
     beneficiary_approved = models.BooleanField(default=False)
     # of the form 'On XXX date, [beneficiary or issuer] disapproved, saying:'

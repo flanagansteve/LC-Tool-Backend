@@ -122,7 +122,7 @@ def cr_lcs(request, bank_id):
 @csrf_exempt
 def rud_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with that id")
     if request.method == "GET":
@@ -171,6 +171,7 @@ def rud_lc(request, lc_id):
                 # TODO would be good to somehow mark changes from the prev version...
                 set_lc_specifications(lc, json_data)
                 lc.issuer_approved = True
+                lc.client_approved = False
                 lc.beneficiary_approved = False
                 lc.save()
                 # TODO notify parties
@@ -181,6 +182,7 @@ def rud_lc(request, lc_id):
                 # TODO would be good to somehow mark changes from the prev version...
                 set_lc_specifications(lc, json_data)
                 lc.issuer_approved = False
+                lc.client_approved = False
                 lc.beneficiary_approved = True
                 lc.save()
                 # TODO notify parties
@@ -191,6 +193,7 @@ def rud_lc(request, lc_id):
                 # TODO would be good to somehow mark changes from the prev version...
                 set_lc_specifications(lc, json_data)
                 lc.issuer_approved = False
+                lc.client_approved = True
                 lc.beneficiary_approved = False
                 lc.save()
                 # TODO notify parties
@@ -202,10 +205,10 @@ def rud_lc(request, lc_id):
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or lc.client.businessemployee_set.filter(email=request.user.username).exists():
-                if lc.issuer_approved and lc.beneficiary_approved:
+                if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                     return JsonResponse({
                         'success':False,
-                        'reason':'This LC has been approved by both the issuer and beneficiary, and may not be revoked'
+                        'reason':'This LC has been approved by all parties, and may not be revoked'
                     })
                 else:
                     # TODO should probably notify everybody of this deletion
@@ -221,11 +224,90 @@ def rud_lc(request, lc_id):
         return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
 
 @csrf_exempt
+def get_live_lcs(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with that id")
+    return JsonResponse(
+        list(
+            LC.objects.filter(
+                issuer=bank,
+                client_approved=True, issuer_approved=True, beneficiary_approved=True,
+                paid_out=False
+            )
+        ),
+    safe=False)
+
+@csrf_exempt
+def get_lcs_awaiting_issuer(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with that id")
+    return JsonResponse(
+        list(
+            LC.objects.filter(
+                issuer=bank,
+                issuer_approved=False
+            )
+        ),
+    safe=False)
+
+@csrf_exempt
+def get_lcs_awaiting_beneficiary(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with that id")
+    return JsonResponse(
+        list(
+            LC.objects.filter(
+                issuer=bank,
+                beneficiary_approved=False,
+                paid_out=False
+            )
+        ),
+    safe=False)
+
+@csrf_exempt
+def get_lcs_awaiting_client(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        return Http404("No bank with that id")
+    return JsonResponse(
+        list(
+            LC.objects.filter(
+                issuer=bank,
+                client_approved=True,
+                paid_out=False
+            )
+        ),
+    safe=False)
+
+@csrf_exempt
+def get_lcs_by_client(request, business_id):
+    try:
+        client = Business.objects.get(id=business_id)
+    except Business.DoesNotExist:
+        return Http404("No business with that id")
+    return JsonResponse(list(LC.objects.filter(client=client)), safe=False)
+
+@csrf_exempt
+def get_lcs_by_beneficiary(request, business_id):
+    try:
+        beneficiary = Business.objects.get(id=business_id)
+    except Business.DoesNotExist:
+        return Http404("No business with that id")
+    return JsonResponse(list(LC.objects.filter(beneficiary=beneficiary)), safe=False)
+
+@csrf_exempt
 def notify_teammate(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        return Http404("No lc with that id")
     if request.method == "POST":
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
@@ -275,7 +357,7 @@ def notify_teammate(request, lc_id):
 @csrf_exempt
 def claim_beneficiary(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -299,7 +381,7 @@ def claim_beneficiary(request, lc_id):
 @csrf_exempt
 def claim_account_party(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -323,7 +405,7 @@ def claim_account_party(request, lc_id):
 @csrf_exempt
 def claim_advising(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -347,7 +429,7 @@ def claim_advising(request, lc_id):
 @csrf_exempt
 def evaluate_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -371,8 +453,17 @@ def evaluate_lc(request, lc_id):
                     'success':True,
                     'evaluated_on':datetime.datetime.now()
                 })
+            elif lc.client.businessemployee_set(email=request.user.username).exists():
+                lc.client_approved = json_data['approve']
+                if 'complaints' in json_data:
+                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['complaints']
+                # TODO notify parties
+                return JsonResponse({
+                    'success':True,
+                    'evaluated_on':datetime.datetime.now()
+                })
             else:
-                return HttpResponseForbidden('Only the issuer or beneficiary to an LC may evaluate it')
+                return HttpResponseForbidden('Only the issuer, beneficiary, or client to an LC may evaluate it')
         else:
             return HttpResponseForbidden('You must be logged in to evaluate an LC')
     else:
@@ -395,7 +486,7 @@ def cr_doc_reqs(request, lc_id):
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 try:
-                    lc = LCs.objects.get(lc=lc_id)
+                    lc = LCs.objects.get(id=lc_id)
                 except LC.DoesNotExist:
                     return Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
@@ -413,7 +504,7 @@ def cr_doc_reqs(request, lc_id):
 @csrf_exempt
 def rud_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     try:
@@ -479,7 +570,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     try:
@@ -515,7 +606,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
 @csrf_exempt
 def request_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
@@ -536,7 +627,7 @@ def request_lc(request, lc_id):
 @csrf_exempt
 def draw_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
@@ -557,7 +648,7 @@ def draw_lc(request, lc_id):
 @csrf_exempt
 def payout_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(lc=lc_id)
+        lc = LCs.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":

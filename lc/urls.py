@@ -2,7 +2,7 @@ from django.conf.urls import url
 from . import views
 
 """ Endpoints:
-1. /lc/{bank_id}/
+1. /lc/by_bank/{bank_id}/
 # GET all the lcs from this bank (TODO: thats probably just for testing)
 # POST the following to create an LC at this bank
     # If its a BusinessEmployee POSTing, we expect one of
@@ -213,11 +213,32 @@ and receive back
 """
 
 urlpatterns = [
-    # /lc/{bank_id}/
-    url(r'^(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
+    # /lc/by_bank/{bank_id}/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
     # /lc/{lc_id}/
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
+
+    # /lc/by_bank/{bank_id}/live/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/live/$', views.get_live_lcs, name='get_live_lcs'),
+
+    # /lc/by_bank/{bank_id}/awaiting_issuer_approval/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_issuer_approval/$', views.get_lcs_awaiting_issuer, name='get_lcs_awaiting_issuer'),
+
+    # /lc/by_bank/{bank_id}/awaiting_beneficiary_approval/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_beneficiary_approval/$', views.get_lcs_awaiting_beneficiary, name='get_lcs_awaiting_beneficiary'),
+
+    # /lc/by_bank/{bank_id}/awaiting_client_approval/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_client_approval/$', views.get_lcs_awaiting_client, name='get_lcs_awaiting_client'),
+
+    # /lc/by_client/{business_id}/
+    url(r'^by_client/(?P<business_id>[0-9]+)/$', views.get_lcs_by_client, name='get_lcs_by_client'),
+
+    # /lc/by_beneficiary/{business_id}/
+    url(r'^by_beneficiary/(?P<business_id>[0-9]+)/$', views.get_lcs_by_beneficiary, name='get_lcs_by_beneficiary'),
+
+    # /lc/{lc_id}/notify/
+    url(r'^(?P<lc_id>[0-9]+)/notify/$', views.notify_teammate, name='notify_teammate'),
 
     # /lc/{lc_id}/claim_beneficiary/
     url(r'^(?P<lc_id>[0-9]+)/claim_beneficiary/$', views.claim_beneficiary, name='claim_beneficiary'),
@@ -230,9 +251,6 @@ urlpatterns = [
 
     # /lc/{lc_id}/evaluate/
     url(r'^(?P<lc_id>[0-9]+)/evaluate/$', views.evaluate_lc, name='evaluate_lc'),
-
-    # /lc/{lc_id}/notify/
-    url(r'^(?P<lc_id>[0-9]+)/notify/$', views.notify_teammate, name='notify_teammate'),
 
     # /lc/{lc_id}/doc_req/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/$', views.cr_doc_reqs, name='cr_doc_reqs'),
