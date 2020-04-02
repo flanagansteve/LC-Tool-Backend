@@ -51,6 +51,7 @@ def cr_lcs(request, bank_id):
                         # or return an error, since the business exists, so it
                         # was probably a mistyped email
                         pass
+                lc.application_date = datetime.datetime.now()
                 lc.save()
                 # 2. mail the applicant_employee_contact with a link to fill out
                 #    the rest of the LC via:
@@ -106,6 +107,7 @@ def cr_lcs(request, bank_id):
                 # 3. notify a bank employee maybe? TODO decide
 
                 # 4. save and return back!
+                lc.application_date = datetime.datetime.now()
                 lc.save()
                 return JsonResponse({
                     'success' : True,

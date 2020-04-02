@@ -32,6 +32,7 @@ class LC(models.Model):
     # theoretically it could be 'satisfied' and 'pay out more than once' -
     # the difference is, of course, that satisfaction is a bad thing
     # and not expected.
+    application_date = models.DateField()
     terms_satisfied = models.BooleanField(default=False)
     requested = models.BooleanField(default=False)
     drawn = models.BooleanField(default=False)
