@@ -31,7 +31,7 @@ def user_login(request):
                     "users_employer" : user_employee.bank.toJSON()
                 })
             else:
-                user_employee = BusinesssEmployee.objects.get(email=user.username)
+                user_employee = BusinessEmployee.objects.get(email=user.username)
                 return JsonResponse({
                     "session_expiry" : request.session.get_expiry_date(),
                     "user_employee" : model_to_dict(user_employee),
