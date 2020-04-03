@@ -50,7 +50,7 @@ def index(request):
 @csrf_exempt
 def rud_business(request, business_id):
     try:
-        business = Bank.objects.get(id=business_id)
+        business = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
         return Http404("No business with id " + business_id)
     if request.method == "GET":
