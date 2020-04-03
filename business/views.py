@@ -46,7 +46,7 @@ def index(request):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
-# TODO more specifically authenticate this - who within a bank is allowed to R, and to UD?
+# TODO more specifically authenticate this - who within a business is allowed to R, and to UD?
 @csrf_exempt
 def rud_business(request, business_id):
     try:
@@ -152,7 +152,7 @@ def invite_teammate(request, business_id):
 # and receive back
 # - access token
 # - the employee obj
-# - the bank obj
+# - the business obj
 @csrf_exempt
 def register_upon_invitation(request, business_id):
     if request.method == "POST":
@@ -162,7 +162,7 @@ def register_upon_invitation(request, business_id):
         # a. get the business by business_id. Check for error
         try:
             business = Business.objects.get(id=business_id)
-        except Bank.DoesNotExist:
+        except Business.DoesNotExist:
             return Http404("There is no business with id " + business_id)
         # b. check if there is a businessemployee with email=new_user_data['email'],
         #    and blanks for all other fields. Check for error on either.
@@ -200,7 +200,7 @@ def rud_business_employee(request, business_id, employee_id):
     if request.method == "GET":
         try:
             return JsonResponse(model_to_dict(business.businessemployee_set.get(id=employee_id)))
-        except BankEmployee.DoesNotExist:
+        except BusinessEmployee.DoesNotExist:
             return Http404(str(business) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
         if request.user.is_authenticated:
