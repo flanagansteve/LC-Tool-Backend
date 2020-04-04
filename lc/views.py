@@ -90,9 +90,9 @@ def cr_lcs(request, bank_id):
                 if (applicant_name != employee_applying.employer.name
                     or applicant_address != employee_applying.employer.address):
                     return HttpResponseForbidden("You may only apply for an LC on behalf of your own business. Check the submitted applicant_name and applicant_address for correctness - one or both differed from the business name and address associated with this user\'s employer")
-                lc = LC(issuer = bank)
-                lc.client = employee_applying.employer
-                lc.tasked_client_employees = employee_applying
+                lc = LC(issuer = bank, client = employee_applying.employer, application_date = datetime.datetime.now())
+                lc.save()
+                lc.tasked_client_employees.add(employee_applying)
                 del json_data['applicant_name']
                 del json_data['applicant_address']
 
@@ -109,6 +109,7 @@ def cr_lcs(request, bank_id):
                         [employee_applying.email],
                         fail_silently=False,
                     )"""
+                    pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
 
@@ -117,8 +118,6 @@ def cr_lcs(request, bank_id):
                 # 3. notify a bank employee maybe? TODO decide
 
                 # 4. save and return back!
-                lc.application_date = datetime.datetime.now()
-                lc.save()
                 return JsonResponse({
                     'success' : True,
                     'created_lc' : model_to_dict(lc)
@@ -165,6 +164,7 @@ def rud_lc(request, lc_id):
                         [request.user.username],
                         fail_silently=False,
                     )"""
+                    pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
 
@@ -707,6 +707,7 @@ def set_lc_specifications(lc, json_data):
                 [list(lc.tasked_client_employees.all())[0]],
                 fail_silently=False,
             )"""
+            pass
         del json_data['account_party']
         del json_data['applicant_and_ap_j_and_s_obligated']
         del json_data['account_party_name']
