@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
+from django.forms.models import model_to_dict
 import json, datetime
 
 # TODO only handling DigitalLCs for now
@@ -835,20 +836,20 @@ def set_lc_specifications(lc, json_data):
     del json_data['named_place_of_destination']
 
     # Question 37
-    if json_data['commecial_invoice_required'] != "No":
+    if json_data['commercial_invoice_required'] != "No":
         required_values = (
-            "Version required: " + json_data['commecial_invoice_required'][5:]
+            "Version required: " + json_data['commercial_invoice_required'][5:]
             + "\nIncoterms to show: " + lc.incoterms_to_show
             + "\nNamed place of destination: " + lc.named_place_of_destination
         )
-        required_values += '\nCopies: ' + json_data['commercial_invoice_copies']
+        required_values += "\nCopies: " + str(json_data['commercial_invoice_copies'])
         del json_data['commercial_invoice_copies']
         lc.documentaryrequirement_set.create(
             doc_name="Commercial Invoice",
             required_values=required_values,
             due_date=lc.draft_presentation_date
         )
-    del json_data['commecial_invoice_required']
+    del json_data['commercial_invoice_required']
 
     # Question 38
     if 'required_transport_docs' in json_data:
