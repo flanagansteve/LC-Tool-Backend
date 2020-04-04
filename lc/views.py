@@ -732,10 +732,10 @@ def set_lc_specifications(lc, json_data):
                 fail_silently=False,
             )"""
             pass
-        del json_data['account_party']
-        del json_data['applicant_and_ap_j_and_s_obligated']
-        del json_data['account_party_name']
-        del json_data['account_party_address']
+    del json_data['account_party']
+    del json_data['applicant_and_ap_j_and_s_obligated']
+    del json_data['account_party_name']
+    del json_data['account_party_address']
 
     # Question 13
     if 'advising_bank' in json_data:
@@ -816,6 +816,7 @@ def set_lc_specifications(lc, json_data):
         lc.paying_acceptance_and_discount_charges = lc.beneficiary
     else:
         lc.paying_acceptance_and_discount_charges = lc.client
+    del json_data['paying_acceptance_and_discount_charges']
 
     # Question 28
     lc.deferred_payment_date = json_data['deferred_payment_date']
