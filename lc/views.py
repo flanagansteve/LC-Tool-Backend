@@ -43,7 +43,6 @@ def cr_lcs(request, bank_id):
                 # 1. create the initial LC instance with parties, creating new
                 #    accounts/inviting registrants where applicable
                 lc = LC(issuer = bank)
-                lc.application_date = datetime.datetime.now()
                 lc.save()
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
                 if Business.objects.filter(name=json_data['applicant']).exists():
@@ -152,6 +151,9 @@ def rud_lc(request, lc_id):
             json_data = json.loads(request.body)
             # The client's employee is responding to an LC application their bank started for them
             if lc.client.businessemployee_set.filter(email=request.user.username).exists():
+
+                lc.application_date = datetime.datetime.now()
+                
                 # Questions 3 and 4
                 beneficiary_name = json_data['beneficiary_name']
                 beneficiary_address = json_data['beneficiary_address']
