@@ -75,7 +75,7 @@ def cr_lcs(request, bank_id):
                 # 3. return success & the created lc
                 return JsonResponse({
                     'success':True,
-                    'created_lc':model_to_dict(lc)
+                    'created_lc':lc.to_dict()
                 })
             elif BusinessEmployee.objects.filter(email=request.user.username).exists():
                 employee_applying = BusinessEmployee.objects.get(email=request.user.username)
@@ -120,7 +120,7 @@ def cr_lcs(request, bank_id):
                 # 4. save and return back!
                 return JsonResponse({
                     'success' : True,
-                    'created_lc' : model_to_dict(lc)
+                    'created_lc' : lc.to_dict()
                 })
 
             else:
@@ -141,7 +141,7 @@ def rud_lc(request, lc_id):
             if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
                 or lc.client.businessemployee_set.filter(email=request.user.username).exists()
                 or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
-                return JsonResponse(model_to_dict(lc))
+                return JsonResponse(lc.to_dict())
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
         else:
@@ -153,7 +153,7 @@ def rud_lc(request, lc_id):
             if lc.client.businessemployee_set.filter(email=request.user.username).exists():
 
                 lc.application_date = datetime.datetime.now()
-                
+
                 # Questions 3 and 4
                 beneficiary_name = json_data['beneficiary_name']
                 beneficiary_address = json_data['beneficiary_address']

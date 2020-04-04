@@ -47,7 +47,7 @@ def index(request):
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(bank.bankemployee_set.get(email=json_data['email'])),
-            "users_employer" : bank.toJSON()
+            "users_employer" : bank.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
@@ -67,7 +67,7 @@ def rud_bank(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with id " + bank_id)
     if request.method == "GET":
-        return JsonResponse(bank.toJSON())
+        return JsonResponse(bank.to_dict())
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email = request.user.username).exists():
@@ -91,7 +91,7 @@ def rud_bank(request, bank_id):
                 bank.save()
                 return JsonResponse({
                     "user_employee" : model_to_dict(bank.bankemployee_set.get(email = request.user.username)),
-                    "users_employer" : bank.toJSON()
+                    "users_employer" : bank.to_dict()
                 })
             else:
                 return HttpResponseForbidden("You may only update the organisation you are employed by.")
@@ -199,7 +199,7 @@ def register_upon_invitation(request, bank_id):
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
-            "users_employer" : bank.toJSON()
+            "users_employer" : bank.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
@@ -226,7 +226,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                     bank_employee.delete()
                     return JsonResponse({
                         "success" : True,
-                        "users_employer" : bank.toJSON()
+                        "users_employer" : bank.to_dict()
                     })
             else:
                 return Http404(str(bank) + " does not have an employee with id " + employee_id)
@@ -252,7 +252,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                 return Http404(str(bank) + " does not have an employee with id " + employee_id)
             return JsonResponse({
                 "user_employee" : model_to_dict(bank.bankemployee_set.get(id = employee_id)),
-                "users_employer" : bank.toJSON()
+                "users_employer" : bank.to_dict()
             })
         else:
             return HttpResponseForbidden("You must be logged in to update your account.")

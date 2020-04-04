@@ -34,7 +34,7 @@ class Bank(models.Model):
 
     # Using because django's JSON serialiser doesnt like nested
     # serialising into LCAppQuestion
-    def toJSON(self):
+    def to_dict(self):
         return {
             'name' : self.name,
             'id' : self.id,
