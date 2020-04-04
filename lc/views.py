@@ -385,6 +385,7 @@ def claim_beneficiary(request, lc_id):
                 beneficiary_employee = BusinessEmployee.objects.get(email=request.user.username)
                 lc.beneficiary = beneficiary_employee.employer
                 lc.tasked_beneficiary_employees.add(beneficiary_employee)
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -409,6 +410,7 @@ def claim_account_party(request, lc_id):
                 account_party_employee = BusinessEmployee.objects.get(email=request.user.username)
                 lc.account_party = account_party_employee.employer
                 lc.tasked_account_party_employees.add(account_party_employee)
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -433,6 +435,7 @@ def claim_advising(request, lc_id):
                 advising_bank_employee = BankEmployee.objects.get(email=request.user.username)
                 lc.advising_bank = advising_bank_employee.bank
                 lc.tasked_advising_bank_employees.add(advising_bank_employee)
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -458,6 +461,7 @@ def evaluate_lc(request, lc_id):
                 lc.issuer_approved = json_data['approve']
                 if 'complaints' in json_data:
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + json_data['complaints']
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -467,6 +471,7 @@ def evaluate_lc(request, lc_id):
                 lc.beneficiary_approved = json_data['approve']
                 if 'complaints' in json_data:
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary said: ' + json_data['complaints']
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -476,6 +481,7 @@ def evaluate_lc(request, lc_id):
                 lc.client_approved = json_data['approve']
                 if 'complaints' in json_data:
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['complaints']
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -495,7 +501,7 @@ def cr_doc_reqs(request, lc_id):
             if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
                 or lc.client.businessemployee_set.filter(email=request.user.username).exists()
                 or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
-                this_lcs_doc_reqs = LC.objects.get(id=lc_id)
+                this_lcs_doc_reqs = LC.objects.get(id=lc_id).documentaryrequirement_set
                 return JsonResponse(list(this_lcs_doc_reqs.values()), safe=False)
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
@@ -510,6 +516,7 @@ def cr_doc_reqs(request, lc_id):
                     return Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
                 lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'], link_to_submitted_doc = json['link_to_submitted_doc'])
+                lc.save()
                 return JsonResponse({
                     'doc_req_id' : lc.documentaryrequirement_set.get(doc_name=json_data['doc_name']).id
                 })
@@ -545,13 +552,15 @@ def rud_doc_req(request, lc_id, doc_req_id):
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 if 'due_date' in json_date:
-                    if json_data['due_date'] > lc.due_date:
+                    if json_data['due_date'] > doc_req.due_date:
                         doc_req.modified_and_awaiting_beneficiary_approval = True
                     doc_req.due_date = json_data['due_date']
                 if 'required_values' in json_data:
-                    if json_data['required_values'] != lc.required_values:
+                    if json_data['required_values'] != doc_req.required_values:
                         doc_req.modified_and_awaiting_beneficiary_approval = True
                     doc_req.required_values = json_data['required_values']
+                doc_req.save()
+                lc.save()
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
@@ -603,6 +612,8 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 doc_req.satisfied = json_data['approve']
                 if 'complaints' in json_data:
                     doc_req.submitted_doc_complaints = json_data['complaints']
+                doc_req.save()
+                lc.save()
                 return JsonResponse({
                     'success':True,
                     'doc_reqs':list(lc.documentaryrequirement_set)
@@ -611,6 +622,8 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 doc_req.modified_and_awaiting_beneficiary_approval = json_data['approve']
                 if 'complaints' in json_data:
                     doc_req.modification_complaints = json_data['complaints']
+                doc_req.save()
+                lc.save()
                 return JsonResponse({
                     'success':True,
                     'doc_reqs':list(lc.documentaryrequirement_set)
@@ -632,6 +645,7 @@ def request_lc(request, lc_id):
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set(email=request.user.username).exists():
                 lc.requested = True
+                lc.save()
                 return JsonResponse({
                     'success':True,
                     'requested_on':datetime.datetime.now()
@@ -653,6 +667,7 @@ def draw_lc(request, lc_id):
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set(email=request.user.username).exists():
                 lc.drawn = True
+                lc.save()
                 return JsonResponse({
                     'success':True,
                     'drawn_on':datetime.datetime.now()
@@ -674,6 +689,7 @@ def payout_lc(request, lc_id):
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set(email=request.user.username).exists():
                 lc.paid_out = True
+                lc.save()
                 return JsonResponse({
                     'success':True,
                     'marked_paid_out_on':datetime.datetime.now()
