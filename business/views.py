@@ -22,7 +22,7 @@ def index(request):
         json_data = json.loads(request.body)
         # 1. create the business
         try:
-            business = Business(name = json_data['new_business_name'])
+            business = Business(name = json_data['new_business_name'], address = json_data['new_business_address'])
             business.save()
         except KeyError:
             return HttpResponseBadRequest("Badly formatted json to create a business. Need a \"new_business_name\" field")

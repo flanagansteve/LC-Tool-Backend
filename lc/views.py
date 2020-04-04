@@ -18,6 +18,7 @@ import json, datetime
 # TODO for claiming beneficiary / advising_bank / account_party status, we should somehow ensure the claimant is the party they claim to be.
     # could check logged_in_user.employer.name == name submitted by applicant
     # Could let client or issuer approve
+# TODO ensure the links in all send_mails are accurate per ryan
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
@@ -41,6 +42,8 @@ def cr_lcs(request, bank_id):
                 # 1. create the initial LC instance with parties, creating new
                 #    accounts/inviting registrants where applicable
                 lc = LC(issuer = bank)
+                lc.application_date = datetime.datetime.now()
+                lc.save()
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
                 if Business.objects.filter(name=json_data['applicant']).exists():
                     if lc.client.businessemployee_set.filter(email=json_data['applicant_employee_contact']).exists():
@@ -51,17 +54,24 @@ def cr_lcs(request, bank_id):
                         # or return an error, since the business exists, so it
                         # was probably a mistyped email
                         pass
-                lc.application_date = datetime.datetime.now()
-                lc.save()
-                # 2. mail the applicant_employee_contact with a link to fill out
-                #    the rest of the LC via:
-                """send_mail
-                    bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
-                    "1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
-                    "steve@bountium.org",
-                    [json_data['applicant_employee_contact']],
-                    fail_silently=False,
-                )"""
+                    # TODO mail the business inviting them to fill the app out
+                    """send_mail
+                        bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
+                        "Fill out your app at https://bountium.org/lc/" + lc.id,
+                        "steve@bountium.org",
+                        [json_data['applicant_employee_contact']],
+                        fail_silently=False,
+                    )"""
+                else:
+                    # TODO create the business, and invite applicant_employee_contact to register then fill out the LC app
+                    """send_mail
+                        bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
+                        "1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                        "steve@bountium.org",
+                        [json_data['applicant_employee_contact']],
+                        fail_silently=False,
+                    )"""
+                    pass
                 # 3. return success & the created lc
                 return JsonResponse({
                     'success':True,
@@ -124,7 +134,7 @@ def cr_lcs(request, bank_id):
 @csrf_exempt
 def rud_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with that id")
     if request.method == "GET":
@@ -307,7 +317,7 @@ def get_lcs_by_beneficiary(request, business_id):
 @csrf_exempt
 def notify_teammate(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with that id")
     if request.method == "POST":
@@ -359,7 +369,7 @@ def notify_teammate(request, lc_id):
 @csrf_exempt
 def claim_beneficiary(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -383,7 +393,7 @@ def claim_beneficiary(request, lc_id):
 @csrf_exempt
 def claim_account_party(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -407,7 +417,7 @@ def claim_account_party(request, lc_id):
 @csrf_exempt
 def claim_advising(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -431,7 +441,7 @@ def claim_advising(request, lc_id):
 @csrf_exempt
 def evaluate_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
@@ -488,7 +498,7 @@ def cr_doc_reqs(request, lc_id):
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 try:
-                    lc = LCs.objects.get(id=lc_id)
+                    lc = LC.objects.get(id=lc_id)
                 except LC.DoesNotExist:
                     return Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
@@ -506,7 +516,7 @@ def cr_doc_reqs(request, lc_id):
 @csrf_exempt
 def rud_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     try:
@@ -572,7 +582,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     try:
@@ -608,7 +618,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
 @csrf_exempt
 def request_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
@@ -629,7 +639,7 @@ def request_lc(request, lc_id):
 @csrf_exempt
 def draw_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
@@ -650,7 +660,7 @@ def draw_lc(request, lc_id):
 @csrf_exempt
 def payout_lc(request, lc_id):
     try:
-        lc = LCs.objects.get(id=lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
