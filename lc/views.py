@@ -44,7 +44,7 @@ def cr_lcs(request, bank_id):
             if bank.bankemployee_set.filter(email=request.user.username).exists():
                 # 1. create the initial LC instance with parties, creating new
                 #    accounts/inviting registrants where applicable
-                lc = LC(issuer = bank)
+                lc = DigitalLC(issuer = bank)
                 lc.save()
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
                 if Business.objects.filter(name=json_data['applicant']).exists():
@@ -92,7 +92,7 @@ def cr_lcs(request, bank_id):
                 if (applicant_name != employee_applying.employer.name
                     or applicant_address != employee_applying.employer.address):
                     return HttpResponseForbidden("You may only apply for an LC on behalf of your own business. Check the submitted applicant_name and applicant_address for correctness - one or both differed from the business name and address associated with this user\'s employer")
-                lc = LC(issuer = bank, client = employee_applying.employer, application_date = datetime.datetime.now())
+                lc = DigitalLC(issuer = bank, client = employee_applying.employer, application_date = datetime.datetime.now())
                 lc.save()
                 lc.tasked_client_employees.add(employee_applying)
                 del json_data['applicant_name']
@@ -134,9 +134,10 @@ def cr_lcs(request, bank_id):
 
 @csrf_exempt
 def rud_lc(request, lc_id):
+    # TODO, technically GET-ing this endpoint should equally support PdfLC and DigitalLC
     try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
+        lc = DigitalLC.objects.get(id=lc_id)
+    except DigitalLC.DoesNotExist:
         return Http404("No lc with that id")
     if request.method == "GET":
         if request.user.is_authenticated:

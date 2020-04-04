@@ -67,7 +67,7 @@ class LC(models.Model):
         if self.account_party:
             to_return['account_party'] = model_to_dict(self.account_party)
         if self.advising_bank:
-            to_return['advising_bank'] = model_to_dict(self.advising_bank)
+            to_return['advising_bank'] = self.advising_bank.to_dict()
         return to_return
 
     # TODO TODO TODO
@@ -179,6 +179,81 @@ class DigitalLC(LC):
     other_data = models.CharField(max_length=1000)
 
     # TODO someday: def to_pdf()
+
+    # Overriding the above to add more fields
+    def to_dict(self):
+        to_return = {
+            'id' : self.id,
+            'issuer' : self.issuer.to_dict(),
+            'tasked_client_employees' : self.get_tasked_client_employees(),
+            'tasked_beneficiary_employees' : self.get_tasked_beneficiary_employees(),
+            'tasked_issuer_employees' : self.get_tasked_issuer_employees(),
+            'tasked_account_party_employees' : self.get_tasked_account_party_employees(),
+            'tasked_advising_bank_employees' : self.get_tasked_advising_bank_employees(),
+            'client_approved' : self.client_approved,
+            'beneficiary_approved' : self.beneficiary_approved,
+            'issuer_approved' : self.issuer_approved,
+            'latest_version_notes' : self.latest_version_notes,
+            'application_date' : self.application_date,
+            'terms_satisfied' : self.terms_satisfied,
+            'requested' : self.requested,
+            'drawn' : self.drawn,
+            'paid_out' : self.paid_out,
+            'type' : self.type,
+            'credit_delivery_means' : self.credit_delivery_means,
+            'credit_amt_verbal' : self.credit_amt_verbal,
+            'credit_amt' : self.credit_amt,
+            'currency_denomination' : self.currency_denomination,
+            'applicant_and_ap_j_and_s_obligated' : self.applicant_and_ap_j_and_s_obligated,
+            'forex_contract_num' : self.forex_contract_num,
+            'exchange_rate_tolerance' : self.exchange_rate_tolerance,
+            'purchased_item' : self.purchased_item,
+            'units_of_measure' : self.units_of_measure,
+            'units_purchased' : self.units_purchased,
+            'unit_error_tolerance' : self.unit_error_tolerance,
+            'confirmation_means' : self.confirmation_means,
+            'expiration_date' : self.expiration_date,
+            'draft_presentation_date' : self.draft_presentation_date,
+            'drafts_invoice_value' : self.drafts_invoice_value,
+            'credit_availability' : self.credit_availability,
+            'deferred_payment_date' : self.deferred_payment_date,
+            'delegated_negotiating_banks' : self.get_delegated_negotiating_banks(),
+            'partial_shipment_allowed' : self.partial_shipment_allowed,
+            'transshipment_allowed' : self.transshipment_allowed,
+            'merch_charge_location' : self.merch_charge_location,
+            'late_charge_date' : self.late_charge_date,
+            'charge_transportation_location' : self.charge_transportation_location,
+            'incoterms_to_show' : self.incoterms_to_show,
+            'named_place_of_destination' : self.named_place_of_destination,
+            'doc_reception_notifees' : self.doc_reception_notifees,
+            'arranging_own_insurance' : self.arranging_own_insurance,
+            'other_instructions' : self.other_instructions,
+            'merch_description' : self.merch_description,
+            'transferable_to_applicant' : self.transferable_to_applicant,
+            'transferable_to_beneficiary' : self.transferable_to_beneficiary,
+            'other_data' : self.other_data
+        }
+        if self.client:
+            to_return['client'] = model_to_dict(self.client)
+        if self.beneficiary:
+            to_return['beneficiary'] = model_to_dict(self.beneficiary)
+        if self.account_party:
+            to_return['account_party'] = model_to_dict(self.account_party)
+        if self.advising_bank:
+            to_return['advising_bank'] = model_to_dict(self.advising_bank)
+        if self.paying_other_banks_fees:
+            to_return['paying_other_banks_fees'] = model_to_dict(self.paying_other_banks_fees)
+        if self.credit_expiry_location:
+            to_return['credit_expiry_location'] = self.credit_expiry_location.to_dict()
+        if self.paying_acceptance_and_discount_charges:
+            to_return['paying_acceptance_and_discount_charges'] = model_to_dict(self.paying_acceptance_and_discount_charges)
+        return to_return
+
+    def get_delegated_negotiating_banks(self):
+        to_return = []
+        for bank in self.delegated_negotiating_banks.all():
+            to_return.append(bank.to_dict())
+        return to_return
 
 class LCAppQuestionResponse(models.Model):
     for_question = models.ForeignKey(LCAppQuestion, on_delete=models.CASCADE)
