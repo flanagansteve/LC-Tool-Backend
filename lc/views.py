@@ -30,8 +30,10 @@ def cr_lcs(request, bank_id):
     if request.method == "GET":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email=request.user.username).exists():
-                this_banks_lcs = LC.objects.filter(issuer=bank_id)
-                return JsonResponse(list(this_banks_lcs.values()), safe=False)
+                to_return = []
+                for lc in LC.objects.filter(issuer=bank):
+                    to_return.append(lc.to_dict())
+                return JsonResponse(to_return, safe=False)
             else:
                 return HttpResponseForbidden("Must be an employee of the bank to see all the LCs this bank has issued")
         else:
@@ -244,15 +246,14 @@ def get_live_lcs(request, bank_id):
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
-    return JsonResponse(
-        list(
-            LC.objects.filter(
-                issuer=bank,
-                client_approved=True, issuer_approved=True, beneficiary_approved=True,
-                paid_out=False
-            )
-        ),
-    safe=False)
+    to_return = []
+    for lc in LC.objects.filter(
+            issuer=bank,
+            client_approved=True, issuer_approved=True, beneficiary_approved=True,
+            paid_out=False
+        ):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_awaiting_issuer(request, bank_id):
@@ -260,14 +261,13 @@ def get_lcs_awaiting_issuer(request, bank_id):
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
-    return JsonResponse(
-        list(
-            LC.objects.filter(
-                issuer=bank,
-                issuer_approved=False
-            )
-        ),
-    safe=False)
+    to_return = []
+    for lc in LC.objects.filter(
+            issuer=bank,
+            issuer_approved=False
+        ):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_awaiting_beneficiary(request, bank_id):
@@ -275,15 +275,14 @@ def get_lcs_awaiting_beneficiary(request, bank_id):
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
-    return JsonResponse(
-        list(
-            LC.objects.filter(
-                issuer=bank,
-                beneficiary_approved=False,
-                paid_out=False
-            )
-        ),
-    safe=False)
+    to_return = []
+    for lc in LC.objects.filter(
+            issuer=bank,
+            beneficiary_approved=False,
+            paid_out=False
+        ):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_awaiting_client(request, bank_id):
@@ -291,15 +290,14 @@ def get_lcs_awaiting_client(request, bank_id):
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
-    return JsonResponse(
-        list(
-            LC.objects.filter(
-                issuer=bank,
-                client_approved=True,
-                paid_out=False
-            )
-        ),
-    safe=False)
+    to_return = []
+    for lc in LC.objects.filter(
+            issuer=bank,
+            client_approved=False,
+            paid_out=False
+        ):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_by_client(request, business_id):
@@ -307,7 +305,10 @@ def get_lcs_by_client(request, business_id):
         client = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
         return Http404("No business with that id")
-    return JsonResponse(list(LC.objects.filter(client=client)), safe=False)
+    to_return = []
+    for lc in LC.objects.filter(client=client):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_by_beneficiary(request, business_id):
@@ -315,7 +316,10 @@ def get_lcs_by_beneficiary(request, business_id):
         beneficiary = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
         return Http404("No business with that id")
-    return JsonResponse(list(LC.objects.filter(beneficiary=beneficiary)), safe=False)
+    to_return = []
+    for lc in LC.objects.filter(beneficiary=beneficiary):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def notify_teammate(request, lc_id):
