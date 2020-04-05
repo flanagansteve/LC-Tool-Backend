@@ -48,7 +48,11 @@ from . import views
         'success' : true || false
     }
 # PUT to update an LC
-# TODO this handles redlining - how are we going to save the history of redlined changes to render back to the user?
+    # TODO update this ... now supports clients, now accepts update as
+    {
+        'lc' : {the new lc obj, possibly partial},
+        'latest_version_notes' : 'latest version notes the user sbmitted with their update'
+    }
     # If its a BusinessEmployee PUTing...
         # If
             !(<lc for which id == lc_id>.beneficiaryApproved)
@@ -184,28 +188,26 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
 
 15. /lc/{lc_id}/doc_req/{doc_req_id}/
 # GET a doc req, whether or not a doc has been submitted yet
-# PUT a number of options:
-- as the beneficiary
-{
-    'link_to_submitted_doc' : https://somecloudhost.com/link_to_the/file.pdf
-}
-to submit a candidate for this doc req, notifying the issuer of this change and reverting the doc reqs status to unapproved. Receive back
+
+# PUT a submitted file to this as the beneficiary,
+in the request body,
+as content-type=application/pdf, and receive back
 {
     'success':true || false,
     'modified_and_notified_on':str(datetime.datetime.now()),
     'doc_req':{the new doc_req's data and status}
 }
-- as the issuer, any subset of the following fields
-{
+
+# PUT {
     'due_date':int of the unix time of the new due date,
     'required_values':'a new required values str'
-}
-to update the terms of this doc req, notifying the beneficiary and client. If new due_date !> old due_date, or new required_values !== old required_values, the lc will be marked as modified_and_awaiting_beneficiary_approval. Receive back
+} as any party to the LC to update its terms, and receive back
 {
     'success':true || false,
     'modified_and_notified_on':str(datetime.datetime.now()),
     'doc_req':{the new doc_req's data and status}
 }
+
 # DeLETE to delete a doc req as the issuer, and receive back
 {
     'success': true || false,

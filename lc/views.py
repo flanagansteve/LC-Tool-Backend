@@ -185,41 +185,65 @@ def rud_lc(request, lc_id):
             return HttpResponseForbidden("Must be logged in to create an LC")
     elif request.method == "PUT":
         if request.user.is_authenticated:
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                # TODO would be good to somehow mark changes from the prev version...
-                set_lc_specifications(lc, json_data)
-                lc.issuer_approved = True
-                lc.client_approved = False
-                lc.beneficiary_approved = False
-                lc.save()
-                # TODO notify parties
+            if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                 return JsonResponse({
-                    'success' : True
-                })
-            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
-                # TODO would be good to somehow mark changes from the prev version...
-                set_lc_specifications(lc, json_data)
-                lc.issuer_approved = False
-                lc.client_approved = False
-                lc.beneficiary_approved = True
-                lc.save()
-                # TODO notify parties
-                return JsonResponse({
-                    'success' : True
-                })
-            elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
-                # TODO would be good to somehow mark changes from the prev version...
-                set_lc_specifications(lc, json_data)
-                lc.issuer_approved = False
-                lc.client_approved = True
-                lc.beneficiary_approved = False
-                lc.save()
-                # TODO notify parties
-                return JsonResponse({
-                    'success' : True
+                    'success':False,
+                    'reason':'This LC has been approved by all parties, and may not be modified'
                 })
             else:
-                return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may modify it')
+                if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                    # TODO would be good to somehow mark changes from the prev version...
+                    for key in json_data['lc']:
+                        if key in dir(lc):
+                            setattr(lc, key, json_data['lc'][key])
+                        else:
+                            # TODO log a bad field but dont flip out
+                            pass
+                    lc.issuer_approved = True
+                    lc.client_approved = False
+                    lc.beneficiary_approved = False
+                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + json_data['latest_version_notes']
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success' : True
+                    })
+                elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                    # TODO would be good to somehow mark changes from the prev version...
+                    for key in json_data['lc']:
+                        if key in dir(lc):
+                            setattr(lc, key, json_data['lc'][key])
+                        else:
+                            # TODO log a bad field but dont flip out
+                            pass
+                    lc.issuer_approved = False
+                    lc.client_approved = False
+                    lc.beneficiary_approved = True
+                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary updated: ' + json_data['latest_version_notes']
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success' : True
+                    })
+                elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
+                    # TODO would be good to somehow mark changes from the prev version...
+                    for key in json_data['lc']:
+                        if key in dir(lc):
+                            setattr(lc, key, json_data['lc'][key])
+                        else:
+                            # TODO log a bad field but dont flip out
+                            pass
+                    lc.issuer_approved = False
+                    lc.client_approved = True
+                    lc.beneficiary_approved = False
+                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['latest_version_notes']
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success' : True
+                    })
+                else:
+                    return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may modify it')
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or lc.client.businessemployee_set.filter(email=request.user.username).exists():
@@ -571,7 +595,13 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     'doc_req':model_to_dict(doc_req)
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
-                doc_req.link_to_submitted_doc = json_data['link_to_submitted_doc']
+                # TODO let beneficiaries PUT here
+                # If content-type == 'application/pdf'
+                    # send to request.body to aws
+                    # doc_req.link_to_submitted_doc = json_data['link']
+                    # doc_req.save()
+                # else, content-type == 'application/json'
+                    # its a modification of terms like above
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
