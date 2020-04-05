@@ -241,6 +241,7 @@ def rud_lc(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
 
+# TODO the following 6 functions, get_X_lcs, should be abstracted & parameterised
 @csrf_exempt
 def get_live_lcs(request, bank_id):
     try:
@@ -374,6 +375,7 @@ def notify_teammate(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
+# TODO the following 3 functions, claim_x, should be abstracted & parameterised
 @csrf_exempt
 def claim_beneficiary(request, lc_id):
     try:
@@ -636,6 +638,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
 
+# TODO the following 3 functions, [make a boolean true]_lc, should be abstracted & parameterised
 @csrf_exempt
 def request_lc(request, lc_id):
     try:

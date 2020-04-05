@@ -42,6 +42,9 @@ class LC(models.Model):
     # Using because django's JSON serialiser doesnt like nested
     # serialising into LCAppQuestion
     def to_dict(self):
+        return self.get_base_fields()
+
+    def get_base_fields():
         to_return = {
             'id' : self.id,
             'issuer' : self.issuer.to_dict(),
@@ -67,7 +70,7 @@ class LC(models.Model):
         if self.account_party:
             to_return['account_party'] = model_to_dict(self.account_party)
         if self.advising_bank:
-            to_return['advising_bank'] = self.advising_bank.to_dict()
+            to_return['advising_bank'] = model_to_dict(self.advising_bank)
         return to_return
 
     # TODO TODO TODO
@@ -90,7 +93,6 @@ class LC(models.Model):
         for employee in self.tasked_issuer_employees.all():
             to_return.append(model_to_dict(employee))
         return to_return
-
 
     def get_tasked_account_party_employees(self):
         to_return = []
@@ -182,23 +184,8 @@ class DigitalLC(LC):
 
     # Overriding the above to add more fields
     def to_dict(self):
-        to_return = {
-            'id' : self.id,
-            'issuer' : self.issuer.to_dict(),
-            'tasked_client_employees' : self.get_tasked_client_employees(),
-            'tasked_beneficiary_employees' : self.get_tasked_beneficiary_employees(),
-            'tasked_issuer_employees' : self.get_tasked_issuer_employees(),
-            'tasked_account_party_employees' : self.get_tasked_account_party_employees(),
-            'tasked_advising_bank_employees' : self.get_tasked_advising_bank_employees(),
-            'client_approved' : self.client_approved,
-            'beneficiary_approved' : self.beneficiary_approved,
-            'issuer_approved' : self.issuer_approved,
-            'latest_version_notes' : self.latest_version_notes,
-            'application_date' : self.application_date,
-            'terms_satisfied' : self.terms_satisfied,
-            'requested' : self.requested,
-            'drawn' : self.drawn,
-            'paid_out' : self.paid_out,
+        to_return = self.get_base_fields()
+        to_return.update({
             'type' : self.type,
             'credit_delivery_means' : self.credit_delivery_means,
             'credit_amt_verbal' : self.credit_amt_verbal,
@@ -232,15 +219,7 @@ class DigitalLC(LC):
             'transferable_to_applicant' : self.transferable_to_applicant,
             'transferable_to_beneficiary' : self.transferable_to_beneficiary,
             'other_data' : self.other_data
-        }
-        if self.client:
-            to_return['client'] = model_to_dict(self.client)
-        if self.beneficiary:
-            to_return['beneficiary'] = model_to_dict(self.beneficiary)
-        if self.account_party:
-            to_return['account_party'] = model_to_dict(self.account_party)
-        if self.advising_bank:
-            to_return['advising_bank'] = model_to_dict(self.advising_bank)
+        })
         if self.paying_other_banks_fees:
             to_return['paying_other_banks_fees'] = model_to_dict(self.paying_other_banks_fees)
         if self.credit_expiry_location:
