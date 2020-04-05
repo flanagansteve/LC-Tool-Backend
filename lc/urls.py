@@ -106,21 +106,36 @@ and receive back either
 }
 Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
 
-3. /lc/{lc_id}/claim_beneficiary/
-4. /lc/{lc_id}/claim_account_party/
-5. /lc/{lc_id}/claim_advising/
+3. /lc/by_bank/{bank_id}/live/
+# GET, and receive back a list of LCs that are
+- issued by the bank with id=bank_id
+- approved by all parties
+- not yet paid out
 
-6. /lc/{lc_id}/evaluate/
-# POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
-    (<lc for which id == lc_id>.issuer)
-or
-    (<lc for which id == lc_id>.beneficiary)
-{
-    'approve': true || false,
-    'complaints' : 'any complaints; blank if approve == true'
-}
+4. /lc/by_bank/{bank_id}/awaiting_issuer_approval/
+# GET, and receive back a list of LCs that are
+- issued (or requested to be issued via using their bountium-hosted application) by the bank with id=bank_id
+- not yet approved by the issuer
 
-7. /lc/{lc_id}/notify/
+5. /lc/by_bank/{bank_id}/awaiting_beneficiary_approval/
+# GET, and receive back a list of LCs that are
+- issued by the bank with id=bank_id
+- not yet approved by the beneficiary
+
+6. /lc/by_bank/{bank_id}/awaiting_client_approval/
+# GET, and receive back a list of LCs that are
+- issued by the bank with id=bank_id
+- not yet approved by the client
+
+7. /lc/by_client/{business_id}/
+# GET, and receive back a list of LCs that are
+- credited from (or, if not yet approved, applied from) the business for which id=business_id
+
+8. /lc/by_beneficiary/{business_id}/
+# GET, and receive back a list of LCs that are
+- credited to (or, if not yet approved, proposed-to-be-credited-to) the business for which id=business_id
+
+9. /lc/{lc_id}/notify/
 # POST the following
 {
     'to_notify' : 'email_of_teammate@issuingbank.com',
@@ -130,7 +145,26 @@ or
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
 
-8. /lc/{lc_id}/doc_req/
+10. /lc/{lc_id}/claim_beneficiary/
+# POST as a logged-in BusinessEmployee to claim beneficiary status on this lc
+
+11. /lc/{lc_id}/claim_account_party/
+# POST as a logged-in BusinessEmployee to claim account party status on this lc
+
+12. /lc/{lc_id}/claim_advising/
+# POST as a logged-in BankEmployee to claim advising bank status on this lc
+
+13. /lc/{lc_id}/evaluate/
+# POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
+    (<lc for which id == lc_id>.issuer)
+or
+    (<lc for which id == lc_id>.beneficiary)
+{
+    'approve': true || false,
+    'complaints' : 'any complaints; blank if approve == true'
+}
+
+14. /lc/{lc_id}/doc_req/
 # POST the following
 {
     'doc_name' : 'name_of_doc_req'
@@ -148,7 +182,7 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
     NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
-9. /lc/{lc_id}/doc_req/{doc_req_id}/
+15. /lc/{lc_id}/doc_req/{doc_req_id}/
 # GET a doc req, whether or not a doc has been submitted yet
 # PUT a number of options:
 - as the beneficiary
@@ -178,7 +212,7 @@ to update the terms of this doc req, notifying the beneficiary and client. If ne
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-10. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
+16. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
 # POST
 - as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
@@ -201,13 +235,13 @@ and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-11. /lc/{lc_id}/request/
+17. /lc/{lc_id}/request/
 # POST as an employee of the beneficiary to request payment
 
-12. /lc/{lc_id}/draw/
+18. /lc/{lc_id}/draw/
 # POST as an employee of the beneficiary to demand a draw on the LC
 
-13. /lc/{lc_id}/payout/
+19. /lc/{lc_id}/payout/
 # POST as an employee of the client or bank to mark an LC as paid out
 
 """
