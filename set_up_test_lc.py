@@ -9,21 +9,33 @@ def create_perfect_lc():
     client = Business(name = "Client McClient's Imports", address = "48 Sutton Road, Needham, MA")
     client.save()
     client_emp = client.businessemployee_set.create(name="Client McClient", title="Owner", email="client@cmi.com")
+    test_client_user = User.objects.create_user(username="client@cmi.com",
+                             email="client@cmi.com",
+                             password="password")
     beneficiary = Business(name = "Beneficiary McBeneficiary's Exports", address = "204 Hemenway St, Boston, MA")
     beneficiary.save()
-    bene_emp = beneficiary.businessemployee_set.create(name="Client McClient", title="Owner", email="client@cmi.com")
+    bene_emp = beneficiary.businessemployee_set.create(name="Beneficiary McBeneficiary", title="Owner", email="beneficiary@bmb.com")
+    test_bene_user = User.objects.create_user(username="beneficiary@bmb.com",
+                             email="beneficiary@bmb.com",
+                             password="password")
     issuer = Bank(name = "Issuer McIssuerson's Bank")
     issuer.save()
     issuer_emp = issuer.bankemployee_set.create(name="Issuer McIssuerson", title="Owner", email="issuer@imb.com")
-    test_user = User.objects.create_user(username="issuer@imb.com",
+    test_issuer_user = User.objects.create_user(username="issuer@imb.com",
                              email="issuer@imb.com",
                              password="password")
     account_party = Business(name = "AccountParty McAccountParty's Accounts", address = "366 Auburndale St, Newton, MA")
     account_party.save()
     ap_emp = account_party.businessemployee_set.create(name="AccountParty McAccountParty", title="Owner", email="accountparty@ama.com")
+    test_ap_user = User.objects.create_user(username="accountparty@ama.com",
+                             email="accountparty@ama.com",
+                             password="password")
     advising_bank = Bank(name = "Advisey McAdvisey's Bank")
     advising_bank.save()
     ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@amb.com")
+    test_ad_user = User.objects.create_user(username="advisey@amb.com",
+                             email="advisey@amb.com",
+                             password="password")
     lc = DigitalLC(
         issuer = issuer,
         client = client,
@@ -70,4 +82,9 @@ def create_perfect_lc():
     lc.tasked_account_party_employees.add(ap_emp)
     lc.tasked_advising_bank_employees.add(ad_emp)
     lc.delegated_negotiating_banks.add(issuer)
+    lc.documentaryrequirement_set.create(
+        doc_name="Commercial Invoice",
+        required_values="It must be... commercial.",
+        due_date="2020-04-21"
+    )
     print(lc.to_dict())
