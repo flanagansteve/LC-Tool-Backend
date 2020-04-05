@@ -47,7 +47,7 @@ def cr_lcs(request, bank_id):
                 lc = DigitalLC(issuer = bank)
                 lc.save()
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
-                if Business.objects.filter(name=json_data['applicant']).exists():
+                if Business.objects.filter(name=json_data['applicant_name']).exists():
                     if lc.client.businessemployee_set.filter(email=json_data['applicant_employee_contact']).exists():
                         lc.tasked_client_employees.add(Business.businessemployee_set.get(email=json_data['applicant_employee_contact']))
                     else:
