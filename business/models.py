@@ -9,9 +9,12 @@ class Business(models.Model):
     address = models.CharField(max_length=250)
 
     # Goes up to 999T,999B,999M,999K,999.99
-    annual_cashflow = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    balance_available = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    approved_credit = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    # NOTE default-ing with dummy values for now
+    annual_cashflow = models.DecimalField(max_digits=20, decimal_places=2, default=40000)
+    balance_available = models.DecimalField(max_digits=20, decimal_places=2, default=200000)
+    approved_credit = models.DecimalField(max_digits=20, decimal_places=2, default=240000)
+    # TODO should be an enum among supported countries
+    country = models.CharField(max_length=250, default="USA")
 
     def __str__(self):
         return self.name
