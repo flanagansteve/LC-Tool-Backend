@@ -44,7 +44,7 @@ class LC(models.Model):
     def to_dict(self):
         return self.get_base_fields()
 
-    def get_base_fields():
+    def get_base_fields(self):
         to_return = {
             'id' : self.id,
             'issuer' : self.issuer.to_dict(),
@@ -99,7 +99,6 @@ class LC(models.Model):
         for employee in self.tasked_account_party_employees.all():
             to_return.append(model_to_dict(employee))
         return to_return
-
 
     def get_tasked_advising_bank_employees(self):
         to_return = []
