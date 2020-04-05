@@ -408,7 +408,7 @@ def claim_beneficiary(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
         if request.user.is_authenticated:
-            if BusinessEmployee.objects.filter(request.user.username).exists():
+            if BusinessEmployee.objects.filter(email=request.user.username).exists():
                 beneficiary_employee = BusinessEmployee.objects.get(email=request.user.username)
                 lc.beneficiary = beneficiary_employee.employer
                 lc.tasked_beneficiary_employees.add(beneficiary_employee)
@@ -433,7 +433,7 @@ def claim_account_party(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
         if request.user.is_authenticated:
-            if BusinessEmployee.objects.filter(request.user.username).exists():
+            if BusinessEmployee.objects.filter(email=request.user.username).exists():
                 account_party_employee = BusinessEmployee.objects.get(email=request.user.username)
                 lc.account_party = account_party_employee.employer
                 lc.tasked_account_party_employees.add(account_party_employee)
@@ -458,7 +458,7 @@ def claim_advising(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method == "POST":
         if request.user.is_authenticated:
-            if BankEmployee.objects.filter(request.user.username).exists():
+            if BankEmployee.objects.filter(email=request.user.username).exists():
                 advising_bank_employee = BankEmployee.objects.get(email=request.user.username)
                 lc.advising_bank = advising_bank_employee.bank
                 lc.tasked_advising_bank_employees.add(advising_bank_employee)
