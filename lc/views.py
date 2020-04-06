@@ -18,7 +18,7 @@ import json, datetime, boto3
 # TODO for claiming beneficiary / advising_bank / account_party status, we should somehow ensure the claimant is the party they claim to be.
     # could check logged_in_user.employer.name == name submitted by applicant
     # Could let client or issuer approve
-# TODO ensure the links in all send_mails are accurate per ryan
+# TODO ensure the links in all send_mail(s are accurate per ryan
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
@@ -56,22 +56,22 @@ def cr_lcs(request, bank_id):
                         # was probably a mistyped email
                         pass
                     # TODO mail the business inviting them to fill the app out
-                    """send_mail
+                    send_mail(
                         bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
-                        "Fill out your app at https://bountium.org/lc/" + lc.id,
+                        "Fill out your app at https://app.bountium.org/business/finishApp/" + lc.id,
                         "steve@bountium.org",
                         [json_data['applicant_employee_contact']],
                         fail_silently=False,
-                    )"""
+                    )
                 else:
                     # TODO create the business, and invite applicant_employee_contact to register then fill out the LC app
-                    """send_mail
+                    send_mail(
                         bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
-                        "1. Set your business up at https://bountium.org/register_business, 2. fill out your app at https://bountium.org/lc/" + lc.id,
+                        "1. Set your business up at https://app.bountium.org/business/register, 2. fill out your app at https://bountium.org/business/finishApp/" + lc.id,
                         "steve@bountium.org",
                         [json_data['applicant_employee_contact']],
                         fail_silently=False,
-                    )"""
+                    )
                     pass
                 # 3. return success & the created lc
                 return JsonResponse({
@@ -103,13 +103,13 @@ def cr_lcs(request, bank_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
-                    """send_mail
+                    send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/register_business, 2. Claim your beneficiary status at https://bountium.org/lc/" + lc.id + "/claim_beneficiary",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + lc.id + "/",
                         "steve@bountium.org",
                         [employee_applying.email],
                         fail_silently=False,
-                    )"""
+                    )
                     pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
@@ -162,13 +162,13 @@ def rud_lc(request, lc_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
-                    """send_mail
+                    send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/register_business, 2. Claim your beneficiary status at https://bountium.org/lc/" + lc.id + "/claim_beneficiary",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + lc.id + "/",
                         "steve@bountium.org",
                         [request.user.username],
                         fail_silently=False,
-                    )"""
+                    )
                     pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
@@ -356,40 +356,40 @@ def notify_teammate(request, lc_id):
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                note = lc.issuer.bankemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
+                note = lc.issuer.bankemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://app.bountium.org/bank/lc/' + lc_id
                 if 'note' in json_data:
                     note = json_data['note']
-                """send_mail
+                send_mail(
                     lc.issuer.bankemployee_set.get(email=request.user.username).name + ' sent a notification on Bountium',
                     note,
                     'steve@bountium.org',
                     [json_data['to_notify']],
                     fail_silently=False,
-                )"""
+                )
                 lc.tasked_issuer_employees.add(json_data['to_notify'])
             elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
-                note = lc.client.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
+                note = lc.client.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://app.bountium.org/business/lc/' + lc_id
                 if 'note' in json_data:
                     note = json_data['note']
-                """send_mail
+                send_mail(
                     lc.client.businessemployee_set.get(email=request.user.username).name + ' sent a notification on Bountium',
                     note,
                     'steve@bountium.org',
                     [json_data['to_notify']],
                     fail_silently=False,
-                )"""
+                )
                 lc.tasked_client_employees.add(json_data['to_notify'])
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
-                note = lc.beneficiary.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://bountium.org/lc/' + lc_id
+                note = lc.beneficiary.businessemployee_set.get(email=request.user.username).name + ' would like you to examine the LC at https://app.bountium.org/business/lc/' + lc_id
                 if 'note' in json_data:
                     note = json_data['note']
-                """send_mail
+                send_mail(
                     lc.beneficiary.businessemployee_set.get(email=request.user.username).name + ' sent a notification on Bountium',
                     note,
                     'steve@bountium.org',
                     [json_data['to_notify']],
                     fail_silently=False,
-                )"""
+                )
                 lc.tasked_beneficiary_employees.add(json_data['to_notify'])
             else:
                 return HttpResponseForbidden("Only employees of this LC's issuer, client, or beneficiary may notify teammates about it")
@@ -493,7 +493,7 @@ def evaluate_lc(request, lc_id):
                     'success':True,
                     'evaluated_on':str(datetime.datetime.now())
                 })
-            elif lc.beneficiary.businessemployee_set(email=request.user.username).exists():
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 lc.beneficiary_approved = json_data['approve']
                 if 'complaints' in json_data:
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary said: ' + json_data['complaints']
@@ -503,7 +503,7 @@ def evaluate_lc(request, lc_id):
                     'success':True,
                     'evaluated_on':str(datetime.datetime.now())
                 })
-            elif lc.client.businessemployee_set(email=request.user.username).exists():
+            elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
                 lc.client_approved = json_data['approve']
                 if 'complaints' in json_data:
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['complaints']
@@ -774,13 +774,13 @@ def set_lc_specifications(lc, json_data):
         if Business.objects.filter(name=account_party_name).exists():
             lc.account_party = Business.objects.get(name=account_party_name)
         else:
-            """send_mail
+            send_mail(
                 lc.client.name + " has created their LC to work with you on Bountium",
-                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://bountium.org/register_business, 2. Claim your acccount party status at https://bountium.org/lc/" + lc.id + "/claim_account_party",
+                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your acccount party status at https://app.bountium.org/business/claimAccountParty/" + lc.id + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_client_employees.all())[0]],
                 fail_silently=False,
-            )"""
+            )
             pass
     del json_data['account_party']
     del json_data['applicant_and_ap_j_and_s_obligated']
@@ -793,13 +793,13 @@ def set_lc_specifications(lc, json_data):
         if Bank.objects.filter(name=bank_name).exists():
             lc.advising_bank = Bank.objects.get(name=bank_name)
         else:
-            """send_mail
+            send_mail(
                 lc.issuer.name + " has created an LC to work with you on Bountium",
-                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://bountium.org/register_bank, 2. Claim your advising bank status at https://bountium.org/lc/" + lc.id + "/claim_advising",
+                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://app.bountium.org/bank/register, 2. Claim your advising bank status at https://app.bountium.org/bank/claimAdvising/" + lc.id + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_issuer_employees.all())[0]],
                 fail_silently=False,
-            )"""
+            )
             pass
         del json_data['advising_bank']
 
