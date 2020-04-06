@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
-import json, datetime
+import json, datetime, boto3
 
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
