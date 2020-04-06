@@ -695,7 +695,7 @@ def request_lc(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
         if request.user.is_authenticated:
-            if lc.beneficiary.businessemployee_set(email=request.user.username).exists():
+            if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 lc.requested = True
                 lc.save()
                 return JsonResponse({
@@ -717,7 +717,7 @@ def draw_lc(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
         if request.user.is_authenticated:
-            if lc.beneficiary.businessemployee_set(email=request.user.username).exists():
+            if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 lc.drawn = True
                 lc.save()
                 return JsonResponse({
@@ -739,7 +739,7 @@ def payout_lc(request, lc_id):
         return Http404("No lc with id " + lc_id)
     if request.method=="POST":
         if request.user.is_authenticated:
-            if lc.issuer.bankemployee_set(email=request.user.username).exists():
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.paid_out = True
                 lc.save()
                 return JsonResponse({
