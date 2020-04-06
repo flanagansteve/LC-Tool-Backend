@@ -266,6 +266,7 @@ class DocumentaryRequirement(models.Model):
 
     def to_dict(self):
         return {
+            'id' : self.id,
             'doc_name' : self.doc_name,
             'required_values' : self.required_values,
             'due_date' : self.due_date,
