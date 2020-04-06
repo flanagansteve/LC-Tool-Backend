@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.http import HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.core import serializers
 from django.core.mail import send_mail
@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
-import json, datetime, boto3
+import json, datetime, boto3, os, time
 
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
@@ -751,6 +751,36 @@ def payout_lc(request, lc_id):
             return HttpResponseForbidden('You must be logged in to mark an LC as paid out')
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
+
+@csrf_exempt
+def get_dr_file(request, lc_id, doc_req_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    try:
+        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
+    except DocumentaryRequirement.DoesNotExist:
+        return Http404("No doc req with that id associated with this lc")
+    if request.method == 'GET':
+        if request.user.is_authenticated:
+            if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
+                or lc.client.businessemployee_set.filter(email=request.user.username).exists()
+                or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
+                submitted_doc_name = lc.link_to_submitted_doc[lc.link_to_submitted_doc.index('aws.com/') + len('aws.com/'):]
+                s3 = boto3.resource('s3')
+                s3client = boto3.client('s3')
+                file_size = s3client.head_object(Bucket='docreqs', Key=submitted_doc_name)['ContentLength']
+                the_file = s3.Bucket('docreqs').download_file(Filename='/tmp/' + submitted_doc_name, Key=submitted_doc_name)
+                while os.path.getsize('/tmp/' + submitted_doc_name) < file_size:
+                    time.sleep(1)
+                return FileResponse(open('/tmp/' + submitted_doc_name, 'rb'), content_type='application/pdf')
+            else:
+                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements\' submitted candidate docs')
+        else:
+            return HttpResponseForbidden('You must be logged in to get a documentary requirement\'s submitted file')
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET")
 
 # TODO should probably log received checkbox or radio values that are not one
 # of the options they're supposed to be - thats an error, but easily fixable if we know thats what happened

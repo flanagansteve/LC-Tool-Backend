@@ -246,6 +246,9 @@ and receive back
 19. /lc/{lc_id}/payout/
 # POST as an employee of the client or bank to mark an LC as paid out
 
+20. /lc/{lc_id}/doc_req/{doc_req_id}/file/
+# GET the actual file contents of the last submitted candidate for this doc req
+
 """
 
 urlpatterns = [
@@ -305,5 +308,8 @@ urlpatterns = [
 
     # /lc/{lc_id}/payout/
     url(r'^(?P<lc_id>[0-9]+)/payout/$', views.payout_lc, name='payout_lc'),
+
+    # /lc/{lc_id}/doc_req/{doc_req_id}/file/
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
 
 ]
