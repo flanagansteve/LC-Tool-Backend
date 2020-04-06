@@ -9,7 +9,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
-from django.forms.models import model_to_dict
 import json, datetime
 
 # TODO only handling DigitalLCs for now
@@ -569,7 +568,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
             if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
                 or lc.client.businessemployee_set.filter(email=request.user.username).exists()
                 or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
-                return JsonResponse(model_to_dict(doc_req))
+                return JsonResponse(doc_req.to_dict())
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
         else:
@@ -592,7 +591,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 return JsonResponse({
                     'success':True,
                     'modified_and_notified_on':str(datetime.datetime.now()),
-                    'doc_req':model_to_dict(doc_req)
+                    'doc_req':doc_req.to_dict()
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 if request.content_type == 'application/pdf':
@@ -605,7 +604,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     return JsonResponse({
                         'success':True,
                         'submitted_and_notified_on':str(datetime.datetime.now()),
-                        'doc_req':model_to_dict(doc_req)
+                        'doc_req':doc_req.to_dict()
                     })
                 else: # presumably content-type == 'application/json'
                     if 'due_date' in json_date:
@@ -624,7 +623,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     return JsonResponse({
                         'success':True,
                         'modified_and_notified_on':str(datetime.datetime.now()),
-                        'doc_req':model_to_dict(doc_req)
+                        'doc_req':doc_req.to_dict()
                     })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update documentary requirements")
