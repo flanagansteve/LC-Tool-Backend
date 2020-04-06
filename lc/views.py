@@ -105,7 +105,7 @@ def cr_lcs(request, bank_id):
                 else:
                     send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + lc.id + "/",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + str(lc.id) + "/",
                         "steve@bountium.org",
                         [employee_applying.email],
                         fail_silently=False,
@@ -164,7 +164,7 @@ def rud_lc(request, lc_id):
                 else:
                     send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + lc.id + "/",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + str(lc.id) + "/",
                         "steve@bountium.org",
                         [request.user.username],
                         fail_silently=False,
@@ -807,7 +807,7 @@ def set_lc_specifications(lc, json_data):
         else:
             send_mail(
                 lc.client.name + " has created their LC to work with you on Bountium",
-                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your acccount party status at https://app.bountium.org/business/claimAccountParty/" + lc.id + "/",
+                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your acccount party status at https://app.bountium.org/business/claimAccountParty/" + str(lc.id) + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_client_employees.all())[0]],
                 fail_silently=False,
@@ -824,13 +824,14 @@ def set_lc_specifications(lc, json_data):
         if Bank.objects.filter(name=bank_name).exists():
             lc.advising_bank = Bank.objects.get(name=bank_name)
         else:
-            send_mail(
+            # TODO this breaks for lcs where issuer empl has not yet been assigned
+            """send_mail(
                 lc.issuer.name + " has created an LC to work with you on Bountium",
-                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://app.bountium.org/bank/register, 2. Claim your advising bank status at https://app.bountium.org/bank/claimAdvising/" + lc.id + "/",
+                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://app.bountium.org/bank/register, 2. Claim your advising bank status at https://app.bountium.org/bank/claimAdvising/" + str(lc.id) + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_issuer_employees.all())[0]],
                 fail_silently=False,
-            )
+            )"""
             pass
         del json_data['advising_bank']
 
