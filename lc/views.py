@@ -595,19 +595,37 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     'doc_req':model_to_dict(doc_req)
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
-                # TODO let beneficiaries PUT here
-                # If content-type == 'application/pdf'
-                    # send to request.body to aws
-                    # doc_req.link_to_submitted_doc = json_data['link']
-                    # doc_req.save()
-                # else, content-type == 'application/json'
-                    # its a modification of terms like above
-                # TODO notify parties
-                return JsonResponse({
-                    'success':True,
-                    'submitted_and_notified_on':str(datetime.datetime.now()),
-                    'doc_req':model_to_dict(doc_req)
-                })
+                if request.content_type == 'application/pdf':
+                    s3 = boto3.resource('s3')
+                    submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + datetime.datetime.now() + ".pdf"
+                    s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
+                    doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
+                    doc_req.save()
+                    # TODO notify someone
+                    return JsonResponse({
+                        'success':True,
+                        'submitted_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':model_to_dict(doc_req)
+                    })
+                else: # presumably content-type == 'application/json'
+                    if 'due_date' in json_date:
+                        """ TODO we need something like this:
+                        if json_data['due_date'] > doc_req.due_date:
+                            doc_req.modified_and_awaiting_issuer_approval = True"""
+                        doc_req.due_date = json_data['due_date']
+                    if 'required_values' in json_data:
+                        """ TODO we need something like this:
+                        if json_data['required_values'] != doc_req.required_values:
+                            doc_req.modified_and_awaiting_issuer_approval = True"""
+                        doc_req.required_values = json_data['required_values']
+                    doc_req.save()
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success':True,
+                        'modified_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':model_to_dict(doc_req)
+                    })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update documentary requirements")
         else:

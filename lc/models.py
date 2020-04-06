@@ -61,7 +61,8 @@ class LC(models.Model):
             'terms_satisfied' : self.terms_satisfied,
             'requested' : self.requested,
             'drawn' : self.drawn,
-            'paid_out' : self.paid_out
+            'paid_out' : self.paid_out,
+            'documentaryrequirement_set' : self.get_doc_reqs()
         }
         if self.client:
             to_return['client'] = model_to_dict(self.client)
@@ -104,6 +105,12 @@ class LC(models.Model):
         to_return = []
         for employee in self.tasked_advising_bank_employees.all():
             to_return.append(model_to_dict(employee))
+        return to_return
+
+    def get_doc_reqs(self):
+        to_return = []
+        for doc_req in self.documentaryrequirement_set.all():
+            to_return.append(doc_req.to_dict())
         return to_return
 
 
@@ -256,3 +263,15 @@ class DocumentaryRequirement(models.Model):
     submitted_doc_complaints = models.CharField(max_length=1000, null=True, blank=True)
     modified_and_awaiting_beneficiary_approval = models.BooleanField(default=False)
     modification_complaints = models.CharField(max_length=1000, null=True, blank=True)
+
+    def to_dict(self):
+        return {
+            'doc_name' : self.doc_name,
+            'required_values' : self.required_values,
+            'due_date' : self.due_date,
+            'link_to_submitted_doc' : self.link_to_submitted_doc,
+            'satisfied' : self.satisfied,
+            'submitted_doc_complaints' : self.submitted_doc_complaints,
+            'modified_and_awaiting_beneficiary_approval' : self.modified_and_awaiting_beneficiary_approval,
+            'modification_complaints' : self.modification_complaints
+        }
