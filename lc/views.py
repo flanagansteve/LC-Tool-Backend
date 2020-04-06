@@ -574,9 +574,9 @@ def rud_doc_req(request, lc_id, doc_req_id):
         else:
             return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'PUT':
-        json_data = json.loads(request.body)
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                json_data = json.loads(request.body)
                 if 'due_date' in json_date:
                     if json_data['due_date'] > doc_req.due_date:
                         doc_req.modified_and_awaiting_beneficiary_approval = True
@@ -607,6 +607,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                         'doc_req':doc_req.to_dict()
                     })
                 else: # presumably content-type == 'application/json'
+                    json_data = json.loads(request.body)
                     if 'due_date' in json_date:
                         """ TODO we need something like this:
                         if json_data['due_date'] > doc_req.due_date:
