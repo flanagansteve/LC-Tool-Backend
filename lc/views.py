@@ -415,7 +415,7 @@ def claim_beneficiary(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'claimed_on':datetime.datetime.now()
+                    'claimed_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only a business registered on Bountium may claim beneficiary status')
@@ -440,7 +440,7 @@ def claim_account_party(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'claimed_on':datetime.datetime.now()
+                    'claimed_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only a business registered on Bountium may claim account party status')
@@ -465,7 +465,7 @@ def claim_advising(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'claimed_on':datetime.datetime.now()
+                    'claimed_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only a bank registered on Bountium may claim advising bank status')
@@ -491,7 +491,7 @@ def evaluate_lc(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'evaluated_on':datetime.datetime.now()
+                    'evaluated_on':str(datetime.datetime.now())
                 })
             elif lc.beneficiary.businessemployee_set(email=request.user.username).exists():
                 lc.beneficiary_approved = json_data['approve']
@@ -501,7 +501,7 @@ def evaluate_lc(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'evaluated_on':datetime.datetime.now()
+                    'evaluated_on':str(datetime.datetime.now())
                 })
             elif lc.client.businessemployee_set(email=request.user.username).exists():
                 lc.client_approved = json_data['approve']
@@ -511,7 +511,7 @@ def evaluate_lc(request, lc_id):
                 # TODO notify parties
                 return JsonResponse({
                     'success':True,
-                    'evaluated_on':datetime.datetime.now()
+                    'evaluated_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only the issuer, beneficiary, or client to an LC may evaluate it')
@@ -596,7 +596,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 if request.content_type == 'application/pdf':
                     s3 = boto3.resource('s3')
-                    submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + datetime.datetime.now() + ".pdf"
+                    submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + str(datetime.datetime.now()) + ".pdf"
                     s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
                     doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
                     doc_req.save()
@@ -699,7 +699,7 @@ def request_lc(request, lc_id):
                 lc.save()
                 return JsonResponse({
                     'success':True,
-                    'requested_on':datetime.datetime.now()
+                    'requested_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
@@ -721,7 +721,7 @@ def draw_lc(request, lc_id):
                 lc.save()
                 return JsonResponse({
                     'success':True,
-                    'drawn_on':datetime.datetime.now()
+                    'drawn_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
@@ -743,7 +743,7 @@ def payout_lc(request, lc_id):
                 lc.save()
                 return JsonResponse({
                     'success':True,
-                    'marked_paid_out_on':datetime.datetime.now()
+                    'marked_paid_out_on':str(datetime.datetime.now())
                 })
             else:
                 return HttpResponseForbidden('Only the issuer of an LC may mark it paid out')
