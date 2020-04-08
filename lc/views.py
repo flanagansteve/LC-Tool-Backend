@@ -1007,7 +1007,7 @@ def set_lc_specifications(lc, json_data):
             risks_covered = json_data['selected_insurance_risks_covered']
             if 'other_insurance_risks_covered' in json_data:
                 risks_covered.append(json_data['other_insurance_risks_covered'])
-            required_values = "Insurance percentage: " + json_data['insurance_percentage']
+            required_values = "Insurance percentage: " + str(json_data['insurance_percentage'])
             for risk_covered in risks_covered:
                 required_values += "\nCovers " + risk_covered
             lc.documentaryrequirement_set.create(
