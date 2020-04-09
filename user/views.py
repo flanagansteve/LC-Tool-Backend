@@ -24,7 +24,6 @@ def user_login(request):
             login(request, user)
             if BankEmployee.objects.filter(email=user.username).exists():
                 user_employee = BankEmployee.objects.get(email=user.username)
-                users_employer = user_employee.bank
                 return JsonResponse({
                     "session_expiry" : request.session.get_expiry_date(),
                     "user_employee" : model_to_dict(user_employee),
@@ -70,14 +69,14 @@ def this_users_info(request):
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
-                "users_employer" : model_to_dict(user_employee.employer)
+                "users_employer" : {**model_to_dict(user_employee.employer), **{"type":"business"}}
             })
         elif BankEmployee.objects.filter(email=request.user.username).exists():
             user_employee = BankEmployee.objects.get(email=request.user.username)
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
-                "users_employer" : user_employee.bank.to_dict()
+                "users_employer" : {**user_employee.bank.to_dict(), **{"type":"bank"}}
             })
         else:
             return Http404("No business or bank employee found with email " + request.user.username)
