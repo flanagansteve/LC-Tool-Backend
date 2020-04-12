@@ -486,7 +486,7 @@ def evaluate_lc(request, lc_id):
             json_data = json.loads(request.body)
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.issuer_approved = json_data['approve']
-                if 'complaints' in json_data:
+                if 'complaints' in json_data and json_data['complaints'] != '':
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + json_data['complaints']
                 lc.save()
                 # TODO notify parties
@@ -496,7 +496,7 @@ def evaluate_lc(request, lc_id):
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 lc.beneficiary_approved = json_data['approve']
-                if 'complaints' in json_data:
+                if 'complaints' in json_data and json_data['complaints'] != '':
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary said: ' + json_data['complaints']
                 lc.save()
                 # TODO notify parties
@@ -506,7 +506,7 @@ def evaluate_lc(request, lc_id):
                 })
             elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
                 lc.client_approved = json_data['approve']
-                if 'complaints' in json_data:
+                if 'complaints' in json_data and json_data['complaints'] != '':
                     lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['complaints']
                 lc.save()
                 # TODO notify parties
