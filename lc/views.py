@@ -184,6 +184,7 @@ def rud_lc(request, lc_id):
             return HttpResponseForbidden("Must be logged in to create an LC")
     elif request.method == "PUT":
         if request.user.is_authenticated:
+            json_data = json.loads(request.body)
             if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                 return JsonResponse({
                     'success':False,
