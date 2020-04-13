@@ -577,23 +577,38 @@ def rud_doc_req(request, lc_id, doc_req_id):
     elif request.method == 'PUT':
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                json_data = json.loads(request.body)
-                if 'due_date' in json_date:
-                    if json_data['due_date'] > doc_req.due_date:
-                        doc_req.modified_and_awaiting_beneficiary_approval = True
-                    doc_req.due_date = json_data['due_date']
-                if 'required_values' in json_data:
-                    if json_data['required_values'] != doc_req.required_values:
-                        doc_req.modified_and_awaiting_beneficiary_approval = True
-                    doc_req.required_values = json_data['required_values']
-                doc_req.save()
-                lc.save()
-                # TODO notify parties
-                return JsonResponse({
-                    'success':True,
-                    'modified_and_notified_on':str(datetime.datetime.now()),
-                    'doc_req':doc_req.to_dict()
-                })
+                # issuer uploading on behalf of the bene (presumably a scan or something)
+                if request.content_type == 'application/pdf':
+                    s3 = boto3.resource('s3')
+                    submitted_doc_name = lc.issuer.name + "-submitted-on-behalf-of-bene-on" + str(datetime.datetime.now()) + ".pdf"
+                    s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
+                    doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
+                    doc_req.rejected = False
+                    doc_req.save()
+                    # TODO notify someone
+                    return JsonResponse({
+                        'success':True,
+                        'submitted_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':doc_req.to_dict()
+                    })
+                else: # presumably content-type == 'application/json'
+                    json_data = json.loads(request.body)
+                    if 'due_date' in json_date:
+                        if json_data['due_date'] > doc_req.due_date:
+                            doc_req.modified_and_awaiting_beneficiary_approval = True
+                        doc_req.due_date = json_data['due_date']
+                    if 'required_values' in json_data:
+                        if json_data['required_values'] != doc_req.required_values:
+                            doc_req.modified_and_awaiting_beneficiary_approval = True
+                        doc_req.required_values = json_data['required_values']
+                    doc_req.save()
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success':True,
+                        'modified_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':doc_req.to_dict()
+                    })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 if request.content_type == 'application/pdf':
                     s3 = boto3.resource('s3')
@@ -638,7 +653,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 doc_req.delete()
                 return JsonResponse({
                     'success':True,
-                    'doc_reqs':list(lc.documentaryrequirement_set)
+                    'doc_reqs':lc.get_doc_reqs()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC may delete documentary requirements")
@@ -670,7 +685,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 lc.save()
                 return JsonResponse({
                     'success':True,
-                    'doc_reqs':list(lc.documentaryrequirement_set)
+                    'doc_reqs':lc.get_doc_reqs()
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 doc_req.modified_and_awaiting_beneficiary_approval = json_data['approve']
@@ -680,7 +695,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 lc.save()
                 return JsonResponse({
                     'success':True,
-                    'doc_reqs':list(lc.documentaryrequirement_set)
+                    'doc_reqs':lc.get_doc_reqs()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC, or an employee to the beneficiary of thsi LC, may evaluate documentary requirements")
