@@ -813,7 +813,6 @@ def set_lc_specifications(lc, json_data):
     del json_data['credit_amt_verbal']
     del json_data['credit_amt']
     del json_data['currency_denomination']
-    lc.save()
 
     # Question 9
     if json_data['account_party']:
@@ -836,7 +835,6 @@ def set_lc_specifications(lc, json_data):
     del json_data['applicant_and_ap_j_and_s_obligated']
     del json_data['account_party_name']
     del json_data['account_party_address']
-    lc.save()
 
     # Question 13
     if 'advising_bank' in json_data:
@@ -854,13 +852,11 @@ def set_lc_specifications(lc, json_data):
             )"""
             pass
         del json_data['advising_bank']
-    lc.save()
 
     # Question 14
     if 'forex_contract_num' in json_data:
         lc.forex_contract_num = json_data['forex_contract_num']
         del json_data['forex_contract_num']
-    lc.save()
 
     # Question 15-20
     lc.exchange_rate_tolerance = json_data['exchange_rate_tolerance']
@@ -875,7 +871,6 @@ def set_lc_specifications(lc, json_data):
     del json_data['units_purchased']
     del json_data['unit_error_tolerance']
     del json_data['confirmation_means']
-    lc.save()
 
     # Question 21
     if json_data['paying_other_banks_fees'] == "The beneficiary":
@@ -883,7 +878,6 @@ def set_lc_specifications(lc, json_data):
     else:
         lc.paying_other_banks_fees = lc.client
     del json_data['paying_other_banks_fees']
-    lc.save()
 
     # Question 22
     if json_data['credit_expiry_location'] == "Issuing bank\'s office":
@@ -893,7 +887,6 @@ def set_lc_specifications(lc, json_data):
             # See Justins email around March 20 or so... isnt always the case.
         lc.credit_expiry_location = lc.advising_bank
     del json_data['credit_expiry_location']
-    lc.save()
 
 
     # Question 23-24
@@ -908,18 +901,15 @@ def set_lc_specifications(lc, json_data):
         # theotically, this should be shipment_date + 21 days
         # using expiration_date for now
         lc.draft_presentation_date = lc.expiration_date
-    lc.save()
 
     # Question 25
     if 'drafts_invoice_value' in json_data:
         lc.drafts_invoice_value = json_data['drafts_invoice_value']
         del json_data['drafts_invoice_value']
-    lc.save()
 
     # Question 26
     lc.credit_availability = json_data['credit_availability']
     del json_data['credit_availability']
-    lc.save()
 
     # Question 27
     if json_data['paying_acceptance_and_discount_charges'] == "The beneficiary":
@@ -927,12 +917,10 @@ def set_lc_specifications(lc, json_data):
     else:
         lc.paying_acceptance_and_discount_charges = lc.client
     del json_data['paying_acceptance_and_discount_charges']
-    lc.save()
 
     # Question 28
     lc.deferred_payment_date = json_data['deferred_payment_date']
     del json_data['deferred_payment_date']
-    lc.save()
 
     # Question 29
     for delegated_negotiating_bank in json_data['delegated_negotiating_banks']:
@@ -941,12 +929,10 @@ def set_lc_specifications(lc, json_data):
             # otherwise, invite them and let them 'claim' it in the same fashion as other invitees to an LC
         pass
     del json_data['delegated_negotiating_banks']
-    lc.save()
 
     # Question 30
     lc.partial_shipment_allowed = json_data['partial_shipment_allowed']
     del json_data['partial_shipment_allowed']
-    lc.save()
 
     # Question 31
     lc.transshipment_allowed = json_data['transshipment_allowed']
@@ -988,7 +974,6 @@ def set_lc_specifications(lc, json_data):
             due_date=lc.draft_presentation_date
         )
     del json_data['commercial_invoice_required']
-    lc.save()
 
     # Question 38
     if 'required_transport_docs' in json_data:
@@ -1005,7 +990,6 @@ def set_lc_specifications(lc, json_data):
                 required_values=required_values
             )
         del json_data['required_transport_docs']
-    lc.save()
 
     # Question 40
     if 'copies_of_packing_list' in json_data:
@@ -1015,7 +999,6 @@ def set_lc_specifications(lc, json_data):
                 due_date=lc.draft_presentation_date
             )
         del json_data['copies_of_packing_list']
-    lc.save()
 
     # Question 41
     if 'copies_of_certificate_of_origin' in json_data:
@@ -1025,7 +1008,6 @@ def set_lc_specifications(lc, json_data):
                 due_date=lc.draft_presentation_date
             )
         del json_data['copies_of_certificate_of_origin']
-    lc.save()
 
     # Question 42
     if 'copies_of_inspection_certificate' in json_data:
@@ -1035,7 +1017,6 @@ def set_lc_specifications(lc, json_data):
                 due_date=lc.draft_presentation_date
             )
         del json_data['copies_of_inspection_certificate']
-    lc.save()
 
     # Question 43
     if 'insurance_percentage' in json_data:
@@ -1055,14 +1036,12 @@ def set_lc_specifications(lc, json_data):
             del json_data['other_insurance_risks_covered']
             del json_data['selected_insurance_risks_covered']
         del json_data['insurance_percentage']
-    lc.save()
 
     # Question 46
     if 'other_draft_accompiants' in json_data:
         for doc_req in json_data['other_draft_accompiants']:
             lc.documentaryrequirement_set.create(**doc_req)
         del json_data['other_draft_accompiants']
-    lc.save()
 
     # Question 47
     # TODO this might be parsed into a OneToMany, LC->Business
