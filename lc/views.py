@@ -600,6 +600,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + str(datetime.datetime.now()) + ".pdf"
                     s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
                     doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
+                    doc_req.rejected = False
                     doc_req.save()
                     # TODO notify someone
                     return JsonResponse({
@@ -662,6 +663,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
             json_data = json.loads(request.body)
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 doc_req.satisfied = json_data['approve']
+                doc_req.rejected = (not json_data['approve'])
                 if 'complaints' in json_data:
                     doc_req.submitted_doc_complaints = json_data['complaints']
                 doc_req.save()

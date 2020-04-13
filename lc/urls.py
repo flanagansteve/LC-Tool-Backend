@@ -298,7 +298,7 @@ urlpatterns = [
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/$', views.rud_doc_req, name='rud_doc_req'),
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
-    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/$', views.evaluate_doc_req, name='evaluate_doc_req'),
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req, name='evaluate_doc_req'),
 
     # /lc/{lc_id}/request/
     url(r'^(?P<lc_id>[0-9]+)/request/$', views.request_lc, name='request_lc'),

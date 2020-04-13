@@ -263,6 +263,7 @@ class DocumentaryRequirement(models.Model):
     submitted_doc_complaints = models.CharField(max_length=1000, null=True, blank=True)
     modified_and_awaiting_beneficiary_approval = models.BooleanField(default=False)
     modification_complaints = models.CharField(max_length=1000, null=True, blank=True)
+    rejected = models.BooleanField(default=False)
 
     def to_dict(self):
         return {
@@ -272,6 +273,7 @@ class DocumentaryRequirement(models.Model):
             'due_date' : self.due_date,
             'link_to_submitted_doc' : self.link_to_submitted_doc,
             'satisfied' : self.satisfied,
+            'rejected' : self.rejected,
             'submitted_doc_complaints' : self.submitted_doc_complaints,
             'modified_and_awaiting_beneficiary_approval' : self.modified_and_awaiting_beneficiary_approval,
             'modification_complaints' : self.modification_complaints
