@@ -141,14 +141,14 @@ class DigitalLC(LC):
     currency_denomination = models.CharField(max_length=5, default='USD')
     applicant_and_ap_j_and_s_obligated = models.BooleanField(null=True, blank=True)
     forex_contract_num = models.CharField(max_length=250, null=True, blank=True)
-    # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
-    exchange_rate_tolerance = models.DecimalField(max_digits=6, decimal_places=5, null=True, blank=True)
+    # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
+    exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     purchased_item = models.CharField(max_length=1000, null=True, blank=True)
     units_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     # Goes up to 999T,999B,999M,999K,999.99
     units_purchased = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
-    unit_error_tolerance = models.DecimalField(max_digits=6, decimal_places=5, null=True, blank=True)
+    # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
+    unit_error_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     # NOTE this might be converted to an enum
     # One of: ["No Confirmation", "Confirmation by a bank selected by the beneficiary", "Confirmation by a bank selected by SVB in the beneficiary\'s country"]
     confirmation_means = models.CharField(max_length=1000, default='No Confirmation')
@@ -158,8 +158,8 @@ class DigitalLC(LC):
     credit_expiry_location = models.ForeignKey(Bank, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_credit_expiry_location', null=True, blank=True)
     expiration_date = models.DateField(null=True, blank=True)
     draft_presentation_date = models.DateField(null=True, blank=True)
-    # 1.00000 -> 0.00000, where 1.00000 == 100% on user input
-    drafts_invoice_value = models.DecimalField(max_digits=6, decimal_places=5, default=1.00000)
+    # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
+    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, default=1.00000)
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_paying_acceptance_and_discount_charges', null=True, blank=True)
     deferred_payment_date = models.DateField(null=True, blank=True)
