@@ -71,7 +71,7 @@ class LC(models.Model):
         if self.account_party:
             to_return['account_party'] = model_to_dict(self.account_party)
         if self.advising_bank:
-            to_return['advising_bank'] = model_to_dict(self.advising_bank)
+            to_return['advising_bank'] = self.advising_bank.to_dict()
         return to_return
 
     # TODO TODO TODO

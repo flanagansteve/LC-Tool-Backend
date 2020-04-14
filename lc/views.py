@@ -30,7 +30,7 @@ def cr_lcs(request, bank_id):
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email=request.user.username).exists():
                 to_return = []
-                for lc in LC.objects.filter(issuer=bank):
+                for lc in DigitalLC.objects.filter(issuer=bank):
                     to_return.append(lc.to_dict())
                 return JsonResponse(to_return, safe=False)
             else:
@@ -273,12 +273,13 @@ def get_live_lcs(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
     to_return = []
-    for lc in LC.objects.filter(
+    for lc in DigitalLC.objects.filter(
             issuer=bank,
             client_approved=True, issuer_approved=True, beneficiary_approved=True,
             paid_out=False
         ):
         to_return.append(lc.to_dict())
+    print(to_return)
     return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
@@ -288,7 +289,7 @@ def get_lcs_awaiting_issuer(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
     to_return = []
-    for lc in LC.objects.filter(
+    for lc in DigitalLC.objects.filter(
             issuer=bank,
             issuer_approved=False
         ):
@@ -302,7 +303,7 @@ def get_lcs_awaiting_beneficiary(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
     to_return = []
-    for lc in LC.objects.filter(
+    for lc in DigitalLC.objects.filter(
             issuer=bank,
             beneficiary_approved=False,
             paid_out=False
@@ -317,7 +318,7 @@ def get_lcs_awaiting_client(request, bank_id):
     except Bank.DoesNotExist:
         return Http404("No bank with that id")
     to_return = []
-    for lc in LC.objects.filter(
+    for lc in DigitalLC.objects.filter(
             issuer=bank,
             client_approved=False,
             paid_out=False
@@ -332,7 +333,7 @@ def get_lcs_by_client(request, business_id):
     except Business.DoesNotExist:
         return Http404("No business with that id")
     to_return = []
-    for lc in LC.objects.filter(client=client):
+    for lc in DigitalLC.objects.filter(client=client):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
 
@@ -343,7 +344,7 @@ def get_lcs_by_beneficiary(request, business_id):
     except Business.DoesNotExist:
         return Http404("No business with that id")
     to_return = []
-    for lc in LC.objects.filter(beneficiary=beneficiary):
+    for lc in DigitalLC.objects.filter(beneficiary=beneficiary):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
 
