@@ -164,6 +164,10 @@ class DigitalLC(LC):
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_paying_acceptance_and_discount_charges', null=True, blank=True)
     deferred_payment_date = models.DateField(null=True, blank=True)
     delegated_negotiating_banks = models.ManyToManyField(Bank)
+    # TODO if partial_shipment_allowed, then we should accept MULTIPLE of each
+    # documentary requirement, especially the transport ones, and not be
+    # satisfied until their stated units / credit add up to the one asked for
+    # in this LC, tolerance % permitting
     partial_shipment_allowed = models.BooleanField(default=False)
     transshipment_allowed = models.BooleanField(default=False)
     merch_charge_location = models.CharField(max_length=250, null=True, blank=True)
@@ -278,3 +282,102 @@ class DocumentaryRequirement(models.Model):
             'modified_and_awaiting_beneficiary_approval' : self.modified_and_awaiting_beneficiary_approval,
             'modification_complaints' : self.modification_complaints
         }
+
+# The following are specific standard documentary requirements which Bountium
+# is prepared to more specifically analyse for compliance with the LCs terms.
+
+# A beneficiary on Bountium can ensure their document's compliance by creating
+# the doc in Bountium itself; in this case, the creation of each instance goes
+# 1. populate the fields of the model,
+# 2. run to_pdf to create the submitted_doc,
+# 3. notify the issuer that they may examine for correctness but that it
+# should be correct.
+
+# If a beneficiary is submitting scanned / manually created documents, or the
+# issuer is submitting on a snail-mailing beneficiary's behalf, then it goes
+# 1. create the submitted_doc
+# 2. allow the issuer to look at the doc in-app and set each field of the model
+# based on their human analysis. over time we will upgrade this to
+# software-aided, or better yet software-automated extraction of these values
+# 3. notify everyone once the issuer makes an assessment, and that they should
+# double check
+
+# UCP 600, Article 18
+# TODO need to cover part b somehow, integrating every bank's input
+# TODO article 18 says nothing about unit amounts, tx size, etc (except somewhat in part b). Should it? Does de facto interpretation?
+class CommercialInvoiceRequirement(DocumentaryRequirement):
+    # should be == beneficiary.name
+    invoice_issuer = models.CharField(max_length=500, null=True, blank=True)
+    # should be == client.name
+    recipient = models.CharField(max_length=500, null=True, blank=True)
+    # should be == currency_denomination
+    currency = models.CharField(max_length=500, null=True, blank=True)
+    # should be == merch_description
+    goods_description = models.CharField(max_length=500, null=True, blank=True)
+
+# For the following transport docs 19-25, articles 26 and 27 apply -
+# 26: a) must not be loaded on deck, b) bear a clause such as "shipper's load and count" and "said by shipper to contain", c) something about charges?
+# 27: must be clean
+class TransportDocumentRequirement(DocumentaryRequirement):
+    # seemingly can be anything except blank
+    carrier_name = models.CharField(max_length=500, null=True, blank=True)
+    # should be true, seemingly must be done by human inspection
+    signed_by_carrier_agent_or_master = models.BooleanField(default=False)
+
+# UCP 600, Article 19
+# TODO the last part - cii - seems to say that a transport doc which allows transshipment, even if !transshipment_allowed on the lc's terms, should be accepted. Check with Justin if thats accurate, and if so, why SVB bothers asking clients the question
+class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
+    # should be == merch_charge_location
+    charge_location = models.CharField(max_length=500, null=True, blank=True)
+    # should be <= shipment_date or late_charge_date, whichever is later
+    charge_date = models.DateField(blank=True, null=True)
+    # should be == charge_transportation_location
+    charge_destination = models.CharField(max_length=500, null=True, blank=True)
+    # should be True
+    not_subject_to_charter_party = models.BooleanField(default=False)
+
+# UCP 600, Article 20
+class BillOfLadingRequirement(TransportDocumentRequirement):
+    pass
+
+# UCP 600, Article 21
+class NonNegotiableSeaWaybillRequirement(TransportDocumentRequirement):
+    pass
+
+# UCP 600, Article 22
+class CharterPartyBillOfLadingRequirement(DocumentaryRequirement):
+    # TODO can this extend TransportDocumentRequirement? its first clause might be different as it allows a charter party to take the place of a carrier. reread carefully.
+    pass
+
+# UCP 600, Article 23
+class AirTransportDocument(TransportDocumentRequirement):
+    pass
+
+# UCP 600, Article 24
+class RoadRailInlandWaterwayTransportDocumentsRequirement(TransportDocumentRequirement):
+    pass
+
+# UCP 600, Article 25
+class CourierReceiptRequirement(DocumentaryRequirement):
+    pass
+
+# UCP 600, Article 28
+class InsuranceDocumentRequirement(DocumentaryRequirement):
+    # must be determined by a human analyst
+    # TODO think through this better - part a)
+    issued_by_insurer = models.BooleanField(default=False)
+    # true for electronic creation; otherwise, must be asked & recorded by issuer
+    all_originals_present = models.BooleanField(default=False)
+    # must be determined by human analyst
+    # TODO wtf is a cover note lol
+    is_not_cover_note = models.BooleanField(default=False)
+    # either the document must be dated prior to shipment date, or
+    # the policy's wording must indicate that the coverage was effective
+    # prior to shipment
+    covered_prior_to_shipment = models.BooleanField(default=False)
+    # Goes up to 999T,999B,999M,999K,999.99
+    # must be (requested_insurance_pct * credit_amt)
+    coverage_amt = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    # TODO covered_locations, must be be between place of charge/shipment and place of discharge / final destination
+    # TODO covered_risks
+    # TODO

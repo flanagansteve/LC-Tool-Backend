@@ -1,6 +1,8 @@
 from django.db import models
 from django.forms.models import model_to_dict
 
+# TODO should we reflect article 36, that a bank might interrupt business due to acts of god / war / etc and fail to honour credits that expire in the interim? allow a bank to 'go inactive'
+
 class LCAppQuestion(models.Model):
     question_text = models.CharField(max_length = 250)
     key = models.CharField(max_length = 50)
