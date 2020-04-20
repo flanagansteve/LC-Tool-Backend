@@ -283,8 +283,13 @@ class DocumentaryRequirement(models.Model):
             'modification_complaints' : self.modification_complaints
         }
 
+    def is_satisfied(self):
+        return self.satisfied
+
 # The following are specific standard documentary requirements which Bountium
 # is prepared to more specifically analyse for compliance with the LCs terms.
+
+# TODO most of these have the requirement that the bank must have all originals. How do we allow a user to indiciate this (perhaps just trust them to input it honestly)? And how does it apply to electronic documents?
 
 # A beneficiary on Bountium can ensure their document's compliance by creating
 # the doc in Bountium itself; in this case, the creation of each instance goes
@@ -304,58 +309,116 @@ class DocumentaryRequirement(models.Model):
 
 # UCP 600, Article 18
 # TODO need to cover part b somehow, integrating every bank's input
-# TODO article 18 says nothing about unit amounts, tx size, etc (except somewhat in part b). Should it? Does de facto interpretation?
+# TODO article 18 says nothing about unit amounts, tx size, etc (except somewhat in part b). Should it? Does de facto interpretation? i believe views.py is setting more required values than is captured by this/ucp600; debate whether to go with the UCP 600 or logic, ask justin
 class CommercialInvoiceRequirement(DocumentaryRequirement):
-    # should be == beneficiary.name
     invoice_issuer = models.CharField(max_length=500, null=True, blank=True)
-    # should be == client.name
     recipient = models.CharField(max_length=500, null=True, blank=True)
-    # should be == currency_denomination
     currency = models.CharField(max_length=500, null=True, blank=True)
-    # should be == merch_description
     goods_description = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            # TODO exact matches of the following 2 names may be unlikely - ask justin how to enforce this
+            self.invoice_issuer == self.for_lc.beneficiary.name and
+            self.recipient == self.for_lc.client.name and
+            self.currency == self.for_lc.currency_denomination and
+            # TODO this demands an exact match, which is quite unlikely for prose! once again ask justin
+            self.goods_description == self.for_lc.goods_description
+        )
 
 # For the following transport docs 19-25, articles 26 and 27 apply -
 # 26: a) must not be loaded on deck, b) bear a clause such as "shipper's load and count" and "said by shipper to contain", c) something about charges?
 # 27: must be clean
+# TODO many fields of children are ~analogous~ but not exactly the same; charge_location is the same as a port_of_loading, for example. What are the pros and cons of abstracting these?
 class TransportDocumentRequirement(DocumentaryRequirement):
     # seemingly can be anything except blank
     carrier_name = models.CharField(max_length=500, null=True, blank=True)
-    # should be true, seemingly must be done by human inspection
-    signed_by_carrier_agent_or_master = models.BooleanField(default=False)
+    # should be true, seemingly must be done by human inspection, agent is permitted to sign if they indicate for whom they sign. signatory must indicate if they're the carrier or master.
+    signed_by_carrier_or_master = models.BooleanField(default=False)
+    # should be True
+    references_tandc_of_carriage = models.BooleanField(default=False)
 
 # UCP 600, Article 19
 # TODO the last part - cii - seems to say that a transport doc which allows transshipment, even if !transshipment_allowed on the lc's terms, should be accepted. Check with Justin if thats accurate, and if so, why SVB bothers asking clients the question
 class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
     # should be == merch_charge_location
-    charge_location = models.CharField(max_length=500, null=True, blank=True)
-    # should be <= shipment_date or late_charge_date, whichever is later
-    charge_date = models.DateField(blank=True, null=True)
+    place_of_dispatch = models.CharField(max_length=500, null=True, blank=True)
+    # one of these dates should be <= shipment_date or late_charge_date, whichever is later. the doc will at minimum have a date_of_issuance but we will use the stamped_date_of_dispatch
+    date_of_issuance = models.DateField(blank=True, null=True)
+    stamped_date_of_dispatch = models.DateField(blank=True, null=True)
     # should be == charge_transportation_location
-    charge_destination = models.CharField(max_length=500, null=True, blank=True)
+    place_of_destination = models.CharField(max_length=500, null=True, blank=True)
     # should be True
     not_subject_to_charter_party = models.BooleanField(default=False)
 
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.carrier_name and
+            self.signed_by_carrier_or_master  and
+            self.references_tandc_of_carriage and
+            self.charge_location == self.for_lc.merch_charge_location and
+            ((self.stamped_date_of_dispatch and (self.stamped_date_of_dispatch <= self.for_lc.late_charge_date)) or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
+            self.place_of_dispatch == self.for_lc.merch_charge_location and
+            self.place_of_destination == self.for_lc.charge_transportation_location and
+            self.not_subject_to_charter_party
+        )
+
 # UCP 600, Article 20
 class BillOfLadingRequirement(TransportDocumentRequirement):
-    pass
+    # should be == merch_charge_location
+    port_of_loading = models.CharField(max_length=500, null=True, blank=True)
+    # should be <= shipment_date or late_charge_date, whichever is later
+    shipment_date = models.DateField(blank=True, null=True)
+    # should be False
+    # this is part aii last paragraph - essentially, if the only provided bill of lading says 'intended vessel' or something like that, the carrier could switch the vessel and not provide any definitive answer as to what vessel the goods got on when. This constraint ensures the bene cannot try to keep things broad / nonspecific / noncommital, as a plan to retain deniability in court.
+    # This also applies to qualifiers put on the port of loading (part aiii)
+    noncommital_shipment_indication_with_no_update = models.BooleanField(default=True)
+    # should be == charge_transportation_location
+    port_of_destination = models.CharField(max_length=500, null=True, blank=True)
+    # should be True
+    not_subject_to_charter_party = models.BooleanField(default=False)
 
 # UCP 600, Article 21
-class NonNegotiableSeaWaybillRequirement(TransportDocumentRequirement):
+# as far as i can tell, these have all the same fields, and the only difference is that the bill of lading is actually a deed to the goods. this difference will matter when we use blockchain BoL (ie, BoL will extend sea waybill and also have the token ID, indicating ownership, whereas the sea waybill will be purely for data)
+class NonNegotiableSeaWaybillRequirement(BillOfLadingRequirement):
     pass
 
 # UCP 600, Article 22
 class CharterPartyBillOfLadingRequirement(DocumentaryRequirement):
-    # TODO can this extend TransportDocumentRequirement? its first clause might be different as it allows a charter party to take the place of a carrier. reread carefully.
-    pass
+    # seemingly can be anything except blank
+    carrier_name = models.CharField(max_length=500, null=True, blank=True)
+    # should be true, seemingly must be done by human inspection
+    signed_by_master_owner_charterer = models.BooleanField(default=False)
+    # should be == merch_charge_location
+    port_of_loading = models.CharField(max_length=500, null=True, blank=True)
+    # should be <= shipment_date or late_charge_date, whichever is later
+    shipment_date = models.DateField(blank=True, null=True)
+    # should be == charge_transportation_location
+    # This can be a range of ports or a geographical area, unlike a regular BoL
+    port_of_destination = models.CharField(max_length=500, null=True, blank=True)
 
 # UCP 600, Article 23
 class AirTransportDocument(TransportDocumentRequirement):
-    pass
+    # should be true
+    accepted_for_carriage = models.BooleanField(default=False)
+    # one of these should be <= late_charge_date. if both non-null use the indicated_date_of_shipment - the latter might not be present
+    date_of_issuance = models.DateField(blank=True, null=True)
+    indicated_date_of_shipment = models.DateField(blank=True, null=True)
+    # should be == merch_charge_location
+    airport_of_departure = models.CharField(max_length=500, null=True, blank=True)
+    # should be == charge_transportation_location
+    airport_of_destination = models.CharField(max_length=500, null=True, blank=True)
 
 # UCP 600, Article 24
 class RoadRailInlandWaterwayTransportDocumentsRequirement(TransportDocumentRequirement):
-    pass
+    # rail transport documents specifically can substitute signed_by_carrier_agent_or_master for stamped_by_rail_co
+    stamped_by_rail_co = models.BooleanField(default=False)
+    # should be = merch_charge_location and charge_transportation_location, respectively
+    place_of_shipment = models.CharField(max_length=500, null=True, blank=True)
+    place_of_destination = models.CharField(max_length=500, null=True, blank=True)
+    # one of these should be <= late_charge_date. if both non-null use the indicated_date_of_shipment - the latter might not be present
+    date_of_issuance = models.DateField(blank=True, null=True)
+    indicated_date_of_shipment = models.DateField(blank=True, null=True)
 
 # UCP 600, Article 25
 class CourierReceiptRequirement(DocumentaryRequirement):
