@@ -337,46 +337,51 @@ class TransportDocumentRequirement(DocumentaryRequirement):
     signed_by_carrier_or_master = models.BooleanField(default=False)
     # should be True
     references_tandc_of_carriage = models.BooleanField(default=False)
+    # one of these should be <= late_charge_date. if both non-null use the indicated_date_of_shipment - the latter might not be present
+    # transport by courier or multimodal will use stamps for this
+    date_of_issuance = models.DateField(blank=True, null=True)
+    indicated_date_of_shipment = models.DateField(blank=True, null=True)
+
+    def basics_satisfied(self):
+        return (
+            self.carrier_name and
+            self.signed_by_carrier_or_master and
+            self.references_tandc_of_carriage and
+            ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date)) or (self.date_of_issuance <= self.for_lc.late_charge_date))
+        )
 
 # UCP 600, Article 19
 # TODO the last part - cii - seems to say that a transport doc which allows transshipment, even if !transshipment_allowed on the lc's terms, should be accepted. Check with Justin if thats accurate, and if so, why SVB bothers asking clients the question
 class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
-    # should be == merch_charge_location
     place_of_dispatch = models.CharField(max_length=500, null=True, blank=True)
-    # one of these dates should be <= shipment_date or late_charge_date, whichever is later. the doc will at minimum have a date_of_issuance but we will use the stamped_date_of_dispatch
-    date_of_issuance = models.DateField(blank=True, null=True)
-    stamped_date_of_dispatch = models.DateField(blank=True, null=True)
-    # should be == charge_transportation_location
     place_of_destination = models.CharField(max_length=500, null=True, blank=True)
-    # should be True
-    not_subject_to_charter_party = models.BooleanField(default=False)
-
+    subject_to_charter_party = models.BooleanField(default=False)
     def is_satisfied(self):
         return super().is_satisfied() or (
-            self.carrier_name and
-            self.signed_by_carrier_or_master  and
-            self.references_tandc_of_carriage and
+            self.basics_satisfied() and
             self.charge_location == self.for_lc.merch_charge_location and
-            ((self.stamped_date_of_dispatch and (self.stamped_date_of_dispatch <= self.for_lc.late_charge_date)) or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
             self.place_of_dispatch == self.for_lc.merch_charge_location and
             self.place_of_destination == self.for_lc.charge_transportation_location and
-            self.not_subject_to_charter_party
+            not self.subject_to_charter_party
         )
 
 # UCP 600, Article 20
 class BillOfLadingRequirement(TransportDocumentRequirement):
-    # should be == merch_charge_location
     port_of_loading = models.CharField(max_length=500, null=True, blank=True)
-    # should be <= shipment_date or late_charge_date, whichever is later
-    shipment_date = models.DateField(blank=True, null=True)
-    # should be False
     # this is part aii last paragraph - essentially, if the only provided bill of lading says 'intended vessel' or something like that, the carrier could switch the vessel and not provide any definitive answer as to what vessel the goods got on when. This constraint ensures the bene cannot try to keep things broad / nonspecific / noncommital, as a plan to retain deniability in court.
     # This also applies to qualifiers put on the port of loading (part aiii)
     noncommital_shipment_indication_with_no_update = models.BooleanField(default=True)
-    # should be == charge_transportation_location
     port_of_destination = models.CharField(max_length=500, null=True, blank=True)
-    # should be True
-    not_subject_to_charter_party = models.BooleanField(default=False)
+    subject_to_charter_party = models.BooleanField(default=False)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.basics_satisfied() and
+            self.port_of_loading == self.for_lc.merch_charge_location and
+            not noncommital_shipment_indication_with_no_update and
+            self.port_of_destination == self.for_lc.charge_transportation_location and
+            not subject_to_charter_party
+        )
 
 # UCP 600, Article 21
 # as far as i can tell, these have all the same fields, and the only difference is that the bill of lading is actually a deed to the goods. this difference will matter when we use blockchain BoL (ie, BoL will extend sea waybill and also have the token ID, indicating ownership, whereas the sea waybill will be purely for data)
@@ -385,29 +390,40 @@ class NonNegotiableSeaWaybillRequirement(BillOfLadingRequirement):
 
 # UCP 600, Article 22
 class CharterPartyBillOfLadingRequirement(DocumentaryRequirement):
-    # seemingly can be anything except blank
-    carrier_name = models.CharField(max_length=500, null=True, blank=True)
-    # should be true, seemingly must be done by human inspection
+    carrying_vessel = models.CharField(max_length=500, null=True, blank=True)
     signed_by_master_owner_charterer = models.BooleanField(default=False)
-    # should be == merch_charge_location
     port_of_loading = models.CharField(max_length=500, null=True, blank=True)
-    # should be <= shipment_date or late_charge_date, whichever is later
-    shipment_date = models.DateField(blank=True, null=True)
-    # should be == charge_transportation_location
-    # This can be a range of ports or a geographical area, unlike a regular BoL
-    port_of_destination = models.CharField(max_length=500, null=True, blank=True)
-
-# UCP 600, Article 23
-class AirTransportDocument(TransportDocumentRequirement):
-    # should be true
-    accepted_for_carriage = models.BooleanField(default=False)
     # one of these should be <= late_charge_date. if both non-null use the indicated_date_of_shipment - the latter might not be present
     date_of_issuance = models.DateField(blank=True, null=True)
     indicated_date_of_shipment = models.DateField(blank=True, null=True)
-    # should be == merch_charge_location
-    airport_of_departure = models.CharField(max_length=500, null=True, blank=True)
     # should be == charge_transportation_location
+    # This can be a range of ports or a geographical area, unlike a regular BoL
+    # - TODO how do we do that in code?
+    port_of_destination = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.carrying_vessel and
+            self.signed_by_master_owner_charterer and
+            self.port_of_loading == self.for_lc.merch_charge_location and
+            ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date)) or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
+            not noncommital_shipment_indication_with_no_update and
+            self.port_of_destination == self.for_lc.charge_transportation_location
+        )
+
+# UCP 600, Article 23
+class AirTransportDocument(TransportDocumentRequirement):
+    accepted_for_carriage = models.BooleanField(default=False)
+    airport_of_departure = models.CharField(max_length=500, null=True, blank=True)
     airport_of_destination = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.basics_satisfied() and
+            self.airport_of_departure == self.for_lc.merch_charge_location and
+            self.airport_of_destination == self.for_lc.charge_transportation_location and
+            not subject_to_charter_party
+        )
 
 # UCP 600, Article 24
 class RoadRailInlandWaterwayTransportDocumentsRequirement(TransportDocumentRequirement):
@@ -416,13 +432,46 @@ class RoadRailInlandWaterwayTransportDocumentsRequirement(TransportDocumentRequi
     # should be = merch_charge_location and charge_transportation_location, respectively
     place_of_shipment = models.CharField(max_length=500, null=True, blank=True)
     place_of_destination = models.CharField(max_length=500, null=True, blank=True)
-    # one of these should be <= late_charge_date. if both non-null use the indicated_date_of_shipment - the latter might not be present
-    date_of_issuance = models.DateField(blank=True, null=True)
-    indicated_date_of_shipment = models.DateField(blank=True, null=True)
 
-# UCP 600, Article 25
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            ((self.carrier_name and self.signed_by_carrier_agent_or_master) or self.stamped_by_rail_co) and
+            ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date)) or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
+            self.place_of_shipment == self.for_lc.merch_charge_location and
+            self.place_of_destination == self.for_lc.charge_transportation_location
+        )
+
+# UCP 600, Article 25 (for shipping via courier)
+# TODO ask justin if this is for the courier carrying the credit or something else
 class CourierReceiptRequirement(DocumentaryRequirement):
-    pass
+    courier_name = models.CharField(max_length=500, null=True, blank=True)
+    stamped_or_signed_by_courier = models.BooleanField(default=False)
+    stamping_or_signing_location = models.CharField(max_length=500, null=True, blank=True)
+    date_of_pickup = models.DateField(blank=True, null=True)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.courier_name and
+            self.stamped_or_signed_by_courier and
+            stamping_or_signing_location == self.for_lc.merch_charge_location and
+            self.date_of_pickup <= self.for_lc.late_charge_date
+        )
+
+# UCP 600, Article 25 (for confirming receipt via courier)
+# TODO ask justin if this is for the courier carrying the credit or something else
+class PostReceiptRequirement(DocumentaryRequirement):
+    courier_name = models.CharField(max_length=500, null=True, blank=True)
+    stamped_or_signed_by_courier = models.BooleanField(default=False)
+    stamping_or_signing_location = models.CharField(max_length=500, null=True, blank=True)
+    date_of_stamping = models.DateField(blank=True, null=True)
+
+    def is_satisfied(self):
+        return super().is_satisfied() or (
+            self.courier_name and
+            self.stamped_or_signed_by_courier and
+            stamping_or_signing_location == self.for_lc.charge_transportation_location and
+            self.date_of_stamping <= self.for_lc.late_charge_date
+        )
 
 # UCP 600, Article 28
 class InsuranceDocumentRequirement(DocumentaryRequirement):
