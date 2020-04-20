@@ -961,6 +961,7 @@ def set_lc_specifications(lc, json_data):
     del json_data['named_place_of_destination']
 
     # Question 37
+    # TODO actually use all the fields in json_data, updating specifically typed doc reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
     if json_data['commercial_invoice_required'] != "No":
         required_values = (
             "Version required: " + json_data['commercial_invoice_required'][5:]
@@ -969,11 +970,14 @@ def set_lc_specifications(lc, json_data):
         )
         required_values += "\nCopies: " + str(json_data['commercial_invoice_copies'])
         del json_data['commercial_invoice_copies']
-        lc.documentaryrequirement_set.create(
+        ci = CommercialInvoiceRequirement(
+            for_lc = lc,
             doc_name="Commercial Invoice",
             required_values=required_values,
-            due_date=lc.draft_presentation_date
+            due_date=lc.draft_presentation_date,
+            type="Commercial Invoice"
         )
+        ci.save()
     del json_data['commercial_invoice_required']
 
     # Question 38
@@ -984,6 +988,8 @@ def set_lc_specifications(lc, json_data):
             required_values += "Marked " + transport_doc_marking + "\n"
         required_values = required_values[:-1]
         del json_data['transport_doc_marking']
+        # TODO convert this to if xxx in json_data for the 3 transport doc types
+        # we support
         for required_transport_doc in json_data['required_transport_docs']:
             lc.documentaryrequirement_set.create(
                 doc_name=required_transport_doc,
@@ -1011,6 +1017,7 @@ def set_lc_specifications(lc, json_data):
         del json_data['copies_of_certificate_of_origin']
 
     # Question 42
+    # TODO use inspeciton certificate model
     if 'copies_of_inspection_certificate' in json_data:
         if json_data['copies_of_inspection_certificate'] != 0:
             lc.documentaryrequirement_set.create(
@@ -1029,6 +1036,7 @@ def set_lc_specifications(lc, json_data):
             required_values = "Insurance percentage: " + str(json_data['insurance_percentage'])
             for risk_covered in risks_covered:
                 required_values += "\nCovers " + risk_covered
+            # TODO use inspeciton certificate model
             lc.documentaryrequirement_set.create(
                 doc_name="Negotiable Insurance Policy or Certificate",
                 due_date=lc.draft_presentation_date,
