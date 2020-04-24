@@ -151,7 +151,7 @@ class DigitalLC(LC):
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
     exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     purchased_item = models.CharField(max_length=1000, null=True, blank=True)
-    units_of_measure = models.CharField(max_length=1000, null=True, blank=True)
+    unit_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     # Goes up to 999T,999B,999M,999K,999.99
     units_purchased = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
@@ -215,7 +215,7 @@ class DigitalLC(LC):
             'forex_contract_num' : self.forex_contract_num,
             'exchange_rate_tolerance' : self.exchange_rate_tolerance,
             'purchased_item' : self.purchased_item,
-            'units_of_measure' : self.units_of_measure,
+            'unit_of_measure' : self.unit_of_measure,
             'units_purchased' : self.units_purchased,
             'unit_error_tolerance' : self.unit_error_tolerance,
             'confirmation_means' : self.confirmation_means,
@@ -342,7 +342,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
 
     # These are product params - some purchases some day will have more than 1 product per CI, but for now we assume theres 1 per
     units_purchased = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    units_of_measure = models.CharField(max_length=1000, null=True, blank=True)
+    unit_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     goods_description = models.CharField(max_length=500, null=True, blank=True)
     # 5 char heading 4 digits then a period, ie 0302. Fish, fresh or chilled, excluding fish fillets and other fish meat
     # 5 char heading - 2x2 digits separated by a period then a period, ie 11.00. Trout (Salmo trutta)
@@ -393,7 +393,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
             "\nSeller address: " + self.seller_address +
             "\nShipped on: " + self.indicated_date_of_shipment +
             "\nCountry of Export: " + self.country_of_export +
-            "\nIncoterms of sale: " + self.incoterms_of_sale +
+            "\nIncoterms of sale: " + str(self.incoterms_of_sale) +
             "\nReason for export: " + self.reason_for_export
         ))
         """pdf.multi_cell(border=1, w=90, h=6, txt=(
@@ -416,7 +416,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         writeln(pdf, "Goods Description:")
         # TODO need to somehow make this a paragraph instead of a line
         writeln(pdf, self.goods_description)
-        writeln(pdf, "Units of measure: " + self.units_of_measure)
+        writeln(pdf, "Units of measure: " + self.unit_of_measure)
         writeln(pdf, "Units purchased: " + str(self.units_purchased))
         writeln(pdf, "Price per unit: " + str(self.unit_price))
         writeln(pdf, "Currency of settlement: " + self.currency)
@@ -453,7 +453,7 @@ def create_test_ci():
         buyer_address="345 bean boulevard",
         goods_description="_hella_ good beans",
         reason_for_export="Sale",
-        units_of_measure="Barrels",
+        unit_of_measure="Barrels",
         units_purchased=400,
         unit_price=0.1,
         hs_code="0713330000",

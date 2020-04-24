@@ -950,7 +950,7 @@ def set_lc_specifications(lc, json_data):
     # Question 15-20
     lc.exchange_rate_tolerance = json_data['exchange_rate_tolerance']
     lc.purchased_item = json_data['purchased_item']
-    lc.units_of_measure = json_data['unit_of_measure']
+    lc.unit_of_measure = json_data['unit_of_measure']
     lc.units_purchased = json_data['units_purchased']
     lc.unit_error_tolerance = json_data['unit_error_tolerance']
     lc.confirmation_means = json_data['confirmation_means']
