@@ -5,6 +5,9 @@ from django.forms.models import model_to_dict
 from fpdf import FPDF
 import os, boto3, datetime
 
+def writeln(pdf, str):
+    pdf.cell(200, 10, txt=str, ln=1, align="L")
+
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
 
 # Abstract LC from which Pdf and Digital inherit
@@ -358,6 +361,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         return super().is_satisfied() or self.is_ucp_satisfied()
 
     def avoids_conflict_of_non_ucp_terms(self):
+        # TODO
         return (
 
         )
@@ -417,14 +421,9 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         writeln(pdf, "Declaration statements: " + self.declaration_statement)
         pdf.output(created_doc_name)
         s3 = boto3.resource('s3')
-        # TODO need to file.open(wherever the to_pdf outputs so) and put THAT as body,
-        # cuz this sends an empty file
         s3.Bucket('docreqs').put_object(Key=created_doc_name, Body=open(created_doc_name, 'rb'))
         self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
-        #os.remove(created_doc_name)
-
-def writeln(pdf, str):
-    pdf.cell(200, 10, txt=str, ln=1, align="L")
+        os.remove(created_doc_name)
 
 def create_test_ci():
     test_ci = CommercialInvoiceRequirement(
