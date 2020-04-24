@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
-from .values import commercial_invoice_form
+from .values import commercial_invoice_form, multimodal_bl_form
 import json, datetime, boto3, os, time
 
 # TODO only handling DigitalLCs for now
@@ -732,17 +732,6 @@ def promote_to_child(doc_req):
         return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
     return doc_req
 
-@csrf_exempt
-def supported_creatable_docs(request):
-    return JsonResponse([
-        'Commercial Invoice'
-    ], safe=False)
-
-@csrf_exempt
-def supported_creatable_docs(request, doc_type):
-    if doc_type == 'Commercial Invoice':
-        return commercial_invoice_form
-
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
@@ -881,6 +870,21 @@ def get_dr_file(request, lc_id, doc_req_id):
             return HttpResponseForbidden('You must be logged in to get a documentary requirement\'s submitted file')
     else:
         return HttpResponseBadRequest("This endpoint only supports GET")
+
+@csrf_exempt
+def supported_creatable_docs(request):
+    return JsonResponse([
+        'Commercial Invoice', 'Multiomodal Bill of Lading'
+    ], safe=False)
+
+@csrf_exempt
+def supported_creatable_docs(request, doc_type):
+    if doc_type == 'Commercial Invoice':
+        return JsonResponse(commercial_invoice_form)
+    elif doc_type == 'Multimodal Bill of Lading':
+        return JsonResponse(multimodal_bl_form)
+    else:
+        return Http404("No supported creatable document with that doc_type")
 
 # TODO should probably log received checkbox or radio values that are not one
 # of the options they're supposed to be - thats an error, but easily fixable if we know thats what happened

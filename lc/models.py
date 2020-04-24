@@ -559,8 +559,8 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
             writeln(pdf, "Vessel and voyage: " + self.vessel_and_voyage)
         pdf.multi_cell(border=1, w=180, h=6, txt=(
             "Place of dispatch: " + self.place_of_dispatch +
-            "\nPort of loading: " + self.port_of_loading +
-            "\nPort of discharge: " + self.port_of_discharge +
+            "\nPort of loading: " + str(self.port_of_loading) +
+            "\nPort of discharge: " + str(self.port_of_discharge) +
             "\nPlace of receipt: " + self.place_of_destination
         ))
         if self.subject_to_charter_party:
