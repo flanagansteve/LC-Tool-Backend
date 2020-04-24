@@ -50,7 +50,7 @@ def create_perfect_lc():
         applicant_and_ap_j_and_s_obligated = True,
         exchange_rate_tolerance = 0.01,
         purchased_item = 'Champagne',
-        units_of_measure = 'Bottles',
+        unit_of_measure = 'Bottles',
         units_purchased = 600,
         unit_error_tolerance = 0.0002,
         confirmation_means = 'Confirmation by a bank selected by the beneficiary',
