@@ -138,7 +138,7 @@ commercial_invoice_form = [
         'type':'text',
         'required':True,
         'options':''
-    }
+    },
     {
         'question_text' : 'What is your title at the company issuing this commercial invoice?',
         'key' : 'signatory_title',

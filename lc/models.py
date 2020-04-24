@@ -502,9 +502,28 @@ class TransportDocumentRequirement(DocumentaryRequirement):
 #      should be accepted. ask justin if thats accurate, and if so, why SVB
 #      bothers asking clients the question
 class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
+    carrier_address = models.CharField(max_length=500, null=True, blank=True)
+    consignee_name = models.CharField(max_length=500, null=True, blank=True)
+    consignee_address = models.CharField(max_length=500, null=True, blank=True)
+    notifee_name = models.CharField(max_length=500, null=True, blank=True)
+    notifee_address = models.CharField(max_length=500, null=True, blank=True)
+
+    vessel_and_voyage = models.CharField(max_length=500, null=True, blank=True)
     place_of_dispatch = models.CharField(max_length=500, null=True, blank=True)
+    port_of_loading = models.CharField(max_length=500, null=True, blank=True)
+    port_of_discharge = models.CharField(max_length=500, null=True, blank=True)
     place_of_destination = models.CharField(max_length=500, null=True, blank=True)
     subject_to_charter_party = models.BooleanField(default=False)
+
+    container_id = models.CharField(max_length=500, null=True, blank=True)
+    goods_description = models.CharField(max_length=500, null=True, blank=True)
+    # either "Prepaid" or "Collect"
+    freight_payment = models.CharField(max_length=20, null=True, blank=True)
+    gross_weight = models.CharField(max_length=30, null=True, blank=True)
+
+    signature = models.CharField(max_length=50, null=True, blank=True)
+    signatory_title = models.CharField(max_length=50, null=True, blank=True)
+
     def is_satisfied(self):
         return super().is_satisfied() or (
             self.basics_satisfied() and
@@ -513,6 +532,82 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
             self.place_of_destination == self.for_lc.charge_transportation_location and
             not self.subject_to_charter_party
         )
+
+    def generate_pdf(self):
+        self.date_of_issuance = datetime.datetime.now()
+        created_doc_name = "multimodal-bl-from " + self.carrier_name + "-on-" + str(self.date_of_issuance) + ".pdf"
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Times", size=24)
+        pdf.cell(200, 20, txt="Multiomodal Bill of Lading", ln=1, align="C")
+        pdf.set_font("Times", size=12)
+        # TODO how to make multi cells line up horizontally
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Shipper name: " + self.carrier_name +
+            "\nShipper address: " + self.carrier_address +
+            "\nShipped on: " + self.indicated_date_of_shipment
+        ))
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Consignee name: " + self.consignee_name +
+            "\nConsignee address: " + self.consignee_address
+        ))
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Notifee name: " + self.notifee_name +
+            "\nNotifee address: " + self.notifee_address
+        ))
+        if self.vessel_and_voyage:
+            writeln(pdf, "Vessel and voyage: " + self.vessel_and_voyage)
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Place of dispatch: " + self.place_of_dispatch +
+            "\tPort of loading: " + self.port_of_loading +
+            "\nPort of discharge: " + self.port_of_discharge +
+            "\nPlace of receipt: " + self.place_of_destination
+        ))
+        if self.subject_to_charter_party:
+            writeln(pdf, "Subject to charty party: Yes")
+        else:
+            writeln(pdf, "Subject to charty party: No")
+        writeln(pdf, "Container id: " + self.container_id)
+        writeln(pdf, "Goods Description:")
+        # TODO need to somehow make this a paragraph instead of a line
+        writeln(pdf, self.goods_description)
+        writeln(pdf, "Freight payment: " + self.freight_payment)
+        writeln(pdf, "Gross weight: " + self.gross_weight)
+        writeln(pdf, "Payment method: L/C")
+        writeln(pdf, "The undersigned declares all the information contained in this invoice to be true and correct:")
+        writeln(pdf, self.signature)
+        writeln(pdf, self.signatory_title)
+        writeln(pdf, "Date: " + str(self.date_of_issuance))
+        pdf.output(created_doc_name)
+        s3 = boto3.resource('s3')
+        s3.Bucket('docreqs').put_object(Key=created_doc_name, Body=open(created_doc_name, 'rb'))
+        self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
+        os.remove(created_doc_name)
+
+def create_test_multimodal_bl():
+    test_ci = CommercialInvoiceRequirement(
+        for_lc=LC.objects.get(id=1),
+        carrier_name="bean corp",
+        carrier_address="123 bean st",
+        indicated_date_of_shipment="04-24-2020",
+        consignee_name="bean consignee",
+        consignee_address="234 bean ave",
+        notifee_name="notify me about beans",
+        notifee_address="345 bean boulevard",
+        goods_description="_hella_ good beans",
+        vessel_and_voyage = "SS bean dispatcher - NL739R",
+        place_of_dispatch = "Needham",
+        port_of_loading = "Boston",
+        port_of_discharge = "Nice, France",
+        place_of_destination = "Paris, France",
+        subject_to_charter_party = False,
+        container_id = "SSEGU5175079/40HC",
+        freight_payment = "Collect",
+        gross_weight = "21,000,000 KG",
+        signature="Steve Flanagan",
+        signatory_title="Beansman"
+    )
+    test_ci.generate_pdf()
 
 # UCP 600, Article 20
 class BillOfLadingRequirement(TransportDocumentRequirement):
