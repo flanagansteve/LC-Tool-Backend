@@ -350,7 +350,6 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     hs_code = models.CharField(max_length=12, null=True, blank=True)
     country_of_origin = models.CharField(max_length=50, null=True, blank=True)
     unit_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    total_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     additional_comments = models.CharField(max_length=1000, null=True, blank=True)
     declaration_statement = models.CharField(max_length=1000, null=True, blank=True)
     currency = models.CharField(max_length=10, null=True, blank=True)
@@ -397,10 +396,16 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         """pdf.multi_cell(border=1, w=90, h=6, txt=(
 
         ))"""
-        pdf.multi_cell(border=1, w=90, h=6, txt=(
-            "Consignee name: " + self.consignee_name +
-            "\nConsignee address: " + self.consignee_address
-        ))
+        if self.consignee_name and self.consignee_address:
+            pdf.multi_cell(border=1, w=90, h=6, txt=(
+                "Consignee name: " + self.consignee_name +
+                "\nConsignee address: " + self.consignee_address
+            ))
+        else:
+            pdf.multi_cell(border=1, w=90, h=6, txt=(
+                "Consignee name: " + self.buyer_name +
+                "\nConsignee address: " + self.buyer_address
+            ))
         pdf.multi_cell(border=1, w=90, h=6, txt=(
             "Buyer name: " + self.buyer_name +
             "\nBuyer address: " + self.buyer_address
@@ -414,7 +419,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         writeln(pdf, "Currency of settlement: " + self.currency)
         writeln(pdf, "Harmonized Schedule Code: " + self.hs_code)
         writeln(pdf, "Country of Origin: " + self.country_of_origin)
-        writeln(pdf, "Total purchase value: " + str(self.total_value))
+        writeln(pdf, "Total purchase value: " + str(self.unit_price * self.units_purchased))
         # TODO need to somehow make this a paragraph instead of a line
         writeln(pdf, "Additional comments: " + self.additional_comments)
         # TODO need to somehow make this a paragraph instead of a line
@@ -445,7 +450,6 @@ def create_test_ci():
         unit_value=0.1,
         hs_code="0713330000",
         country_of_origin="USA",
-        total_value=40,
         additional_comments="make them... beansy",
         declaration_statement="I. Declare. Beans"
     )
