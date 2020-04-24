@@ -628,16 +628,25 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     })
                 else: # presumably content-type == 'application/json'
                     json_data = json.loads(request.body)
-                    if 'due_date' in json_date:
-                        """ TODO we need something like this:
-                        if json_data['due_date'] > doc_req.due_date:
-                            doc_req.modified_and_awaiting_issuer_approval = True"""
-                        doc_req.due_date = json_data['due_date']
-                    if 'required_values' in json_data:
-                        """ TODO we need something like this:
-                        if json_data['required_values'] != doc_req.required_values:
-                            doc_req.modified_and_awaiting_issuer_approval = True"""
-                        doc_req.required_values = json_data['required_values']
+                    if 'redlining' in json_data and json_data['redlining']:
+                        if 'due_date' in json_date:
+                            """ TODO we need something like this:
+                            if json_data['due_date'] > doc_req.due_date:
+                                doc_req.modified_and_awaiting_issuer_approval = True"""
+                            doc_req.due_date = json_data['due_date']
+                        if 'required_values' in json_data:
+                            """ TODO we need something like this:
+                            if json_data['required_values'] != doc_req.required_values:
+                                doc_req.modified_and_awaiting_issuer_approval = True"""
+                            doc_req.required_values = json_data['required_values']
+                    elif doc_req.type != 'generic':
+                        doc_req = promote_to_child(doc_req)
+                        for key in json_data:
+                            if key in dir(doc_req):
+                                setattr(doc_req, key, json_data[key])
+                            else:
+                                # TODO log a bad field but dont flip out
+                                pass
                     doc_req.save()
                     lc.save()
                     # TODO notify parties
@@ -649,7 +658,59 @@ def rud_doc_req(request, lc_id, doc_req_id):
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update documentary requirements")
         else:
-            return HttpResponseForbidden("You must be logged in to attempt a documentary requirement deletion")
+            return HttpResponseForbidden("You must be logged in to attempt a documentary requirement redline")
+    elif request.method == 'POST':
+        # TODO typed: update this to set fields that matter for typed doc reqs
+        if request.user.is_authenticated:
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                # issuer uploading on behalf of the bene (presumably a scan or something)
+                if request.content_type == 'application/pdf':
+                    s3 = boto3.resource('s3')
+                    submitted_doc_name = lc.issuer.name + "-submitted-on-behalf-of-bene-on" + str(datetime.datetime.now()) + ".pdf"
+                    s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
+                    doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
+                    doc_req.rejected = False
+                    doc_req.save()
+                    # TODO notify someone
+                    return JsonResponse({
+                        'success':True,
+                        'submitted_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':doc_req.to_dict()
+                    })
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                if request.content_type == 'application/pdf':
+                    s3 = boto3.resource('s3')
+                    submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + str(datetime.datetime.now()) + ".pdf"
+                    s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
+                    doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
+                    doc_req.rejected = False
+                    doc_req.save()
+                    # TODO notify someone
+                    return JsonResponse({
+                        'success':True,
+                        'submitted_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':doc_req.to_dict()
+                    })
+                else:
+                    doc_req = promote_to_child(doc_req)
+                    for key in json_data:
+                        if key in dir(doc_req):
+                            setattr(doc_req, key, json_data[key])
+                        else:
+                            # TODO log a bad field but dont flip out
+                            pass
+                    doc_req.save()
+                    lc.save()
+                    # TODO notify parties
+                    return JsonResponse({
+                        'success':True,
+                        'modified_and_notified_on':str(datetime.datetime.now()),
+                        'doc_req':doc_req.to_dict()
+                    })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may submit documentary requirement candidates")
+        else:
+            return HttpResponseForbidden("You must be logged in to submit a documentary requirement candidate")
     elif request.method == 'DELETE':
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
@@ -663,7 +724,12 @@ def rud_doc_req(request, lc_id, doc_req_id):
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement deletion")
     else:
-        return HttpResponseBadRequest("This endpoint only supports GET, PUT, DELETE")
+        return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
+
+def promote_to_child(doc_req):
+    if doc_req.type == 'Commercial Invoice':
+        return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
+    return doc_req
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
