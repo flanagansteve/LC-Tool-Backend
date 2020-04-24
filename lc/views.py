@@ -874,15 +874,15 @@ def get_dr_file(request, lc_id, doc_req_id):
 @csrf_exempt
 def supported_creatable_docs(request):
     return JsonResponse([
-        'Commercial Invoice', 'Multiomodal Bill of Lading'
+        'commercial_invoice', 'multimodal_bl'
     ], safe=False)
 
 @csrf_exempt
-def supported_creatable_docs(request, doc_type):
-    if doc_type == 'Commercial Invoice':
-        return JsonResponse(commercial_invoice_form)
-    elif doc_type == 'Multimodal Bill of Lading':
-        return JsonResponse(multimodal_bl_form)
+def supported_creatable_doc(request, doc_type):
+    if doc_type == 'commercial_invoice':
+        return JsonResponse(commercial_invoice_form, safe=False)
+    elif doc_type == 'multimodal_bl':
+        return JsonResponse(multimodal_bl_form, safe=False)
     else:
         return Http404("No supported creatable document with that doc_type")
 
