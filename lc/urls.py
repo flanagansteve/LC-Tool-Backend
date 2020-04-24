@@ -315,7 +315,7 @@ urlpatterns = [
     # /lc/supported_creatable_docs/
     url(r'^supported_creatable_docs/$', views.supported_creatable_docs, name='supported_creatable_docs'),
 
-    # /lc/supported_creatable_docs/{doc_type}
-    url(r'^supported_creatable_docs/(?P<doc_type>[\w\-]+)$', views.supported_creatable_doc, name='supported_creatable_doc'),
+    # /lc/supported_creatable_docs/{doc_type}/
+    url(r'^supported_creatable_docs/(?P<doc_type>[\w\-]+)/$', views.supported_creatable_doc, name='supported_creatable_doc'),
 
 ]
