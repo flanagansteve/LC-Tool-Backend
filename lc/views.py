@@ -789,7 +789,7 @@ def get_dr_file(request, lc_id, doc_req_id):
             if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
                 or lc.client.businessemployee_set.filter(email=request.user.username).exists()
                 or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
-                submitted_doc_name = doc_req.link_to_submitted_doc[lc.link_to_submitted_doc.index('aws.com/') + len('aws.com/'):]
+                submitted_doc_name = doc_req.link_to_submitted_doc[doc_req.link_to_submitted_doc.index('aws.com/') + len('aws.com/'):]
                 s3 = boto3.resource('s3')
                 s3client = boto3.client('s3')
                 file_size = s3client.head_object(Bucket='docreqs', Key=submitted_doc_name)['ContentLength']
