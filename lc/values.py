@@ -99,7 +99,7 @@ commercial_invoice_form = [
     },
     {
         'question_text' : 'How many units are you exporting?',
-        'key' : 'units',
+        'key' : 'units_purchased',
         'type' : 'decimal',
         'required' : True,
         'options' : ''
