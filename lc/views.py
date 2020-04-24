@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
+from .values import commercial_invoice_form
 import json, datetime, boto3, os, time
 
 # TODO only handling DigitalLCs for now
@@ -730,6 +731,17 @@ def promote_to_child(doc_req):
     if doc_req.type == 'Commercial Invoice':
         return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
     return doc_req
+
+@csrf_exempt
+def supported_creatable_docs(request):
+    return JsonResponse([
+        'Commercial Invoice'
+    ], safe=False)
+
+@csrf_exempt
+def supported_creatable_docs(request, doc_type):
+    if doc_type == 'Commercial Invoice':
+        return commercial_invoice_form
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt

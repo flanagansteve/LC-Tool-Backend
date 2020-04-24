@@ -341,7 +341,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     buyer_address = models.CharField(max_length=500, null=True, blank=True)
 
     # These are product params - some purchases some day will have more than 1 product per CI, but for now we assume theres 1 per
-    units = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    units_purchased = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     units_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     goods_description = models.CharField(max_length=500, null=True, blank=True)
     # 5 char heading 4 digits then a period, ie 0302. Fish, fresh or chilled, excluding fish fillets and other fish meat
@@ -349,12 +349,14 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     # 2 digit stat suffix ie 10 for Rainbow trout (salmo gairdneri), farmed
     hs_code = models.CharField(max_length=12, null=True, blank=True)
     country_of_origin = models.CharField(max_length=50, null=True, blank=True)
-    unit_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    unit_price = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     additional_comments = models.CharField(max_length=1000, null=True, blank=True)
     declaration_statement = models.CharField(max_length=1000, null=True, blank=True)
     currency = models.CharField(max_length=10, null=True, blank=True)
 
     signature = models.CharField(max_length=50, null=True, blank=True)
+    signatory_title = models.CharField(max_length=50, null=True, blank=True)
+    date_of_issuance = models.DateField(blank=True, null=True)
 
     def is_satisfied(self):
         return super().is_satisfied() or self.is_ucp_satisfied()
@@ -378,12 +380,13 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         )
 
     def generate_pdf(self):
-        created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(datetime.datetime.now()) + ".pdf"
+        self.date_of_issuance = datetime.datetime.now()
+        created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(self.date_of_issuance) + ".pdf"
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=24)
+        pdf.set_font("Times", size=24)
         pdf.cell(200, 20, txt="Commercial Invoice", ln=1, align="C")
-        pdf.set_font("Arial", size=12)
+        pdf.set_font("Times", size=12)
         # TODO how to make multi cells line up horizontally
         pdf.multi_cell(border=1, w=90, h=6, txt=(
             "Seller name: " + self.seller_name +
@@ -414,16 +417,21 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         # TODO need to somehow make this a paragraph instead of a line
         writeln(pdf, self.goods_description)
         writeln(pdf, "Units of measure: " + self.units_of_measure)
-        writeln(pdf, "Units purchased: " + str(self.units))
-        writeln(pdf, "Price per unit: " + str(self.unit_value))
+        writeln(pdf, "Units purchased: " + str(self.units_purchased))
+        writeln(pdf, "Price per unit: " + str(self.unit_price))
         writeln(pdf, "Currency of settlement: " + self.currency)
         writeln(pdf, "Harmonized Schedule Code: " + self.hs_code)
         writeln(pdf, "Country of Origin: " + self.country_of_origin)
         writeln(pdf, "Total purchase value: " + str(self.unit_price * self.units_purchased))
+        writeln(pdf, "Payment method: L/C")
         # TODO need to somehow make this a paragraph instead of a line
         writeln(pdf, "Additional comments: " + self.additional_comments)
         # TODO need to somehow make this a paragraph instead of a line
         writeln(pdf, "Declaration statements: " + self.declaration_statement)
+        writeln(pdf, "The undersigned declares all the information contained in this invoice to be true and correct:")
+        writeln(pdf, self.signature)
+        writeln(pdf, self.signatory_title)
+        writeln(pdf, "Date: " + str(self.date_of_issuance))
         pdf.output(created_doc_name)
         s3 = boto3.resource('s3')
         s3.Bucket('docreqs').put_object(Key=created_doc_name, Body=open(created_doc_name, 'rb'))
@@ -446,12 +454,14 @@ def create_test_ci():
         goods_description="_hella_ good beans",
         reason_for_export="Sale",
         units_of_measure="Barrels",
-        units=400,
-        unit_value=0.1,
+        units_purchased=400,
+        unit_price=0.1,
         hs_code="0713330000",
         country_of_origin="USA",
         additional_comments="make them... beansy",
-        declaration_statement="I. Declare. Beans"
+        declaration_statement="I. Declare. Beans",
+        signature="Steve Flanagan",
+        signatory_title="Beansman"
     )
     test_ci.generate_pdf()
 

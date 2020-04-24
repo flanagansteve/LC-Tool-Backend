@@ -131,5 +131,19 @@ commercial_invoice_form = [
         'type':'text',
         'required':False,
         'options':''
+    },
+    {
+        'question_text' : 'Type your name below to sign & affirm that you declare all the above answers to be true and correct',
+        'key' : 'signature',
+        'type':'text',
+        'required':True,
+        'options':''
+    }
+    {
+        'question_text' : 'What is your title at the company issuing this commercial invoice?',
+        'key' : 'signatory_title',
+        'type':'text',
+        'required':True,
+        'options':''
     }
 ]
