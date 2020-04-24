@@ -88,13 +88,13 @@ def create_perfect_lc():
     )
     lc.documentaryrequirement_set.create(
         doc_name="Commercial Invoice",
-        type="Commercial Invoice",
+        type="commercial_invoice",
         required_values=required_values,
         due_date=lc.draft_presentation_date
     )
     lc.documentaryrequirement_set.create(
         doc_name="Multimodal Bill of Lading",
-        type="Multimodal Bill of Lading",
+        type="multimodal_bill_of_lading",
         due_date=lc.draft_presentation_date,
         required_values="Marked EXW, CPT"
     )

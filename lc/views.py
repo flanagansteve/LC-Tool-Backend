@@ -728,9 +728,9 @@ def rud_doc_req(request, lc_id, doc_req_id):
         return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
 
 def promote_to_child(doc_req):
-    if doc_req.type == 'Commercial Invoice':
+    if doc_req.type == 'commercial_invoice':
         return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
-    elif doc_req.type == 'Multimodal Bill of Lading':
+    elif doc_req.type == 'multimodal_bill_of_lading':
         return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
     return doc_req
 
@@ -1063,7 +1063,7 @@ def set_lc_specifications(lc, json_data):
             doc_name="Commercial Invoice",
             required_values=required_values,
             due_date=lc.draft_presentation_date,
-            type="Commercial Invoice"
+            type="commercial_invoice"
         )
         ci.save()
     del json_data['commercial_invoice_required']
