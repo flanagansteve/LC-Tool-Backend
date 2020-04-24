@@ -29,14 +29,14 @@ commercial_invoice_form = [
     },
     {
         'question_text' : 'What is the consignee\'s business name, if your customer is not the consignee?',
-        'key' : 'buyer_name',
+        'key' : 'consignee_name',
         'type' : 'text',
         'required' : False,
         'options' : ''
     },
     {
         'question_text' : 'What is your consignee\'s street address, if your customer is not the consignee? (P.O. Box not accepted)',
-        'key' : 'buyer_address',
+        'key' : 'consignee_address',
         'type' : 'text',
         'required' : False,
         'options' : ''
@@ -165,28 +165,28 @@ multimodal_bl_form = [
     },
     {
         'question_text' : 'What is the cosnignee\'s business name?',
-        'key' : 'buyer_name',
+        'key' : 'consignee_name',
         'type' : 'text',
         'required' : True,
         'options' : ''
     },
     {
         'question_text' : 'What is the consignee\'s street address? (P.O. Box not accepted)',
-        'key' : 'buyer_address',
+        'key' : 'consignee_address',
         'type' : 'text',
         'required' : True,
         'options' : ''
     },
     {
         'question_text' : 'If some party should be notified when the shipment arrives - for example, if your buyer is not the consignee and would like to be notified - what is that party\'s business name?',
-        'key' : 'buyer_name',
+        'key' : 'notifee_name',
         'type' : 'text',
         'required' : False,
         'options' : ''
     },
     {
         'question_text' : 'What is the notificatied party\'s street address? (P.O. Box not accepted)',
-        'key' : 'buyer_address',
+        'key' : 'notifee_address',
         'type' : 'text',
         'required' : False,
         'options' : ''
@@ -256,7 +256,7 @@ multimodal_bl_form = [
     },
     {
         'question_text' : 'Are the freight charges for these goods prepaid or collect?',
-        'key' : 'container_id',
+        'key' : 'freight_payment',
         'type' : 'radio',
         'required' : True,
         'options' : '["Prepaid", "Collect"]'
