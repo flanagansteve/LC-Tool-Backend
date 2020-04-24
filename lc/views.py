@@ -731,7 +731,7 @@ def promote_to_child(doc_req):
     if doc_req.type == 'commercial_invoice':
         return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
     elif doc_req.type == 'multimodal_bill_of_lading':
-        return CommercialInvoiceRequirement.objects.get(id=doc_req.id)
+        return MultimodalTransportDocumentRequirement.objects.get(id=doc_req.id)
     return doc_req
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
