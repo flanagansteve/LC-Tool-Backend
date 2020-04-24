@@ -276,7 +276,7 @@ multimodal_bl_form = [
         'options':''
     },
     {
-        'question_text' : 'What is your title at the company issuing this commercial invoice?',
+        'question_text' : 'What is your title at the company issuing this multimodal bill of lading?',
         'key' : 'signatory_title',
         'type':'text',
         'required':True,
