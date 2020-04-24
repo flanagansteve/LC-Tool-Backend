@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-from .models import LC, PdfLC, DigitalLC, LCAppQuestionResponse, DocumentaryRequirement
+from .models import *
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 import json, datetime, boto3, os, time
@@ -555,6 +555,7 @@ def cr_doc_reqs(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
+# TODO typed: allow users to update specific fields of required doc reqs
 @csrf_exempt
 def rud_doc_req(request, lc_id, doc_req_id):
     try:
@@ -576,6 +577,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
         else:
             return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'PUT':
+        # TODO typed: update this to set fields that matter for typed doc reqs
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 # issuer uploading on behalf of the bene (presumably a scan or something)
@@ -802,6 +804,16 @@ def get_dr_file(request, lc_id, doc_req_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET")
 
+@csrf_exempt
+def create_ci(request):
+    ci_params = json.loads(request.body)
+    test_ci = CommercialInvoiceRequirement(for_lc=LC.objects.get(id=1), invoice_issuer=ci_params["invoice_issuer"], consignee=ci_params["consignee"], currency=ci_params["currency"], goods_description=ci_params["goods_description"])
+    test_ci.generate_pdf()
+    return JsonResponse({
+        'doc':test_ci.link_to_submitted_doc
+    })
+
+
 # TODO should probably log received checkbox or radio values that are not one
 # of the options they're supposed to be - thats an error, but easily fixable if we know thats what happened
 def set_lc_specifications(lc, json_data):
@@ -960,8 +972,9 @@ def set_lc_specifications(lc, json_data):
     lc.named_place_of_destination = json_data['named_place_of_destination']
     del json_data['named_place_of_destination']
 
+    # TODO typed: when creating doc reqs, actually use all the fields in json_data, updating specifically typed doc reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
+
     # Question 37
-    # TODO actually use all the fields in json_data, updating specifically typed doc reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
     if json_data['commercial_invoice_required'] != "No":
         required_values = (
             "Version required: " + json_data['commercial_invoice_required'][5:]
@@ -970,6 +983,7 @@ def set_lc_specifications(lc, json_data):
         )
         required_values += "\nCopies: " + str(json_data['commercial_invoice_copies'])
         del json_data['commercial_invoice_copies']
+        # TODO typed: test
         ci = CommercialInvoiceRequirement(
             for_lc = lc,
             doc_name="Commercial Invoice",
@@ -988,7 +1002,7 @@ def set_lc_specifications(lc, json_data):
             required_values += "Marked " + transport_doc_marking + "\n"
         required_values = required_values[:-1]
         del json_data['transport_doc_marking']
-        # TODO convert this to if xxx in json_data for the 3 transport doc types
+        # TODO typed:  convert this to if xxx in json_data for the 3 transport doc types
         # we support
         for required_transport_doc in json_data['required_transport_docs']:
             lc.documentaryrequirement_set.create(
@@ -997,6 +1011,8 @@ def set_lc_specifications(lc, json_data):
                 required_values=required_values
             )
         del json_data['required_transport_docs']
+
+    # TODO typed: implement the below classes
 
     # Question 40
     if 'copies_of_packing_list' in json_data:
@@ -1017,7 +1033,7 @@ def set_lc_specifications(lc, json_data):
         del json_data['copies_of_certificate_of_origin']
 
     # Question 42
-    # TODO use inspeciton certificate model
+    # TODO typed: use inspeciton certificate model
     if 'copies_of_inspection_certificate' in json_data:
         if json_data['copies_of_inspection_certificate'] != 0:
             lc.documentaryrequirement_set.create(
@@ -1036,7 +1052,7 @@ def set_lc_specifications(lc, json_data):
             required_values = "Insurance percentage: " + str(json_data['insurance_percentage'])
             for risk_covered in risks_covered:
                 required_values += "\nCovers " + risk_covered
-            # TODO use inspeciton certificate model
+            # TODO typed: use inspeciton certificate model
             lc.documentaryrequirement_set.create(
                 doc_name="Negotiable Insurance Policy or Certificate",
                 due_date=lc.draft_presentation_date,

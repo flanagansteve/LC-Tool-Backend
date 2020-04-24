@@ -2,6 +2,8 @@ from django.db import models
 from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
 from django.forms.models import model_to_dict
+from fpdf import FPDF
+import os, boto3, datetime
 
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
 
@@ -125,6 +127,9 @@ class PdfLC(LC):
     app_response = models.FileField(upload_to=pdf_app_response_path)
     contract = models.FileField(upload_to=pdf_lc_contract_path)
 
+# TODO not using all fields in doc reqs; not all of them used in UCP 600 even
+# though they do all appear in SVBs app. Figure out why, and perhaps differentiate
+# between is_ucp_valid and all_fields_valid
 class DigitalLC(LC):
     # TODO this should technically be an enum, one of
     # ['Commercial', 'Standby', 'Import', 'Export']
@@ -320,21 +325,74 @@ class DocumentaryRequirement(models.Model):
 #      i believe views.py is setting more required values than is captured by this/ucp600;
 #      debate whether to go with the UCP 600 or logic, ask justin
 class CommercialInvoiceRequirement(DocumentaryRequirement):
-    invoice_issuer = models.CharField(max_length=500, null=True, blank=True)
-    recipient = models.CharField(max_length=500, null=True, blank=True)
-    currency = models.CharField(max_length=500, null=True, blank=True)
+    invoice_issuer_name = models.CharField(max_length=500, null=True, blank=True)
+    invoice_issuer_address = models.CharField(max_length=500, null=True, blank=True)
+    indicated_date_of_shipment = models.DateField(blank=True, null=True)
+    country_of_export = models.CharField(max_length=50, null=True, blank=True)
+    incoterm_of_sale = models.CharField(max_length=50, null=True, blank=True)
+    reason_for_export = models.CharField(max_length=50, null=True, blank=True)
+
+    consignee_name = models.CharField(max_length=500, null=True, blank=True)
+    consignee_address = models.CharField(max_length=500, null=True, blank=True)
+    buyer_name = models.CharField(max_length=500, null=True, blank=True)
+    buyer_address = models.CharField(max_length=500, null=True, blank=True)
+
+    # These are product params - some purchases some day will have more than 1 product per CI, but for now we assume theres 1 per
+    units = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    units_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     goods_description = models.CharField(max_length=500, null=True, blank=True)
+    # 5 char heading 4 digits then a period, ie 0302. Fish, fresh or chilled, excluding fish fillets and other fish meat
+    # 5 char heading - 2x2 digits separated by a period then a period, ie 11.00. Trout (Salmo trutta)
+    # 2 digit stat suffix ie 10 for Rainbow trout (salmo gairdneri), farmed
+    hs_code = models.CharField(max_length=12, null=True, blank=True)
+    country_of_origin = models.CharField(max_length=50, null=True, blank=True)
+    unit_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    total_value = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    additional_comments = models.CharField(max_length=1000, null=True, blank=True)
+    declaration_statement = models.CharField(max_length=1000, null=True, blank=True)
+    currency = models.CharField(max_length=10, null=True, blank=True)
+
+    invoice_total = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    signature = models.CharField(max_length=50, null=True, blank=True)
 
     def is_satisfied(self):
-        return super().is_satisfied() or (
+        return super().is_satisfied() or self.is_ucp_satisfied()
+
+    def avoids_conflict_of_non_ucp_terms(self):
+        return (
+
+        )
+
+    def is_ucp_satisfied(self):
+        return (
             # TODO exact matches of the following 2 i unlikely -
             # ask justin how they enforce this
             self.invoice_issuer == self.for_lc.beneficiary.name and
-            self.recipient == self.for_lc.client.name and
+            self.buyer_name == self.for_lc.client.name and
             self.currency == self.for_lc.currency_denomination and
             # TODO this demands an exact match, which is unlikely for prose! ask justin
-            self.goods_description == self.for_lc.goods_description
+            self.goods_description == self.for_lc.goods_description and
+            self.signature
         )
+
+    def generate_pdf(self):
+        created_doc_name = "commercial-invoice-from " + self.invoice_issuer + "-on-" + str(datetime.datetime.now()) + ".pdf"
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Commercial Invoice", ln=1, align="L")
+        pdf.cell(200, 20, txt="Invoice issuer: " + self.invoice_issuer, ln=1, align="L")
+        pdf.cell(200, 30, txt="Consignee: " + self.consignee, ln=1, align="L")
+        pdf.cell(200, 40, txt="Currency of Settlement: " + self.currency, ln=1, align="L")
+        pdf.cell(200, 50, txt="Goods Description:", ln=1, align="L")
+        pdf.cell(200, 60, txt=self.goods_description, ln=1, align="L")
+        pdf.output(created_doc_name)
+        s3 = boto3.resource('s3')
+        # TODO need to file.open(wherever the to_pdf outputs so) and put THAT as body,
+        # cuz this sends an empty file
+        s3.Bucket('docreqs').put_object(Key=created_doc_name, Body=open(created_doc_name, 'rb'))
+        self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
+        os.remove(created_doc_name)
 
 # For the following transport docs 19-25, articles 26 and 27 apply -
 # 26: a) must not be loaded on deck, b) bear a clause such as "shipper's load and count"

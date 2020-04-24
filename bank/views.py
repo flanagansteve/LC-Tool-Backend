@@ -125,11 +125,9 @@ def invite_teammate(request, bank_id):
                     response["employee"] = model_to_dict(invitee)
                 else:
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
-                    # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
-                    link = "https://app.bountium.org/bank/register"
                     send_mail(
                         bank.bankemployee_set.get(email=request.user.username).name + " has re-invited you to join their team on Bountium",
-                        "Register at " + link,
+                        "Register at https://app.bountium.org/bank/register/" + str(bank.id),
                         'steve@bountium.org',
                         [invitee_email],
                         fail_silently=False,
@@ -139,11 +137,9 @@ def invite_teammate(request, bank_id):
             # 1b. If they have not been invited
             except BankEmployee.DoesNotExist:
                 # 2. create the user and mail an invite
-                # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
-                link = "https://app.bountium.org/bank/register"
                 send_mail(
                     bank.bankemployee_set.get(email=request.user.username).name + " has invited you to join their team on Bountium!",
-                    "Register at " + link,
+                    "Register at https://app.bountium.org/bank/register/" + str(bank.id),
                     'steve@bountium.org',
                     [invitee_email],
                     fail_silently=False,
