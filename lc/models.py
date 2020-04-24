@@ -325,12 +325,12 @@ class DocumentaryRequirement(models.Model):
 #      i believe views.py is setting more required values than is captured by this/ucp600;
 #      debate whether to go with the UCP 600 or logic, ask justin
 class CommercialInvoiceRequirement(DocumentaryRequirement):
-    invoice_issuer_name = models.CharField(max_length=500, null=True, blank=True)
-    invoice_issuer_address = models.CharField(max_length=500, null=True, blank=True)
+    seller_name = models.CharField(max_length=500, null=True, blank=True)
+    seller_address = models.CharField(max_length=500, null=True, blank=True)
     indicated_date_of_shipment = models.DateField(blank=True, null=True)
     country_of_export = models.CharField(max_length=50, null=True, blank=True)
-    incoterm_of_sale = models.CharField(max_length=50, null=True, blank=True)
-    reason_for_export = models.CharField(max_length=50, null=True, blank=True)
+    incoterms_of_sale = models.CharField(max_length=50, null=True, blank=True)
+    reason_for_export = models.CharField(max_length=50, default="Sale")
 
     consignee_name = models.CharField(max_length=500, null=True, blank=True)
     consignee_address = models.CharField(max_length=500, null=True, blank=True)
@@ -352,7 +352,6 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     declaration_statement = models.CharField(max_length=1000, null=True, blank=True)
     currency = models.CharField(max_length=10, null=True, blank=True)
 
-    invoice_total = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     signature = models.CharField(max_length=50, null=True, blank=True)
 
     def is_satisfied(self):
@@ -367,7 +366,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         return (
             # TODO exact matches of the following 2 i unlikely -
             # ask justin how they enforce this
-            self.invoice_issuer == self.for_lc.beneficiary.name and
+            self.seller_name == self.for_lc.beneficiary.name and
             self.buyer_name == self.for_lc.client.name and
             self.currency == self.for_lc.currency_denomination and
             # TODO this demands an exact match, which is unlikely for prose! ask justin
@@ -376,23 +375,82 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         )
 
     def generate_pdf(self):
-        created_doc_name = "commercial-invoice-from " + self.invoice_issuer + "-on-" + str(datetime.datetime.now()) + ".pdf"
+        created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(datetime.datetime.now()) + ".pdf"
         pdf = FPDF()
         pdf.add_page()
+        pdf.set_font("Arial", size=24)
+        pdf.cell(200, 20, txt="Commercial Invoice", ln=1, align="C")
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Commercial Invoice", ln=1, align="L")
-        pdf.cell(200, 20, txt="Invoice issuer: " + self.invoice_issuer, ln=1, align="L")
-        pdf.cell(200, 30, txt="Consignee: " + self.consignee, ln=1, align="L")
-        pdf.cell(200, 40, txt="Currency of Settlement: " + self.currency, ln=1, align="L")
-        pdf.cell(200, 50, txt="Goods Description:", ln=1, align="L")
-        pdf.cell(200, 60, txt=self.goods_description, ln=1, align="L")
+        # TODO how to make multi cells line up horizontally
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Seller name: " + self.seller_name +
+            "\nSeller address: " + self.seller_address +
+            "\nShipped on: " + self.indicated_date_of_shipment +
+            "\nCountry of Export: " + self.country_of_export +
+            "\nIncoterms of sale: " + self.incoterms_of_sale +
+            "\nReason for export: " + self.reason_for_export
+        ))
+        """pdf.multi_cell(border=1, w=90, h=6, txt=(
+
+        ))"""
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Consignee name: " + self.consignee_name +
+            "\nConsignee address: " + self.consignee_address
+        ))
+        pdf.multi_cell(border=1, w=90, h=6, txt=(
+            "Buyer name: " + self.buyer_name +
+            "\nBuyer address: " + self.buyer_address
+        ))
+        writeln(pdf, "Goods Description:")
+        # TODO need to somehow make this a paragraph instead of a line
+        writeln(pdf, self.goods_description)
+        writeln(pdf, "Units of measure: " + self.units_of_measure)
+        writeln(pdf, "Units purchased: " + str(self.units))
+        writeln(pdf, "Price per unit: " + str(self.unit_value))
+        writeln(pdf, "Currency of settlement: " + self.currency)
+        writeln(pdf, "Harmonized Schedule Code: " + self.hs_code)
+        writeln(pdf, "Country of Origin: " + self.country_of_origin)
+        writeln(pdf, "Total purchase value: " + str(self.total_value))
+        # TODO need to somehow make this a paragraph instead of a line
+        writeln(pdf, "Additional comments: " + self.additional_comments)
+        # TODO need to somehow make this a paragraph instead of a line
+        writeln(pdf, "Declaration statements: " + self.declaration_statement)
         pdf.output(created_doc_name)
         s3 = boto3.resource('s3')
         # TODO need to file.open(wherever the to_pdf outputs so) and put THAT as body,
         # cuz this sends an empty file
         s3.Bucket('docreqs').put_object(Key=created_doc_name, Body=open(created_doc_name, 'rb'))
         self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
-        os.remove(created_doc_name)
+        #os.remove(created_doc_name)
+
+def writeln(pdf, str):
+    pdf.cell(200, 10, txt=str, ln=1, align="L")
+
+def create_test_ci():
+    test_ci = CommercialInvoiceRequirement(
+        for_lc=LC.objects.get(id=1),
+        seller_name="bean corp",
+        seller_address="123 bean st",
+        indicated_date_of_shipment="04-23-2020",
+        country_of_export="USA",
+        incoterms_of_sale="FAX",
+        currency="USD",
+        consignee_name="bean consignee",
+        consignee_address="234 bean ave",
+        buyer_name="bean purchaser",
+        buyer_address="345 bean boulevard",
+        goods_description="_hella_ good beans",
+        reason_for_export="Sale",
+        units_of_measure="Barrels",
+        units=400,
+        unit_value=0.1,
+        hs_code="0713330000",
+        country_of_origin="USA",
+        total_value=40,
+        additional_comments="make them... beansy",
+        declaration_statement="I. Declare. Beans"
+    )
+    test_ci.generate_pdf()
 
 # For the following transport docs 19-25, articles 26 and 27 apply -
 # 26: a) must not be loaded on deck, b) bear a clause such as "shipper's load and count"

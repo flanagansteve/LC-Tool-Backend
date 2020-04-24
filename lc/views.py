@@ -804,16 +804,6 @@ def get_dr_file(request, lc_id, doc_req_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET")
 
-@csrf_exempt
-def create_ci(request):
-    ci_params = json.loads(request.body)
-    test_ci = CommercialInvoiceRequirement(for_lc=LC.objects.get(id=1), **ci_params)
-    test_ci.generate_pdf()
-    return JsonResponse({
-        'doc':test_ci.link_to_submitted_doc
-    })
-
-
 # TODO should probably log received checkbox or radio values that are not one
 # of the options they're supposed to be - thats an error, but easily fixable if we know thats what happened
 def set_lc_specifications(lc, json_data):

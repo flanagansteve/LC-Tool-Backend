@@ -312,7 +312,4 @@ urlpatterns = [
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
 
-    # /lc/create_ci/
-    url(r'^create_ci/$', views.create_ci, name='create_ci')
-
 ]
