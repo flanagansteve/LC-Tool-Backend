@@ -557,9 +557,9 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
         ))
         if self.vessel_and_voyage:
             writeln(pdf, "Vessel and voyage: " + self.vessel_and_voyage)
-        pdf.multi_cell(border=1, w=90, h=6, txt=(
+        pdf.multi_cell(border=1, w=180, h=6, txt=(
             "Place of dispatch: " + self.place_of_dispatch +
-            "\tPort of loading: " + self.port_of_loading +
+            "\nPort of loading: " + self.port_of_loading +
             "\nPort of discharge: " + self.port_of_discharge +
             "\nPlace of receipt: " + self.place_of_destination
         ))
@@ -585,7 +585,7 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
         os.remove(created_doc_name)
 
 def create_test_multimodal_bl():
-    test_ci = CommercialInvoiceRequirement(
+    test_multiomodal_bl = MultimodalTransportDocumentRequirement(
         for_lc=LC.objects.get(id=1),
         carrier_name="bean corp",
         carrier_address="123 bean st",
@@ -607,7 +607,7 @@ def create_test_multimodal_bl():
         signature="Steve Flanagan",
         signatory_title="Beansman"
     )
-    test_ci.generate_pdf()
+    test_multiomodal_bl.generate_pdf()
 
 # UCP 600, Article 20
 class BillOfLadingRequirement(TransportDocumentRequirement):
