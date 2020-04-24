@@ -1,6 +1,6 @@
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
-from lc.models import LC, DigitalLC, DocumentaryRequirement
+from lc.models import *
 from django.contrib.auth.models import User
 import datetime
 
@@ -86,21 +86,26 @@ def create_perfect_lc():
         + "\nIncoterms to show: " + lc.incoterms_to_show
         + "\nNamed place of destination: " + lc.named_place_of_destination
     )
-    lc.documentaryrequirement_set.create(
+    test_ci = CommercialInvoiceRequirement(
+        for_lc=lc,
         doc_name="Commercial Invoice",
         type="commercial_invoice",
         required_values=required_values,
         due_date=lc.draft_presentation_date
     )
-    lc.documentaryrequirement_set.create(
+    test_multiomodal_bl = MultimodalTransportDocumentRequirement(
+        for_lc=lc,
         doc_name="Multimodal Bill of Lading",
         type="multimodal_bill_of_lading",
         due_date=lc.draft_presentation_date,
         required_values="Marked EXW, CPT"
     )
+    test_ci.save()
+    test_multiomodal_bl.save()
     lc.documentaryrequirement_set.create(
         doc_name="Packing List",
         required_values="600 Bottles packed, Incoterms are correct, named place is correct.",
         due_date="2020-04-21"
     )
+    lc.save()
     print(lc.to_dict())

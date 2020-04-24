@@ -693,6 +693,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                         'doc_req':doc_req.to_dict()
                     })
                 else:
+                    json_data = json.loads(request.body)
                     doc_req = promote_to_child(doc_req)
                     for key in json_data:
                         if key in dir(doc_req):
@@ -700,6 +701,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                         else:
                             # TODO log a bad field but dont flip out
                             pass
+                    doc_req.generate_pdf()
                     doc_req.save()
                     lc.save()
                     # TODO notify parties
