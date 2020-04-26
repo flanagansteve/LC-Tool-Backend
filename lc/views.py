@@ -867,7 +867,9 @@ def get_dr_file(request, lc_id, doc_req_id):
                 the_file = s3.Bucket('docreqs').download_file(Filename='/tmp/' + submitted_doc_name, Key=submitted_doc_name)
                 while os.path.getsize('/tmp/' + submitted_doc_name) < file_size:
                     time.sleep(1)
-                return FileResponse(open('/tmp/' + submitted_doc_name, 'rb'), content_type='application/pdf')
+                res = HttpResponse(open('/tmp/' + submitted_doc_name, 'rb'))
+                res['Content-Type'] = "binary/octet-stream"
+                return res
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements\' submitted candidate docs')
         else:
