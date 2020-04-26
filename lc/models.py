@@ -425,9 +425,9 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         writeln(pdf, "Total purchase value: " + str(self.unit_price * self.units_purchased))
         writeln(pdf, "Payment method: L/C")
         # TODO need to somehow make this a paragraph instead of a line
-        writeln(pdf, "Additional comments: " + self.additional_comments)
+        writeln(pdf, "Additional comments: " + str(self.additional_comments))
         # TODO need to somehow make this a paragraph instead of a line
-        writeln(pdf, "Declaration statements: " + self.declaration_statement)
+        writeln(pdf, "Declaration statements: " + str(self.declaration_statement))
         writeln(pdf, "The undersigned declares all the information contained in this invoice to be true and correct:")
         writeln(pdf, self.signature)
         writeln(pdf, self.signatory_title)
