@@ -524,6 +524,17 @@ class TransportDocumentRequirement(DocumentaryRequirement):
             or (self.date_of_issuance <= self.for_lc.late_charge_date))
         )
 
+    def to_dict(self):
+        to_return = super().to_dict()
+        to_return.update({
+            'carrier_name' : self.carrier_name,
+            'signed_by_carrier_or_master' : self.signed_by_carrier_or_master,
+            'references_tandc_of_carriage' : self.references_tandc_of_carriage,
+            'date_of_issuance' : self.date_of_issuance,
+            'indicated_date_of_shipment' : self.indicated_date_of_shipment
+        })
+        return to_return
+
 # UCP 600, Article 19
 # TODO the last part - cii - seems to say that a transport doc which allows
 #      transshipment, even if !transshipment_allowed on the lc's terms,
@@ -560,6 +571,29 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
             self.place_of_destination == self.for_lc.charge_transportation_location and
             not self.subject_to_charter_party
         )
+
+    def to_dict(self):
+        to_return = super().to_dict()
+        to_return.update({
+            'carrier_address' : self.carrier_address,
+            'consignee_name' : self.consignee_name,
+            'consignee_address' : self.consignee_address,
+            'notifee_name' : self.notifee_name,
+            'notifee_address' : self.notifee_address,
+            'vessel_and_voyage' : self.vessel_and_voyage,
+            'place_of_dispatch' : self.place_of_dispatch,
+            'port_of_loading' : self.port_of_loading,
+            'port_of_discharge' : self.port_of_discharge,
+            'place_of_destination' : self.place_of_destination,
+            'subject_to_charter_party' : self.subject_to_charter_party,
+            'container_id' : self.container_id,
+            'goods_description' : self.goods_description,
+            'freight_payment' : self.freight_payment,
+            'gross_weight' : self.gross_weight,
+            'signature' : self.signature,
+            'signatory_title' : self.signatory_title,
+        })
+        return to_return
 
     def generate_pdf(self):
         self.date_of_issuance = datetime.datetime.now()
