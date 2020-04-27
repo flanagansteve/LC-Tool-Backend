@@ -20,8 +20,8 @@ def create_perfect_lc():
                              email="steve@ee.com",
                              password="password")
     issuer = Bank(name = "Best Bank")
-    populate_application(issuer)
     issuer.save()
+    populate_application(issuer)
     issuer_emp = issuer.bankemployee_set.create(name="Steve", title="Owner", email="steve@bb.com")
     test_issuer_user = User.objects.create_user(username="steve@bb.com",
                              email="steve@bb.com",
@@ -33,8 +33,8 @@ def create_perfect_lc():
                              email="accountparty@ama.com",
                              password="password")
     advising_bank = Bank(name = "Second Best Bank")
-    populate_application(advising_bank)
     advising_bank.save()
+    populate_application(advising_bank)
     ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@sbb.com")
     test_ad_user = User.objects.create_user(username="advisey@sbb.com",
                              email="advisey@sbb.com",
