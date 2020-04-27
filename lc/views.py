@@ -906,7 +906,6 @@ def autopopulate_creatable_dr(request, lc_id, doc_req_id):
         suggested_field_vals['goods_description'] = 'lc.goods_description'
         suggested_field_vals['unit_of_measure'] = 'lc.units_of_measure'
         suggested_field_vals['units_purchased'] = 'lc.units_purchased'
-        suggested_field_vals['unit_price'] = 'lc.unit_price'
     elif docreqs.type == 'multimodal_bl':
         pass
     return JsonResponse(suggested_field_vals)
