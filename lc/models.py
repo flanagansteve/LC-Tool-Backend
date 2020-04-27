@@ -379,6 +379,34 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
             self.signature
         )
 
+    def to_dict(self):
+        to_return = super().to_dict()
+        to_return.update({
+            'seller_name' : self.seller_name,
+            'seller_address' : self.seller_address,
+            'indicated_date_of_shipment' : self.indicated_date_of_shipment,
+            'country_of_export' : self.country_of_export,
+            'incoterms_of_sale' : self.incoterms_of_sale,
+            'reason_for_export' : self.reason_for_export,
+            'consignee_name' : self.consignee_name,
+            'consignee_address' : self.consignee_address,
+            'buyer_name' : self.buyer_name,
+            'buyer_address' : self.buyer_address,
+            'units_purchased' : self.units_purchased,
+            'unit_of_measure' : self.unit_of_measure,
+            'goods_description' : self.goods_description,
+            'hs_code' : self.hs_code,
+            'country_of_origin' : self.country_of_origin,
+            'unit_price' : self.unit_price,
+            'additional_comments' : self.additional_comments,
+            'declaration_statement' : self.declaration_statement,
+            'currency' : self.currency,
+            'signature' : self.signature,
+            'signatory_title' : self.signatory_title,
+            'date_of_issuance' : self.date_of_issuance
+        })
+        return to_return
+
     def generate_pdf(self):
         self.date_of_issuance = datetime.datetime.now()
         created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(self.date_of_issuance) + ".pdf"

@@ -249,6 +249,12 @@ and receive back
 20. /lc/{lc_id}/doc_req/{doc_req_id}/file/
 # GET the actual file contents of the last submitted candidate for this doc req
 
+21. /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
+
+22. /lc/supported_creatable_docs/
+
+23. /lc/supported_creatable_docs/{doc_type}/
+
 """
 
 urlpatterns = [
@@ -311,6 +317,9 @@ urlpatterns = [
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
+
+    # /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/autopopulate/$', views.autopopulate_creatable_dr, name='autopopulate_creatable_dr'),
 
     # /lc/supported_creatable_docs/
     url(r'^supported_creatable_docs/$', views.supported_creatable_docs, name='supported_creatable_docs'),
