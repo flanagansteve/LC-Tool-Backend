@@ -375,7 +375,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
             self.buyer_name == self.for_lc.client.name and
             self.currency == self.for_lc.currency_denomination and
             # TODO this demands an exact match, which is unlikely for prose! ask justin
-            self.goods_description == self.for_lc.goods_description and
+            #self.goods_description == self.for_lc.goods_description and
             self.signature
         )
 

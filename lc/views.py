@@ -891,6 +891,22 @@ def autopopulate_creatable_dr(request, lc_id, doc_req_id):
     suggested_field_vals = {}
     if doc_req.type == 'commercial_invoice':
         suggested_field_vals['seller_name'] = 'lc.beneficiary.name'
+        suggested_field_vals['seller_address'] = 'lc.beneficiary.address'
+        suggested_field_vals['buyer_name'] = 'lc.client.name'
+        suggested_field_vals['buyer_address'] = 'lc.client.name'
+        if lc.late_charge_date:
+            suggested_field_vals['indicated_date_of_shipment'] = 'lc.late_charge_date'
+        elif lc.draft_presentation_date:
+            suggested_field_vals['indicated_date_of_shipment'] = 'lc.draft_presentation_date'
+        else:
+            suggested_field_vals['indicated_date_of_shipment'] = 'lc.expiration_date'
+        suggested_field_vals['country_of_origin'] = 'lc.beneficiary.country'
+        suggested_field_vals['incoterms_of_sale'] = 'lc.incoterms_to_show'
+        suggested_field_vals['currency'] = 'lc.currency_denomination'
+        suggested_field_vals['goods_description'] = 'lc.goods_description'
+        suggested_field_vals['unit_of_measure'] = 'lc.units_of_measure'
+        suggested_field_vals['units_purchased'] = 'lc.units_purchased'
+        suggested_field_vals['unit_price'] = 'lc.unit_price'
     elif docreqs.type == 'multimodal_bl':
         pass
     return JsonResponse(suggested_field_vals)
