@@ -96,7 +96,7 @@ def create_perfect_lc():
     test_multiomodal_bl = MultimodalTransportDocumentRequirement(
         for_lc=lc,
         doc_name="Multimodal Bill of Lading",
-        type="multimodal_bill_of_lading",
+        type="multimodal_bl",
         due_date=lc.draft_presentation_date,
         required_values="Marked EXW, CPT"
     )
