@@ -3,7 +3,7 @@ from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
 from django.forms.models import model_to_dict
 from fpdf import FPDF
-import os, boto3, datetime
+import os, boto3, datetime, decimal
 
 def writeln(pdf, str):
     pdf.cell(200, 10, txt=str, ln=1, align="L")
@@ -169,7 +169,7 @@ class DigitalLC(LC):
     expiration_date = models.DateField(null=True, blank=True)
     draft_presentation_date = models.DateField(null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
-    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, default=1.00000)
+    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, default=decimal.Decimal('100.00000'))
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='%(app_label)s_%(class)s_paying_acceptance_and_discount_charges', null=True, blank=True)
     deferred_payment_date = models.DateField(null=True, blank=True)
@@ -341,7 +341,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     buyer_address = models.CharField(max_length=500, null=True, blank=True)
 
     # These are product params - some purchases some day will have more than 1 product per CI, but for now we assume theres 1 per
-    units_purchased = models.DecimalField(max_digits=20, decimal_places=2, default=0.0)
+    units_purchased = models.DecimalField(max_digits=20, decimal_places=2, default=decimal.Decimal('0.0'))
     unit_of_measure = models.CharField(max_length=1000, null=True, blank=True)
     goods_description = models.CharField(max_length=500, null=True, blank=True)
     # 5 char heading 4 digits then a period, ie 0302. Fish, fresh or chilled, excluding fish fillets and other fish meat
@@ -349,7 +349,7 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
     # 2 digit stat suffix ie 10 for Rainbow trout (salmo gairdneri), farmed
     hs_code = models.CharField(max_length=12, null=True, blank=True)
     country_of_origin = models.CharField(max_length=50, null=True, blank=True)
-    unit_price = models.DecimalField(max_digits=20, decimal_places=2, default=0.0)
+    unit_price = models.DecimalField(max_digits=20, decimal_places=2, default=decimal.Decimal('0.0'))
     additional_comments = models.CharField(max_length=1000, null=True, blank=True)
     declaration_statement = models.CharField(max_length=1000, null=True, blank=True)
     currency = models.CharField(max_length=10, null=True, blank=True)
@@ -408,6 +408,9 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         return to_return
 
     def generate_pdf(self):
+        print("Units purchased is " + str(self.units_purchased) + " and is a " + str(type(self.units_purchased)))
+        print("Unit price is " + str(self.unit_price) + " and is a " + str(type(self.unit_price)))
+        print("Total price is " + str(self.unit_price * self.units_purchased))
         self.date_of_issuance = datetime.datetime.now()
         created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(self.date_of_issuance) + ".pdf"
         pdf = FPDF()

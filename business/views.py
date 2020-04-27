@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
 from .models import Business, BusinessEmployee
+from util import update_django_instance_with_subset_json
 import json, datetime
 
 # 1. GET all the businesses
@@ -69,12 +70,7 @@ def rud_business(request, business_id):
     elif request.method == "PUT":
         if request.user.is_authenticated:
             if business.businessemployee_set.filter(email = request.user.username).exists():
-                for key in json_data:
-                    if key in dir(business):
-                        setattr(business, key, json_data[key])
-                    else:
-                        # TODO log a bad field but dont flip out
-                        pass
+                update_django_instance_with_subset_json(json_data, business)
                 business.save()
                 return JsonResponse({
                     "user_employee" : model_to_dict(business.businessemployee_set.get(email = request.user.username)),
@@ -225,12 +221,7 @@ def rud_business_employee(request, business_id, employee_id):
                 business_employee = business.businessemployee_set.get(id = employee_id)
                 if request.user.username != business_employee.email:
                     return HttpResponseForbidden("You may only update your own account. Ask the user with email " + business_employee.email + " to update their account if need be.")
-                for key in json_data:
-                    if key in dir(business_employee):
-                        setattr(business_employee, key, json_data[key])
-                    else:
-                        # TODO log a bad field but dont flip out
-                        pass
+                update_django_instance_with_subset_json(json_data, business_employee)
                 business_employee.save()
             except BusinessEmployee.DoesNotExist:
                 return Http404(str(business) + " does not have an employee with id " + employee_id)

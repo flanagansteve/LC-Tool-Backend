@@ -10,6 +10,7 @@ from .models import *
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 from .values import commercial_invoice_form, multimodal_bl_form
+from util import update_django_instance_with_subset_json
 import json, datetime, boto3, os, time
 
 # TODO only handling DigitalLCs for now
@@ -194,12 +195,7 @@ def rud_lc(request, lc_id):
             else:
                 if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
-                    for key in json_data['lc']:
-                        if key in dir(lc):
-                            setattr(lc, key, json_data['lc'][key])
-                        else:
-                            # TODO log a bad field but dont flip out
-                            pass
+                    update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved = True
                     lc.client_approved = False
                     lc.beneficiary_approved = False
@@ -211,12 +207,7 @@ def rud_lc(request, lc_id):
                     })
                 elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
-                    for key in json_data['lc']:
-                        if key in dir(lc):
-                            setattr(lc, key, json_data['lc'][key])
-                        else:
-                            # TODO log a bad field but dont flip out
-                            pass
+                    update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved = False
                     lc.client_approved = False
                     lc.beneficiary_approved = True
@@ -228,12 +219,7 @@ def rud_lc(request, lc_id):
                     })
                 elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
-                    for key in json_data['lc']:
-                        if key in dir(lc):
-                            setattr(lc, key, json_data['lc'][key])
-                        else:
-                            # TODO log a bad field but dont flip out
-                            pass
+                    update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved = False
                     lc.client_approved = True
                     lc.beneficiary_approved = False
@@ -642,12 +628,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                             doc_req.required_values = json_data['required_values']
                     elif doc_req.type != 'generic':
                         doc_req = promote_to_child(doc_req)
-                        for key in json_data:
-                            if key in dir(doc_req):
-                                setattr(doc_req, key, json_data[key])
-                            else:
-                                # TODO log a bad field but dont flip out
-                                pass
+                        update_django_instance_with_subset_json(json_data, doc_req)
                     doc_req.save()
                     lc.save()
                     # TODO notify parties
@@ -694,12 +675,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 else:
                     json_data = json.loads(request.body)
                     doc_req = promote_to_child(doc_req)
-                    for key in json_data:
-                        if key in dir(doc_req) and json_data[key]:
-                            setattr(doc_req, key, json_data[key])
-                        else:
-                            # TODO log a bad field but dont flip out
-                            pass
+                    update_django_instance_with_subset_json(json_data, doc_req)
                     doc_req.generate_pdf()
                     doc_req.save()
                     lc.save()
@@ -892,7 +868,7 @@ def autopopulate_creatable_dr(request, lc_id, doc_req_id):
         suggested_field_vals['seller_name'] = 'beneficiary.name'
         suggested_field_vals['seller_address'] = 'beneficiary.address'
         suggested_field_vals['buyer_name'] = 'client.name'
-        suggested_field_vals['buyer_address'] = 'client.name'
+        suggested_field_vals['buyer_address'] = 'client.address'
         if lc.late_charge_date:
             suggested_field_vals['indicated_date_of_shipment'] = 'lateChargeDate'
         elif lc.draft_presentation_date:

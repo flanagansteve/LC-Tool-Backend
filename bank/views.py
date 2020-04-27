@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
 from .models import Bank, BankEmployee, LCAppQuestion
 from .values import default_questions
+from util import update_django_instance_with_subset_json
 import json, datetime
 
 # 1. GET all the banks
@@ -82,12 +83,7 @@ def rud_bank(request, bank_id):
     elif request.method == "PUT":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email = request.user.username).exists():
-                for key in json_data:
-                    if key in dir(bank):
-                        setattr(bank, key, json_data[key])
-                    else:
-                        # TODO log a bad field but dont flip out
-                        pass
+                update_django_instance_with_subset_json(json_data, bank)
                 bank.save()
                 return JsonResponse({
                     "user_employee" : model_to_dict(bank.bankemployee_set.get(email = request.user.username)),
@@ -237,12 +233,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                 print(employee_id + "'s email: " + bank_employee.email)
                 if request.user.username != bank_employee.email:
                     return HttpResponseForbidden("You may only update your own account. Ask the user with email " + bank_employee.email + " to update their account if need be.")
-                for key in json_data:
-                    if key in dir(bank_employee):
-                        setattr(bank_employee, key, json_data[key])
-                    else:
-                        # TODO log a bad field but dont flip out
-                        pass
+                update_django_instance_with_subset_json(json_data, bank_employee)
                 bank_employee.save()
             except BankEmployee.DoesNotExist:
                 return Http404(str(bank) + " does not have an employee with id " + employee_id)
@@ -285,12 +276,7 @@ def ud_digital_app(request, bank_id, question_id):
     if request.method == 'PUT':
         json_data = json.loads(request.body)
         question = bank.digital_application.get(id=question_id)
-        for key in json_data:
-            if key in dir(question):
-                setattr(question, key, json_data[key])
-            else:
-                # TODO log a bad field but dont flip out
-                pass
+        update_django_instance_with_subset_json(question, json_data)
         question.save()
         return JsonResponse({
             'success':True,
