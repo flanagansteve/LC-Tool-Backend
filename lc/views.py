@@ -572,7 +572,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
             if (lc.issuer.bankemployee_set.filter(email=request.user.username).exists()
                 or lc.client.businessemployee_set.filter(email=request.user.username).exists()
                 or lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists()):
-                return JsonResponse(doc_req.to_dict())
+                return JsonResponse(promote_to_child(doc_req).to_dict())
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
         else:
@@ -876,6 +876,24 @@ def get_dr_file(request, lc_id, doc_req_id):
             return HttpResponseForbidden('You must be logged in to get a documentary requirement\'s submitted file')
     else:
         return HttpResponseBadRequest("This endpoint only supports GET")
+
+# TODO
+@csrf_exempt
+def autopopulate_creatable_dr(request, lc_id, doc_req_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        return Http404("No lc with id " + lc_id)
+    try:
+        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
+    except DocumentaryRequirement.DoesNotExist:
+        return Http404("No doc req with that id associated with this lc")
+    suggested_field_vals = {}
+    if doc_req.type == 'commercial_invoice':
+        suggested_field_vals['seller_name'] = 'lc.beneficiary.name'
+    elif docreqs.type == 'multimodal_bl':
+        pass
+    return JsonResponse(suggested_field_vals)
 
 @csrf_exempt
 def supported_creatable_docs(request):
