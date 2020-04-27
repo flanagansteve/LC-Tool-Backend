@@ -1,6 +1,7 @@
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 from lc.models import *
+from bank.views import populate_application
 from django.contrib.auth.models import User
 import datetime
 
@@ -19,6 +20,7 @@ def create_perfect_lc():
                              email="steve@ee.com",
                              password="password")
     issuer = Bank(name = "Best Bank")
+    populate_application(issuer)
     issuer.save()
     issuer_emp = issuer.bankemployee_set.create(name="Steve", title="Owner", email="steve@bb.com")
     test_issuer_user = User.objects.create_user(username="steve@bb.com",
@@ -30,11 +32,12 @@ def create_perfect_lc():
     test_ap_user = User.objects.create_user(username="accountparty@ama.com",
                              email="accountparty@ama.com",
                              password="password")
-    advising_bank = Bank(name = "Advisey McAdvisey's Bank")
+    advising_bank = Bank(name = "Second Best Bank")
+    populate_application(advising_bank)
     advising_bank.save()
-    ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@amb.com")
-    test_ad_user = User.objects.create_user(username="advisey@amb.com",
-                             email="advisey@amb.com",
+    ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@sbb.com")
+    test_ad_user = User.objects.create_user(username="advisey@sbb.com",
+                             email="advisey@sbb.com",
                              password="password")
     lc = DigitalLC(
         issuer = issuer,
