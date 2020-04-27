@@ -661,7 +661,6 @@ def rud_doc_req(request, lc_id, doc_req_id):
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement redline")
     elif request.method == 'POST':
-        # TODO typed: update this to set fields that matter for typed doc reqs
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 # issuer uploading on behalf of the bene (presumably a scan or something)
@@ -696,7 +695,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     json_data = json.loads(request.body)
                     doc_req = promote_to_child(doc_req)
                     for key in json_data:
-                        if key in dir(doc_req):
+                        if key in dir(doc_req) and json_data[key]:
                             setattr(doc_req, key, json_data[key])
                         else:
                             # TODO log a bad field but dont flip out
