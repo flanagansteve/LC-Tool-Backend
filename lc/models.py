@@ -260,7 +260,7 @@ class LCAppQuestionResponse(models.Model):
     raw_json_value = models.CharField(max_length = 5000)
 
 class DocumentaryRequirement(models.Model):
-    for_lc = models.ForeignKey(LC, on_delete=models.CASCADE)
+    for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
     doc_name = models.CharField(max_length=250)
     # NOTE for now just letting users define the required values
     # as a string, ie:
@@ -297,6 +297,9 @@ class DocumentaryRequirement(models.Model):
 
     def is_satisfied(self):
         return self.satisfied
+
+    def suggested_field_vals(self):
+        return {}
 
 # The following are specific standard documentary requirements which Bountium
 # is prepared to more specifically analyse for compliance with the LCs terms.
@@ -469,32 +472,26 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
         os.remove(created_doc_name)
 
-def create_test_ci():
-    test_ci = CommercialInvoiceRequirement(
-        for_lc=LC.objects.get(id=1),
-        seller_name="bean corp",
-        seller_address="123 bean st",
-        indicated_date_of_shipment="04-23-2020",
-        country_of_export="USA",
-        incoterms_of_sale="FAX",
-        currency="USD",
-        consignee_name="bean consignee",
-        consignee_address="234 bean ave",
-        buyer_name="bean purchaser",
-        buyer_address="345 bean boulevard",
-        goods_description="_hella_ good beans",
-        reason_for_export="Sale",
-        unit_of_measure="Barrels",
-        units_purchased=400,
-        unit_price=0.1,
-        hs_code="0713330000",
-        country_of_origin="USA",
-        additional_comments="make them... beansy",
-        declaration_statement="I. Declare. Beans",
-        signature="Steve Flanagan",
-        signatory_title="Beansman"
-    )
-    test_ci.generate_pdf()
+    def suggested_field_vals(self):
+        to_return = {
+            'seller_name' : 'beneficiary.name',
+            'seller_address' : 'beneficiary.address',
+            'buyer_name' : 'client.name',
+            'buyer_address' : 'client.address',
+            'country_of_origin' : 'beneficiary.country',
+            'incoterms_of_sale' : 'incotermsToShow',
+            'currency' : 'currencyDenomination',
+            'goods_description' : 'merchDescription',
+            'unit_of_measure' : 'unitOfMeasure',
+            'units_purchased' : 'unitsPurchased'
+        }
+        if self.for_lc.late_charge_date:
+            to_return['indicated_date_of_shipment'] = 'lateChargeDate'
+        elif self.for_lc.draft_presentation_date:
+            to_return['indicated_date_of_shipment'] = 'draftPresentationDate'
+        else:
+            to_return['indicated_date_of_shipment'] = 'expirationDate'
+        return to_return
 
 # For the following transport docs 19-25, articles 26 and 27 apply -
 # 26: a) must not be loaded on deck, b) bear a clause such as "shipper's load and count"
@@ -649,31 +646,6 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
         self.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + created_doc_name
         os.remove(created_doc_name)
 
-def create_test_multimodal_bl():
-    test_multiomodal_bl = MultimodalTransportDocumentRequirement(
-        for_lc=LC.objects.get(id=1),
-        carrier_name="bean corp",
-        carrier_address="123 bean st",
-        indicated_date_of_shipment="04-24-2020",
-        consignee_name="bean consignee",
-        consignee_address="234 bean ave",
-        notifee_name="notify me about beans",
-        notifee_address="345 bean boulevard",
-        goods_description="_hella_ good beans",
-        vessel_and_voyage = "SS bean dispatcher - NL739R",
-        place_of_dispatch = "Needham",
-        port_of_loading = "Boston",
-        port_of_discharge = "Nice, France",
-        place_of_destination = "Paris, France",
-        subject_to_charter_party = False,
-        container_id = "SSEGU5175079/40HC",
-        freight_payment = "Collect",
-        gross_weight = "21,000,000 KG",
-        signature="Steve Flanagan",
-        signatory_title="Beansman"
-    )
-    test_multiomodal_bl.generate_pdf()
-
 # UCP 600, Article 20
 class BillOfLadingRequirement(TransportDocumentRequirement):
     port_of_loading = models.CharField(max_length=500, null=True, blank=True)
@@ -815,4 +787,4 @@ class InsuranceDocumentRequirement(DocumentaryRequirement):
     # TODO covered_risks
     # TODO
 
-# TODO packing list, certificate of origin
+# TODO packing list, certificate of origin, inspection cert

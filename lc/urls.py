@@ -2,36 +2,7 @@ from django.conf.urls import url
 from . import views
 
 """ Endpoints:
-1. /lc/by_bank/{bank_id}/
-# GET all the lcs from this bank (TODO: thats probably just for testing)
-# POST the following to create an LC at this bank
-    # If its a BusinessEmployee POSTing, we expect one of
-    <aFilledOutPDFApp.pdf>
-    or, a JSON obj of the form
-    {
-        'string key of the application question' :
-        <the user's response as a json string or int or whatever>
-    }
-    # and receive back
-    {
-        'success' : true || false,
-        'created_lc' : {the lc obj you just made, with an id field}
-    }
-    # If its a BankEmployee POSTing, we expect
-    [app_response_that_i_uploaded_on_behalf_of_a_client.pdf]
-    or, for creating an LC app that your client will fill out later (which bountium will notify them about)
-    {
-        'applicant' : 'the applicants business name',
-        'applicant_employee_contact' : 'someemployee@business.com'
-        [we'll either create the Business in our database, or re-use if this is a repeat]
-    }
-    and receive back
-    {
-        'success' : true || false,
-        'created_lc' : {the lc obj you just made, with an id field}
-    }
-
-2. /lc/{lc_id}/ (a very busy endpoint lol)
+1. /lc/{lc_id}/ (a very busy endpoint lol)
 # POST to respond to a created LC application
     # If
         !(<lc for which id == lc_id>.filledOut)
@@ -110,36 +81,55 @@ and receive back either
 }
 Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
 
-3. /lc/by_bank/{bank_id}/live/
-# GET, and receive back a list of LCs that are
-- issued by the bank with id=bank_id
-- approved by all parties
-- not yet paid out
+2. /lc/by_bank/{bank_id}/
+# GET all the lcs from this bank (TODO: thats probably just for testing)
+# POST the following to create an LC at this bank
+    # If its a BusinessEmployee POSTing, we expect one of
+    <aFilledOutPDFApp.pdf>
+    or, a JSON obj of the form
+    {
+        'string key of the application question' :
+        <the user's response as a json string or int or whatever>
+    }
+    # and receive back
+    {
+        'success' : true || false,
+        'created_lc' : {the lc obj you just made, with an id field}
+    }
+    # If its a BankEmployee POSTing, we expect
+    [app_response_that_i_uploaded_on_behalf_of_a_client.pdf]
+    or, for creating an LC app that your client will fill out later (which bountium will notify them about)
+    {
+        'applicant' : 'the applicants business name',
+        'applicant_employee_contact' : 'someemployee@business.com'
+        [we'll either create the Business in our database, or re-use if this is a repeat]
+    }
+    and receive back
+    {
+        'success' : true || false,
+        'created_lc' : {the lc obj you just made, with an id field}
+    }
 
-4. /lc/by_bank/{bank_id}/awaiting_issuer_approval/
-# GET, and receive back a list of LCs that are
-- issued (or requested to be issued via using their bountium-hosted application) by the bank with id=bank_id
-- not yet approved by the issuer
+3. /lc/by_bank/{bank_id}/{filter}/
+# GET with a {filter}, and receive back a list of not-paid-out LCs issued by the specified bank
+"live" : LCs that are approved by all parties
 
-5. /lc/by_bank/{bank_id}/awaiting_beneficiary_approval/
-# GET, and receive back a list of LCs that are
-- issued by the bank with id=bank_id
-- not yet approved by the beneficiary
+"awaiting_issuer_approval" : LCs that are issued (or requested to be issued via using their bountium-hosted application)
 
-6. /lc/by_bank/{bank_id}/awaiting_client_approval/
-# GET, and receive back a list of LCs that are
-- issued by the bank with id=bank_id
-- not yet approved by the client
+"awaiting_beneficiary_approval" : LCs that are not yet approved by the beneficiary
 
-7. /lc/by_client/{business_id}/
+"awaiting_client_approval" : LCs that are not yet approved by the client
+
+4. /lc/by_client/{business_id}/
 # GET, and receive back a list of LCs that are
 - credited from (or, if not yet approved, applied from) the business for which id=business_id
 
-8. /lc/by_beneficiary/{business_id}/
+5. /lc/by_beneficiary/{business_id}/
 # GET, and receive back a list of LCs that are
 - credited to (or, if not yet approved, proposed-to-be-credited-to) the business for which id=business_id
 
-9. /lc/{lc_id}/notify/
+6. /lc/{lc_id}/notify/
+TODO goes into 7
 # POST the following
 {
     'to_notify' : 'email_of_teammate@issuingbank.com',
@@ -149,16 +139,20 @@ Note that an unsuccessful delete attempt is different from a bad request, forbid
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
 
-10. /lc/{lc_id}/claim_beneficiary/
-# POST as a logged-in BusinessEmployee to claim beneficiary status on this lc
+7. /lc/{lc_id}/{state_to_mark}/
+# POST as an employee of the beneficiary or issuer to update LC status:
+"request" : request payment as beneficiary
+"draw" : draw on the LC legally as beneficiary
+"payout" : mark the Lc as paid out as issuer
 
-11. /lc/{lc_id}/claim_account_party/
-# POST as a logged-in BusinessEmployee to claim account party status on this lc
+8. /lc/{lc_id}/claim/{relation}
+# POST as a logged-in BusinessEmployee to claim one of the following relations to an LC:
+- beneficiary
+- account_party
+- advising [as in, the advising bank]
 
-12. /lc/{lc_id}/claim_advising/
-# POST as a logged-in BankEmployee to claim advising bank status on this lc
-
-13. /lc/{lc_id}/evaluate/
+9. /lc/{lc_id}/evaluate/
+TODO goes into 7
 # POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
@@ -168,7 +162,7 @@ or
     'complaints' : 'any complaints; blank if approve == true'
 }
 
-14. /lc/{lc_id}/doc_req/
+10. /lc/{lc_id}/doc_req/
 # POST the following
 {
     'doc_name' : 'name_of_doc_req'
@@ -186,7 +180,7 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
     NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
-15. /lc/{lc_id}/doc_req/{doc_req_id}/
+11. /lc/{lc_id}/doc_req/{doc_req_id}/
 # GET a doc req, whether or not a doc has been submitted yet
 
 # PUT a submitted file to this as the beneficiary,
@@ -214,7 +208,7 @@ as content-type=application/pdf, and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-16. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
+12. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
 # POST
 - as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
@@ -237,44 +231,26 @@ and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-17. /lc/{lc_id}/request/
-# POST as an employee of the beneficiary to request payment
-
-18. /lc/{lc_id}/draw/
-# POST as an employee of the beneficiary to demand a draw on the LC
-
-19. /lc/{lc_id}/payout/
-# POST as an employee of the client or bank to mark an LC as paid out
-
-20. /lc/{lc_id}/doc_req/{doc_req_id}/file/
+13. /lc/{lc_id}/doc_req/{doc_req_id}/file/
 # GET the actual file contents of the last submitted candidate for this doc req
 
-21. /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
+14. /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
 
-22. /lc/supported_creatable_docs/
+15. /lc/supported_creatable_docs/
 
-23. /lc/supported_creatable_docs/{doc_type}/
+16. /lc/supported_creatable_docs/{doc_type}/
 
 """
 
 urlpatterns = [
-    # /lc/by_bank/{bank_id}/
-    url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
-
     # /lc/{lc_id}/
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
 
-    # /lc/by_bank/{bank_id}/live/
-    url(r'^by_bank/(?P<bank_id>[0-9]+)/live/$', views.get_live_lcs, name='get_live_lcs'),
+    # /lc/by_bank/{bank_id}/
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
-    # /lc/by_bank/{bank_id}/awaiting_issuer_approval/
-    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_issuer_approval/$', views.get_lcs_awaiting_issuer, name='get_lcs_awaiting_issuer'),
-
-    # /lc/by_bank/{bank_id}/awaiting_beneficiary_approval/
-    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_beneficiary_approval/$', views.get_lcs_awaiting_beneficiary, name='get_lcs_awaiting_beneficiary'),
-
-    # /lc/by_bank/{bank_id}/awaiting_client_approval/
-    url(r'^by_bank/(?P<bank_id>[0-9]+)/awaiting_client_approval/$', views.get_lcs_awaiting_client, name='get_lcs_awaiting_client'),
+    # /lc/by_bank/{bank_id}/{filter}
+    url(r'^by_bank/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs, name='get_filtered_lcs'),
 
     # /lc/by_client/{business_id}/
     url(r'^by_client/(?P<business_id>[0-9]+)/$', views.get_lcs_by_client, name='get_lcs_by_client'),
@@ -282,20 +258,11 @@ urlpatterns = [
     # /lc/by_beneficiary/{business_id}/
     url(r'^by_beneficiary/(?P<business_id>[0-9]+)/$', views.get_lcs_by_beneficiary, name='get_lcs_by_beneficiary'),
 
-    # /lc/{lc_id}/notify/
-    url(r'^(?P<lc_id>[0-9]+)/notify/$', views.notify_teammate, name='notify_teammate'),
+    # /lc/{lc_id}/{state_to_mark}/
+    url(r'^(?P<lc_id>[0-9]+)/(?P<state_to_mark>[\w\-]+)/$', views.mark_lc_something, name='mark_lc_something'),
 
-    # /lc/{lc_id}/claim_beneficiary/
-    url(r'^(?P<lc_id>[0-9]+)/claim_beneficiary/$', views.claim_beneficiary, name='claim_beneficiary'),
-
-    # /lc/{lc_id}/claim_account_party/
-    url(r'^(?P<lc_id>[0-9]+)/claim_account_party/$', views.claim_account_party, name='claim_account_party'),
-
-    # /lc/{lc_id}/claim_advising/
-    url(r'^(?P<lc_id>[0-9]+)/claim_advising/$', views.claim_advising, name='claim_advising'),
-
-    # /lc/{lc_id}/evaluate/
-    url(r'^(?P<lc_id>[0-9]+)/evaluate/$', views.evaluate_lc, name='evaluate_lc'),
+    # /lc/{lc_id}/claim/{relation}/
+    url(r'^(?P<lc_id>[0-9]+)/(?P<relation>[\w\-]+)/$', views.claim_relation_to_lc, name='claim_relation_to_lc'),
 
     # /lc/{lc_id}/doc_req/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/$', views.cr_doc_reqs, name='cr_doc_reqs'),
@@ -305,15 +272,6 @@ urlpatterns = [
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req, name='evaluate_doc_req'),
-
-    # /lc/{lc_id}/request/
-    url(r'^(?P<lc_id>[0-9]+)/request/$', views.request_lc, name='request_lc'),
-
-    # /lc/{lc_id}/draw/
-    url(r'^(?P<lc_id>[0-9]+)/draw/$', views.draw_lc, name='draw_lc'),
-
-    # /lc/{lc_id}/payout/
-    url(r'^(?P<lc_id>[0-9]+)/payout/$', views.payout_lc, name='payout_lc'),
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
