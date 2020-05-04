@@ -128,9 +128,12 @@ Note that an unsuccessful delete attempt is different from a bad request, forbid
 # GET, and receive back a list of LCs that are
 - credited to (or, if not yet approved, proposed-to-be-credited-to) the business for which id=business_id
 
-6. /lc/{lc_id}/notify/
-TODO goes into 7
-# POST the following
+6. /lc/{lc_id}/{state_to_mark}/
+# POST as an employee of the beneficiary or issuer to update LC status:
+"request" : request payment as beneficiary
+"draw" : draw on the LC legally as beneficiary
+"payout" : mark the Lc as paid out as issuer
+"notify" : POST the following
 {
     'to_notify' : 'email_of_teammate@issuingbank.com',
     'note' : 'optionally, send a note with the request'
@@ -138,22 +141,7 @@ TODO goes into 7
 # as an employee of the issuer, client, or beneficiary,
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
-
-7. /lc/{lc_id}/{state_to_mark}/
-# POST as an employee of the beneficiary or issuer to update LC status:
-"request" : request payment as beneficiary
-"draw" : draw on the LC legally as beneficiary
-"payout" : mark the Lc as paid out as issuer
-
-8. /lc/{lc_id}/claim/{relation}
-# POST as a logged-in BusinessEmployee to claim one of the following relations to an LC:
-- beneficiary
-- account_party
-- advising [as in, the advising bank]
-
-9. /lc/{lc_id}/evaluate/
-TODO goes into 7
-# POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
+"evaluate" :  POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
     (<lc for which id == lc_id>.beneficiary)
@@ -162,7 +150,13 @@ or
     'complaints' : 'any complaints; blank if approve == true'
 }
 
-10. /lc/{lc_id}/doc_req/
+7. /lc/{lc_id}/claim/{relation}
+# POST as a logged-in BusinessEmployee to claim one of the following relations to an LC:
+- beneficiary
+- account_party
+- advising [as in, the advising bank]
+
+8. /lc/{lc_id}/doc_req/
 # POST the following
 {
     'doc_name' : 'name_of_doc_req'
@@ -180,7 +174,7 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
     NOTE: If you are submitting a doc req for an existing doc req you should PUT to /lc/{lc_id}/doc_req/{doc_req_id}
 # GET the current doc reqs and statuses
 
-11. /lc/{lc_id}/doc_req/{doc_req_id}/
+9. /lc/{lc_id}/doc_req/{doc_req_id}/
 # GET a doc req, whether or not a doc has been submitted yet
 
 # PUT a submitted file to this as the beneficiary,
@@ -208,7 +202,7 @@ as content-type=application/pdf, and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-12. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
+10. /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
 # POST
 - as an employee of the issuing bank to approve/dispute a DocumentaryRequirement's submitted_doc with
 {
@@ -231,14 +225,14 @@ and receive back
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
 
-13. /lc/{lc_id}/doc_req/{doc_req_id}/file/
+11. /lc/{lc_id}/doc_req/{doc_req_id}/file/
 # GET the actual file contents of the last submitted candidate for this doc req
 
-14. /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
+12. /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
 
-15. /lc/supported_creatable_docs/
+13. /lc/supported_creatable_docs/
 
-16. /lc/supported_creatable_docs/{doc_type}/
+14. /lc/supported_creatable_docs/{doc_type}/
 
 """
 
