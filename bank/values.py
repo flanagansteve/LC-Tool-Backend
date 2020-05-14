@@ -260,7 +260,7 @@ default_questions = [
         'options' : '["Yes, Original", "Yes, Copies", "Yes, Original and Copies", "No"]'
     },
     {
-        'question_text' : 'If applicable - how many copies of the Commercial Invoice must accompany the Drafts?',
+        'question_text' : 'How many copies of the Commercial Invoice must accompany the Drafts?',
         'key' : 'commercial_invoice_copies',
         'type' : 'number',
         'required' : False,
