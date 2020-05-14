@@ -61,6 +61,7 @@ def change_password(request):
     else:
         return HttpResponseBadRequest('This endpoint only supports POST requests')
 
+# TODO update sesion expiration date when they hit this
 @csrf_exempt
 def this_users_info(request):
     if request.user.is_authenticated:

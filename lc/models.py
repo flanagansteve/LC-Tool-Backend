@@ -146,7 +146,7 @@ class DigitalLC(LC):
     credit_amt = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True)
     # TODO this should technically be an enum
     currency_denomination = models.CharField(max_length=5, default='USD')
-    applicant_and_ap_j_and_s_obligated = models.BooleanField(null=True, blank=True)
+    applicant_and_ap_j_and_s_obligated = models.BooleanField(default=False)
     forex_contract_num = models.CharField(max_length=250, null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
     exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
@@ -411,9 +411,6 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         return to_return
 
     def generate_pdf(self):
-        print("Units purchased is " + str(self.units_purchased) + " and is a " + str(type(self.units_purchased)))
-        print("Unit price is " + str(self.unit_price) + " and is a " + str(type(self.unit_price)))
-        print("Total price is " + str(self.unit_price * self.units_purchased))
         self.date_of_issuance = datetime.datetime.now()
         created_doc_name = "commercial-invoice-from " + self.seller_name + "-on-" + str(self.date_of_issuance) + ".pdf"
         pdf = FPDF()

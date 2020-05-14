@@ -19,7 +19,6 @@ import json, datetime
 # later in the function, leading to bad data
 @csrf_exempt
 def index(request):
-    # TODO is there ever a situation where we GET all the banks?
     if request.method == "GET":
         all_banks = Bank.objects.all()
         return JsonResponse(list(all_banks.values()), safe=False)
