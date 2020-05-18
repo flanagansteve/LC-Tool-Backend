@@ -78,23 +78,26 @@ default_questions = [
         'type' : 'boolean',
         'required' : True,
         'options' : '',
-        'section' : 'Parties'
+        'section' : 'Parties',
+        'disabled' : '{"key": "account_party", "answer": [null, false]}'
     },
     {
-        'question_text' : 'If you, the Applicant, are not the Account Party, what is the Account Party\'s name?',
+        'question_text' : 'What is the Account Party\'s name?',
         'key' : 'account_party_name',
         'type' : 'text',
-        'required' : False,
+        'required' : True,
         'options' : '',
-        'section' : 'Parties'
+        'section' : 'Parties',
+        'disabled' : '{"key": "account_party", "answer": [null, false]}'
     },
     {
-        'question_text' : 'If you, the Applicant, are not the Account Party, what is the Account Party\'s address?',
+        'question_text' : 'What is the Account Party\'s address?',
         'key' : 'account_party_address',
         'type' : 'text',
-        'required' : False,
+        'required' : True,
         'options' : '',
-        'section' : 'Parties'
+        'section' : 'Parties',
+        'disabled' : '{"key": "account_party", "answer": [null, false]}'
     },
     {
         'question_text' : 'If the beneficiary specified an Advising Bank, who is the Advising Bank? If not, the bank issuing this LC will serve as one or select one. You may also specify None to indicate a specific desire against having one.',
@@ -113,12 +116,13 @@ default_questions = [
         'section' : 'Parties'
     },
     {
-        'question_text' : 'What percentage of currency exchange rate change will you tolerate? If you have secured a Foreign Exchange Contract, put 0%',
+        'question_text' : 'What percentage of currency exchange rate change will you tolerate?',
         'key' : 'exchange_rate_tolerance',
         'type' : 'decimal',
         'required' : True,
         'options' : '',
-        'section' : 'Transaction Details'
+        'section' : 'Parties',
+        'disabled' : '{"key": "forex_contract_num", "answer": [""]}'
     },
     {
         'question_text' : 'What good or service are you purchasing?',
@@ -289,12 +293,73 @@ default_questions = [
         'section' : 'Logistical Details'
     },
     {
+        'question_text' : 'Will you, the Applicant, arrange your own insurance? If not, you should request evidence of insurance from the Beneficiary as documents to accompany the Drafts.',
+        'key' : 'arranging_own_insurance',
+        'type' : 'boolean',
+        'required' : True,
+        'options' : '',
+        'section' : 'Document Requirements'
+    },
+    {
+        'question_text' : 'Assuming your beneficiary arranges the insurance on this purchase, what percentage of the invoice value would you like to have insured by a Negotiable Insurance Policy or Certificate? Specify 0% or skip if this is unnecessary for this transaction. 110% is standard.',
+        'key' : 'insurance_percentage',
+        'type' : 'decimal',
+        'required' : False,
+        'options' : '',
+        'section' : 'Document Requirements',
+        'disabled' : '{"key": "arranging_own_insurance", "answer": [true]}'
+    },
+    {
+        'question_text' : 'Assuming your beneficiary arranges the insurance on this purchase, what risks should it cover?',
+        'key' : 'selected_insurance_risks_covered',
+        'type' : 'checkbox',
+        'required' : False,
+        'options' : '["Marine Risk", "Air Risk", "War Risk", "Theft/Pilferage/Non-Delivery Risks", "All Risks"]',
+        'section' : 'Document Requirements',
+        'disabled' : '{"key": "arranging_own_insurance", "answer": [true]}'
+    },
+    {
+        'question_text' : 'Assuming your beneficiary arranges the insurance on this purchase, are there any other risks you\'d like covered, not listed in the previous question?',
+        'key' : 'other_insurance_risks_covered',
+        'type' : 'text',
+        'required' : False,
+        'options' : '',
+        'section' : 'Document Requirements',
+        'disabled' : '{"key": "arranging_own_insurance", "answer": [true]}'
+    },
+    {
         'question_text' : 'Should Drafts be accompanied by the Original, and/or copies, of the Signed Commercial Invoice?',
         'key' : 'commercial_invoice_required',
         'type' : 'radio',
         'required' : True,
         'options' : '["Yes, Original", "Yes, Copies", "Yes, Original and Copies", "No"]',
         'section' : 'Document Requirements'
+    },
+    {
+        'question_text' : 'Name',
+        'key' : 'commercial_invoice_required.name',
+        'type' : 'text',
+        'required' : False,
+        'options' : '',
+        'section' : '',
+        'initial_value' : 'Signed Commercial Invoice',
+        'disabled' : True
+    },
+    {
+        'question_text' : 'Include Original',
+        'key' : 'commercial_invoice_required.original',
+        'type' : 'boolean',
+        'required' : True,
+        'options' : '',
+        'section' : ''
+    },
+    {
+        'question_text' : 'Copies',
+        'key' : 'commercial_invoice_required.copies',
+        'type' : 'number',
+        'required' : True,
+        'options' : '',
+        'section' : ''
     },
     {
         'question_text' : 'How many copies of the Commercial Invoice must accompany the Drafts?',
@@ -346,31 +411,6 @@ default_questions = [
         'section' : 'Document Requirements'
     },
     {
-        'question_text' : 'If you\'d like your beneficiary to arrange insurance on this purchase, what percentage of the invoice value would you like to have insured by a Negotiable Insurance Policy or Certificate? Specify 0% or skip if this is unnecessary for this transaction. 110% is standard.',
-        'key' : 'insurance_percentage',
-        'type' : 'decimal',
-        'required' : False,
-        'options' : '',
-        'section' : 'Document Requirements'
-    },
-    {
-        'question_text' : 'If you\'d like your beneficiary to arrange insurance on this purchase, what risks should it cover?',
-        'key' : 'selected_insurance_risks_covered',
-        'type' : 'checkbox',
-        'required' : False,
-        'options' : '["Marine Risk", "Air Risk", "War Risk", "Theft/Pilferage/Non-Delivery Risks", "All Risks"]',
-        'section' : 'Document Requirements'
-    },
-
-    {
-        'question_text' : 'If you\'d like your beneficiary to arrange insurance on this purchase, are there any other risks you\'d like covered, not listed in the previous question?',
-        'key' : 'other_insurance_risks_covered',
-        'type' : 'text',
-        'required' : False,
-        'options' : '',
-        'section' : 'Document Requirements'
-    },
-    {
         'question_text' : 'Are there any other documents which you\'d like the Drafts to be accompanied with?',
         'key' : 'other_draft_accompiants',
         'type' : 'array_of_objs',
@@ -383,14 +423,6 @@ default_questions = [
         'key' : 'doc_reception_notifees',
         'type' : 'text',
         'required' : False,
-        'options' : '',
-        'section' : 'Document Requirements'
-    },
-    {
-        'question_text' : 'Will you, the Applicant, arrange your own insurance? If not, you should request evidence of insurance from the Beneficiary as documents to accompany the Drafts.',
-        'key' : 'arranging_own_insurance',
-        'type' : 'boolean',
-        'required' : True,
         'options' : '',
         'section' : 'Document Requirements'
     },

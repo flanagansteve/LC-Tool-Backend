@@ -1,7 +1,10 @@
 from django.db import models
 from django.forms.models import model_to_dict
 
-# TODO should we reflect article 36, that a bank might interrupt business due to acts of god / war / etc and fail to honour credits that expire in the interim? allow a bank to 'go inactive'
+# TODO should we reflect article 36, that a bank might interrupt business due
+#  to acts of god / war / etc and fail to honour credits that expire in the
+#  interim? allow a bank to 'go inactive'
+
 
 class LCAppQuestion(models.Model):
     question_text = models.CharField(max_length = 250)
@@ -15,12 +18,14 @@ class LCAppQuestion(models.Model):
     # and re/denormalise it whenever needed : ( wtf
     # https://stackoverflow.com/questions/1110153/what-is-the-most-efficient-way-to-store-a-list-in-the-django-models
     options = models.CharField(max_length = 500, blank=True, default=True)
-    section = models.CharField(max_length = 50, blank=True, default="General")
+    section = models.CharField(max_length = 50, blank=True, default="")
     disabled = models.CharField(max_length = 500, blank=True, default='')
+
 
 def pdf_app_path(bank, filename):
     # file will be uploaded to MEDIA_ROOT/bank_<bank_id>/lc_application.pdf
     return 'bank_{0}/lc_application.pdf'.format(instance.bank.id)
+
 
 # TODO decide whether to store files on our back end, or as a link to a cloud
 class Bank(models.Model):
@@ -51,6 +56,7 @@ class Bank(models.Model):
         for question in self.digital_application.all():
             to_return.append(model_to_dict(question))
         return to_return
+
 
 class BankEmployee(models.Model):
     name = models.CharField(max_length=250, null=True, blank=True)
