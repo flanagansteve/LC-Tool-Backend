@@ -142,7 +142,7 @@ def invite_teammate(request, business_id):
         return HttpResponseBadRequest("This endpoint only supports POST")
 
 # POST
-# - email, both to validate the invite & create credentials
+# - email, both to validate the invite & create credentials.py
 # - password
 # - name and title (NOTE we might make this optional)
 # and receive back

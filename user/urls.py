@@ -19,7 +19,7 @@ to log in, and receive back
 POST to log out, and receive back
 {
 "success": true
-}, or 403 for bad credentials
+}, or 403 for bad credentials.py
 
 3. /user/change_password/
 POST a new password:
@@ -29,7 +29,7 @@ POST a new password:
 and receive back
 {
 "success": true
-}, or 403 for bad credentials
+}, or 403 for bad credentials.py
 
 4. /user/this_users_info/
 GET, as a logged-in user,
