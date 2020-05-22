@@ -328,16 +328,16 @@ default_questions = [
         'disabled' : '{"key": "arranging_own_insurance", "answer": [true]}'
     },
     {
-        'question_text' : 'Should Drafts be accompanied by the Original, and/or copies, of the Signed Commercial Invoice?',
-        'key' : 'commercial_invoice_required',
-        'type' : 'radio',
-        'required' : True,
-        'options' : '["Yes, Original", "Yes, Copies", "Yes, Original and Copies", "No"]',
+        'question_text' : 'Please fill out the document requirements for the Signed Commercial Invoice.',
+        'key' : 'commercial_invoice',
+        'type' : 'object',
+        'required' : False,
+        'options' : '',
         'section' : 'Document Requirements'
     },
     {
         'question_text' : 'Name',
-        'key' : 'commercial_invoice_required.name',
+        'key' : 'commercial_invoice.name',
         'type' : 'text',
         'required' : False,
         'options' : '',
@@ -347,7 +347,7 @@ default_questions = [
     },
     {
         'question_text' : 'Include Original',
-        'key' : 'commercial_invoice_required.original',
+        'key' : 'commercial_invoice.original',
         'type' : 'boolean',
         'required' : True,
         'options' : '',
@@ -355,60 +355,120 @@ default_questions = [
     },
     {
         'question_text' : 'Copies',
-        'key' : 'commercial_invoice_required.copies',
+        'key' : 'commercial_invoice.copies',
         'type' : 'number',
         'required' : True,
         'options' : '',
         'section' : ''
     },
     {
-        'question_text' : 'How many copies of the Commercial Invoice must accompany the Drafts?',
-        'key' : 'commercial_invoice_copies',
-        'type' : 'number',
-        'required' : False,
-        'options' : '',
-        'section' : 'Document Requirements',
-        'disabled' : '{"key": "commercial_invoice_required", "answer": ["Yes, Original", "No"]}'
-    },
-    {
-        'question_text' : 'What, if any, Transport Documents should accompany the Drafts?',
+        'question_text' : 'What, if any, Transport Documents should accompany '
+                          'the Drafts?',
         'key' : 'required_transport_docs',
-        'type' : 'checkbox',
+        'type' : 'array_of_objs',
         'required' : False,
-        'options' : '["Full set original clean on board Marine Bills of Lading or multimodal or combined transport Bill of Lading issued to order of shipper, endorsed in blank", "Clean Air Waybill consigned to the \'Applicant\'", "Clean Truck / Rail Bill of Lading consigned to the \'Applicant\'"]',
-        'section' : 'Document Requirements'
+        'options' : '["Full set original clean on board Marine Bills of '
+                    'Lading or multimodal or combined transport Bill of '
+                    'Lading issued to order of shipper, endorsed in blank", '
+                    '"Clean Air Waybill consigned to the \'Applicant\'", '
+                    '"Clean Truck / Rail Bill of Lading consigned to the '
+                    '\'Applicant\'"]',
+        'section' : 'Document Requirements',
+        'settings': '{"name":"Transport Document"}'
     },
     {
-        'question_text' : 'The transport document must be marked',
-        'key' : 'transport_doc_marking',
-        'type' : 'checkbox',
-        'required' : False,
-        'options' : '["Freight Collect", "Freight Prepaid"]',
-        'section' : 'Document Requirements'
+        'question_text': 'Name',
+        'key': 'required_transport_docs.name',
+        'type': 'radio',
+        'required': True,
+        'options': '',
+        'section': '',
     },
     {
-        'question_text' : 'How many copies of the Packing List should accompany the Drafts? Select 0 or skip for none',
-        'key' : 'copies_of_packing_list',
-        'type' : 'number',
+        'question_text': 'Required Values',
+        'key': 'required_transport_docs.required_values',
+        'type': 'radio',
+        'required': True,
+        'options': '["Freight Collect", "Freight Prepaid"]',
+        'section': '',
+    },
+    {
+        'question_text' : 'Please fill out the document requirements for the Packing List.',
+        'key' : 'packing_list',
+        'type' : 'object',
         'required' : False,
         'options' : '',
         'section' : 'Document Requirements'
     },
     {
-        'question_text' : 'How many copies of the Certificate of Origin should accompany the Drafts? Select 0 or skip for none',
-        'key' : 'copies_of_certificate_of_origin',
+        'question_text' : 'Name',
+        'key' : 'packing_list.name',
+        'type' : 'text',
+        'required' : False,
+        'options' : '',
+        'section' : '',
+        'initial_value' : 'Packing List',
+        'disabled' : True
+    },
+    {
+        'question_text' : 'Copies',
+        'key' : 'packing_list.copies',
         'type' : 'number',
+        'required' : True,
+        'options' : '',
+        'section' : ''
+    },
+    {
+        'question_text' : 'Please fill out the document requirements for the Certificate of Origin.',
+        'key' : 'certificate_of_origin',
+        'type' : 'object',
         'required' : False,
         'options' : '',
         'section' : 'Document Requirements'
     },
     {
-        'question_text' : 'How many copies of the Inspection Certificate should accompany the Drafts? Select 0 or skip for none',
-        'key' : 'copies_of_inspection_certificate',
+        'question_text' : 'Name',
+        'key' : 'certificate_of_origin.name',
+        'type' : 'text',
+        'required' : False,
+        'options' : '',
+        'section' : '',
+        'initial_value' : 'Certificate of Origin',
+        'disabled' : True
+    },
+    {
+        'question_text' : 'Copies',
+        'key' : 'certificate_of_origin.copies',
         'type' : 'number',
+        'required' : True,
+        'options' : '',
+        'section' : ''
+    },
+    {
+        'question_text' : 'Please fill out the document requirements for the Inspection Certificate.',
+        'key' : 'inspection_certificate',
+        'type' : 'object',
         'required' : False,
         'options' : '',
         'section' : 'Document Requirements'
+    },
+    {
+        'question_text' : 'Name',
+        'key' : 'inspection_certificate.name',
+        'type' : 'text',
+        'required' : False,
+        'options' : '',
+        'section' : '',
+        'initial_value' : 'Inspection Certificate',
+        'disabled' : True
+    },
+    {
+        'question_text' : 'Copies',
+        'key' : 'inspection_certificate.copies',
+        'type' : 'number',
+        'required' : True,
+        'options' : '',
+        'section' : ''
     },
     {
         'question_text' : 'Are there any other documents which you\'d like the Drafts to be accompanied with?',
@@ -416,7 +476,32 @@ default_questions = [
         'type' : 'array_of_objs',
         'required' : False,
         'options' : '',
-        'section' : 'Document Requirements'
+        'section' : 'Document Requirements',
+        'settings': '{"name":"Documentary Requirement"}'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'other_draft_accompiants.name',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': '',
+    },
+    {
+        'question_text': 'Due Date',
+        'key': 'other_draft_accompiants.due_date',
+        'type': 'date',
+        'required': True,
+        'options': '',
+        'section': '',
+    },
+    {
+        'question_text': 'Required Values',
+        'key': 'other_draft_accompiants.required_values',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': '',
     },
     {
         'question_text' : 'Who should be notified when Drafts and accompanying documents are received? We will notify the Applicant unless otherwise specified.',

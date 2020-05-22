@@ -738,7 +738,10 @@ def set_lc_specifications(lc, json_data):
                 fail_silently=False,
             )
             pass
-    del json_data['account_party'], json_data['applicant_and_ap_j_and_s_obligated'], json_data['account_party_name'], json_data['account_party_address']
+    del json_data['account_party']
+    json_data.pop('applicant_and_ap_j_and_s_obligated', None)
+    json_data.pop('account_party_name', None)
+    json_data.pop('account_party_address', None)
 
     # Question 13
     if 'advising_bank' in json_data:
@@ -861,14 +864,20 @@ def set_lc_specifications(lc, json_data):
     # TODO typed: when creating doc reqs, actually use all the fields in json_data, updating specifically typed doc reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
 
     # Question 37
-    if json_data['commercial_invoice_required'] != "No":
+    if json_data['commercial_invoice']['original'] or json_data['commercial_invoice']['copies'] > 0:
+        version = ""
+        if json_data['commercial_invoice']['original'] and json_data['commercial_invoice']['copies'] > 0:
+            version = "Original and Copies"
+        elif json_data['commercial_invoice']['original']:
+            version = "Original"
+        else:
+            version = "Copies"
         required_values = (
-            "Version required: " + json_data['commercial_invoice_required'][5:]
+            "Version required: " + version
             + "\nIncoterms to show: " + lc.incoterms_to_show
             + "\nNamed place of destination: " + lc.named_place_of_destination
         )
-        required_values += "\nCopies: " + str(json_data['commercial_invoice_copies'])
-        del json_data['commercial_invoice_copies']
+        required_values += "\nCopies: " + str(json_data['commercial_invoice']['copies'])
         # TODO typed: test
         ci = CommercialInvoiceRequirement(
             for_lc = lc,
@@ -878,21 +887,20 @@ def set_lc_specifications(lc, json_data):
             type="commercial_invoice"
         )
         ci.save()
-    del json_data['commercial_invoice_required']
+    del json_data['commercial_invoice']
 
     # Question 38
     if 'required_transport_docs' in json_data:
         required_values = ""
         # Question 39
-        for transport_doc_marking in json_data['transport_doc_marking']:
-            required_values += "Marked " + transport_doc_marking + "\n"
+        for transport_doc in json_data['required_transport_docs']:
+            required_values += "Marked " + transport_doc['required_values'] + "\n"
         required_values = required_values[:-1]
-        del json_data['transport_doc_marking']
         # TODO typed:  convert this to if xxx in json_data for the 3 transport doc types
         # we support
         for required_transport_doc in json_data['required_transport_docs']:
             lc.documentaryrequirement_set.create(
-                doc_name=required_transport_doc,
+                doc_name=required_transport_doc['name'],
                 due_date=lc.draft_presentation_date,
                 required_values=required_values
             )
@@ -901,32 +909,32 @@ def set_lc_specifications(lc, json_data):
     # TODO typed: implement the below classes
 
     # Question 40
-    if 'copies_of_packing_list' in json_data:
-        if json_data['copies_of_packing_list'] != 0:
+    if 'packing_list' in json_data:
+        if json_data['packing_list']['copies'] != 0:
             lc.documentaryrequirement_set.create(
                 doc_name="Packing List",
                 due_date=lc.draft_presentation_date
             )
-        del json_data['copies_of_packing_list']
+        del json_data['packing_list']
 
     # Question 41
-    if 'copies_of_certificate_of_origin' in json_data:
-        if json_data['copies_of_certificate_of_origin'] != 0:
+    if 'certificate_of_origin' in json_data:
+        if json_data['certificate_of_origin']['copies'] != 0:
             lc.documentaryrequirement_set.create(
                 doc_name="Certificate of Origin",
                 due_date=lc.draft_presentation_date
             )
-        del json_data['copies_of_certificate_of_origin']
+        del json_data['certificate_of_origin']
 
     # Question 42
     # TODO typed: use inspeciton certificate model
-    if 'copies_of_inspection_certificate' in json_data:
-        if json_data['copies_of_inspection_certificate'] != 0:
+    if 'inspection_certificate' in json_data:
+        if json_data['inspection_certificate']['copies'] != 0:
             lc.documentaryrequirement_set.create(
                 doc_name="Inspection Certificate",
                 due_date=lc.draft_presentation_date
             )
-        del json_data['copies_of_inspection_certificate']
+        del json_data['inspection_certificate']
 
     # Question 43
     if 'insurance_percentage' in json_data:
@@ -951,7 +959,11 @@ def set_lc_specifications(lc, json_data):
     # Question 46
     if 'other_draft_accompiants' in json_data:
         for doc_req in json_data['other_draft_accompiants']:
-            lc.documentaryrequirement_set.create(**doc_req)
+            lc.documentaryrequirement_set.create(
+                doc_name=doc_req['name'],
+                due_date=doc_req['due_date'],
+                required_values=doc_req['required_values']
+            )
         del json_data['other_draft_accompiants']
 
     # Question 47

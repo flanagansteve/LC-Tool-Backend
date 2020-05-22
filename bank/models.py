@@ -7,9 +7,9 @@ from django.forms.models import model_to_dict
 
 
 class LCAppQuestion(models.Model):
-    question_text = models.CharField(max_length = 250)
-    key = models.CharField(max_length = 50)
-    type = models.CharField(max_length = 25)
+    question_text = models.CharField(max_length=250)
+    key = models.CharField(max_length=50)
+    type = models.CharField(max_length=25)
     required = models.BooleanField()
     # Used for type=radio or type=checkbox questions; blank for all others
     # The internet says the best way to do a list of strs as a django field
@@ -17,9 +17,11 @@ class LCAppQuestion(models.Model):
     # is, to literally, make a separated-value string...
     # and re/denormalise it whenever needed : ( wtf
     # https://stackoverflow.com/questions/1110153/what-is-the-most-efficient-way-to-store-a-list-in-the-django-models
-    options = models.CharField(max_length = 500, blank=True, default=True)
-    section = models.CharField(max_length = 50, blank=True, default="")
-    disabled = models.CharField(max_length = 500, blank=True, default='')
+    options = models.CharField(max_length=500, blank=True, default=True)
+    section = models.CharField(max_length=50, blank=True, default='')
+    disabled = models.CharField(max_length=500, blank=True, default='')
+    initial_value = models.CharField(max_length=500, blank=True, default='')
+    settings = models.CharField(max_length=500, blank=True, default='')
 
 
 def pdf_app_path(bank, filename):
@@ -52,9 +54,27 @@ class Bank(models.Model):
         }
 
     def get_lc_app(self):
+        questions = self.digital_application.all()
+        questions_dict = {}
+        nested_count = 0
+        for question in questions:
+            question_dict = model_to_dict(question)
+            nested_count = max(nested_count, question_dict['key'].count('.'))
+            question_dict['children'] = []
+            questions_dict[question_dict['key']] = question_dict
+        while nested_count > 0:
+            for key, question in questions_dict.items():
+                if key.count('.') == nested_count:
+                    last_dot_index = key.rfind('.')
+                    parent_key = key[key.rfind('.', 0, last_dot_index) + 1:
+                                     last_dot_index]
+                    question['key'] = key[last_dot_index + 1:]
+                    questions_dict[parent_key]['children'].append(question)
+            nested_count -= 1
         to_return = []
-        for question in self.digital_application.all():
-            to_return.append(model_to_dict(question))
+        for key, question in questions_dict.items():
+            if key.count('.') == 0:
+                to_return.append(question)
         return to_return
 
 
