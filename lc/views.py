@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, FileResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.core import serializers
@@ -710,6 +711,85 @@ def supported_creatable_doc(request, doc_type):
     else:
         return Http404("No supported creatable document with that doc_type")
 
+
+@csrf_exempt
+def digital_app_templates(request):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+            try:
+                user = BusinessEmployee.objects.get(email=request.user.username)
+                templates = DigitalLCTemplate.objects.filter(user=user).values('id', 'template_name')
+                return JsonResponse(list(templates), safe=False)
+            except BusinessEmployee.DoesNotExist:
+                return HttpResponseForbidden("Must be a business employee to see LC templates")
+        else:
+            return HttpResponseForbidden("Must be logged in to see your LC templates")
+    elif request.method == "POST":
+        if request.user.is_authenticated:
+            try:
+                user = BusinessEmployee.objects.get(email=request.user.username)
+                json_data = json.loads(request.body)
+                template = DigitalLCTemplate(user=user, template_name=json_data['template_name'])
+                template.to_model(json_data)
+                try:
+                    template.save()
+                    return JsonResponse({
+                        'success': True,
+                        'created_lc_template': model_to_dict(template)
+                    })
+                except IntegrityError as e:
+                    return HttpResponseBadRequest("A template with this name already exists")
+            except BusinessEmployee.DoesNotExist:
+                return HttpResponseForbidden("Must be a business employee to create an LC template")
+        else:
+            return HttpResponseForbidden("Must be logged in to create an LC template")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, POST")
+
+
+@csrf_exempt
+def digital_app_template(request, template_id):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+            try:
+                user = BusinessEmployee.objects.get(email=request.user.username)
+                try:
+                    template = DigitalLCTemplate.objects.get(id=template_id)
+                    if user != template.user:
+                        return HttpResponseForbidden("Must be an authorized user for this template")
+                    return JsonResponse(model_to_dict(template))
+                except DigitalLCTemplate.DoesNotExist:
+                    return HttpResponseBadRequest("The template ID given does not exist")
+            except BusinessEmployee.DoesNotExist:
+                return HttpResponseForbidden("Must be a business employee to see an LC template")
+        else:
+            return HttpResponseForbidden("Must be logged in to see an LC template")
+    elif request.method == "PUT":
+        if request.user.is_authenticated:
+            try:
+                user = BusinessEmployee.objects.get(email=request.user.username)
+                try:
+                    template = DigitalLCTemplate.objects.get(id=template_id)
+                    if user != template.user:
+                        return HttpResponseForbidden("Must be an authorized user for this template")
+                    json_data = json.loads(request.body)
+                    template.to_model(json_data)
+                    template.save()
+                    return JsonResponse({
+                        'success': True,
+                        'updated_lc_template': model_to_dict(template)
+                    })
+                except  DigitalLCTemplate.DoesNotExist:
+                    return HttpResponseBadRequest("The template ID given does not exist")
+            except BusinessEmployee.DoesNotExist:
+                return HttpResponseForbidden("Must be a business employee to update an LC template")
+        else:
+            return HttpResponseForbidden("Must be logged in to update an LC template")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, PUT")
+
+
+
 # TODO should probably log received checkbox or radio values that are not one
 # of the options they're supposed to be - thats an error, but easily fixable if
 # we know thats what happened
@@ -734,7 +814,7 @@ def set_lc_specifications(lc, json_data):
                 lc.client.name + " has created their LC to work with you on Bountium",
                 lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your acccount party status at https://app.bountium.org/business/claimAccountParty/" + str(lc.id) + "/",
                 "steve@bountium.org",
-                [list(lc.tasked_client_employees.all())[0]],
+                [list(lc.tasked_client_employees.all())[0].email],
                 fail_silently=False,
             )
             pass
