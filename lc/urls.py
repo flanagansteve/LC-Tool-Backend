@@ -279,4 +279,10 @@ urlpatterns = [
     # /lc/supported_creatable_docs/{doc_type}/
     url(r'^supported_creatable_docs/(?P<doc_type>[\w\-]+)/$', views.supported_creatable_doc, name='supported_creatable_doc'),
 
+    # /lc/digital_app_templates/
+    url(r'^digital_app_templates/$', views.digital_app_templates, name='digital_app_templates'),
+
+    # /lc/digital_app_templates/{template_id}
+    url(r'^digital_app_templates/(?P<template_id>[0-9]+)/$', views.digital_app_template, name='digital_app_templates')
+
 ]

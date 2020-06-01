@@ -1,3 +1,5 @@
+import json
+
 from django.db import models
 from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
@@ -130,6 +132,7 @@ class PdfLC(LC):
     app_response = models.FileField(upload_to=pdf_app_response_path)
     contract = models.FileField(upload_to=pdf_lc_contract_path)
 
+
 # TODO not using all fields in doc reqs; not all of them used in UCP 600 even
 # though they do all appear in SVBs app. Figure out why, and perhaps differentiate
 # between is_ucp_valid and all_fields_valid
@@ -254,10 +257,49 @@ class DigitalLC(LC):
             to_return.append(bank.to_dict())
         return to_return
 
+
+class DigitalLCTemplate(models.Model):
+    user = models.ForeignKey(BusinessEmployee, on_delete=models.CASCADE)
+    template_name = models.CharField(max_length=100, unique=True)
+    # We are not storing foreign keys here as some of the businesses/banks
+    # are not on Bountium
+
+    beneficiary_name = models.CharField(max_length=250, blank=True, default='')
+    purchased_item = models.CharField(max_length=1000, blank=True, default='')
+    beneficiary_address = models.CharField(max_length=250, blank=True, default='')
+    advising_bank = models.CharField(max_length= 250, blank=True, default='')
+    forex_contract_num = models.CharField(max_length=250, blank=True, default='')
+    exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    credit_delivery_means = models.CharField(max_length=250, blank=True, default='')
+    currency_denomination = models.CharField(max_length=5, blank=True, default='')
+    confirmation_means  = models.CharField(max_length=1000, blank=True, null=True)
+    paying_other_banks_fees = models.CharField(max_length=100, blank=True, null=True)
+    credit_expiry_location = models.CharField(max_length=100, blank=True, null=True)
+    credit_availability = models.CharField(max_length=250, blank=True, default='')
+    paying_acceptance_and_discount_charges = models.CharField(max_length=100, blank=True, null=True)
+    arranging_own_insurance = models.BooleanField(blank=True, null=True)
+    insurance_percentage = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    selected_insurance_risks_covered = models.CharField(max_length=500, blank=True, default='')
+    other_insurance_risks_covered = models.CharField(max_length=500, blank=True, default='')
+    unit_of_measure = models.CharField(max_length=1000, blank=True, default='')
+    merch_description = models.CharField(max_length=2000, blank=True, default='')
+    required_transport_docs = models.CharField(max_length=500, blank=True, default='[]')
+    packing_list = models.CharField(max_length=500, blank=True, default='{}')
+    certificate_of_origin = models.CharField(max_length=500, blank=True, default='{}')
+    inspection_certificate = models.CharField(max_length=500, blank=True, default='{}')
+    other_draft_accompiants = models.CharField(max_length=5000, blank=True, default='[]')
+    commercial_invoice = models.CharField(max_length=100, blank=True, default='{}')
+
+    def to_model(self, json_data):
+        for key, value in json_data.items():
+            setattr(self, key, value)
+
+
 class LCAppQuestionResponse(models.Model):
     for_question = models.ForeignKey(LCAppQuestion, on_delete=models.CASCADE)
     for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
     raw_json_value = models.CharField(max_length = 5000)
+
 
 class DocumentaryRequirement(models.Model):
     for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
