@@ -1,3 +1,4 @@
+from decimal import *
 from django.db import IntegrityError
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, FileResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
@@ -8,7 +9,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from bank.models import Bank, BankEmployee
-from business.models import Business, BusinessEmployee
+from business.models import Business, BusinessEmployee, ApprovedCredit
 from .values import commercial_invoice_form, multimodal_bl_form
 from util import update_django_instance_with_subset_json
 from django.db.models import Q
@@ -28,7 +29,7 @@ def cr_lcs(request, bank_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with that id found")
+        raise Http404("No bank with that id found")
     if request.method == "GET":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(email=request.user.username).exists():
@@ -106,14 +107,16 @@ def cr_lcs(request, bank_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
+                    lc.beneficiary = Business(name=json_data['beneficiary_name'], address=json_data['beneficiary_address'])
+                    lc.beneficiary.save()
+                    ApprovedCredit(bank=bank, business=lc.beneficiary).save()
                     send_mail(
                         employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + str(lc.id) + "/",
+                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register/" + lc.beneficiary.id + ". 2. Navigate to you home page to see the newly created LC.",
                         "steve@bountium.org",
                         [employee_applying.email],
                         fail_silently=False,
                     )
-                    pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
 
@@ -140,7 +143,7 @@ def rud_lc(request, lc_id):
     try:
         lc = DigitalLC.objects.get(id=lc_id)
     except DigitalLC.DoesNotExist:
-        return Http404("No lc with that id")
+        raise Http404("No lc with that id")
     if request.method == "GET":
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
@@ -199,7 +202,7 @@ def rud_lc(request, lc_id):
                     return JsonResponse({
                         'success' : True
                     })
-                elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                elif lc.beneficiary is not None and lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved, lc.client_approved = False, False
@@ -249,7 +252,7 @@ def get_filtered_lcs(request, bank_id, filter):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with that id")
+        raise Http404("No bank with that id")
     to_return = []
     filter_vals = {
         'live' : Q(client_approved=True, issuer_approved=True, beneficiary_approved=True),
@@ -266,7 +269,7 @@ def get_lcs_by_client(request, business_id):
     try:
         client = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
-        return Http404("No business with that id")
+        raise Http404("No business with that id")
     to_return = []
     for lc in DigitalLC.objects.filter(client=client):
         to_return.append(lc.to_dict())
@@ -277,7 +280,7 @@ def get_lcs_by_beneficiary(request, business_id):
     try:
         beneficiary = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
-        return Http404("No business with that id")
+        raise Http404("No business with that id")
     to_return = []
     for lc in DigitalLC.objects.filter(beneficiary=beneficiary):
         to_return.append(lc.to_dict())
@@ -301,7 +304,7 @@ def claim_relation_to_lc(request, lc_id, relation):
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     if request.method == "POST":
         if request.user.is_authenticated:
             if relation == 'beneficiary':
@@ -344,7 +347,7 @@ def claim_relation_to_lc(request, lc_id, relation):
                 else:
                     return HttpResponseForbidden('Only a bank registered on Bountium may claim advising bank status')
             else:
-                return Http404('Bountium is only supporting the LC relations "beneficiary", "account_party", and "advising"')
+                raise Http404('Bountium is only supporting the LC relations "beneficiary", "account_party", and "advising"')
         else:
             return HttpResponseForbidden('You must be logged in to claim an LC relation')
     else:
@@ -367,7 +370,7 @@ def cr_doc_reqs(request, lc_id):
                 try:
                     lc = LC.objects.get(id=lc_id)
                 except LC.DoesNotExist:
-                    return Http404("No lc with id " + lc_id)
+                    raise Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
                 lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'], link_to_submitted_doc = json['link_to_submitted_doc'])
                 lc.save()
@@ -387,11 +390,11 @@ def rud_doc_req(request, lc_id, doc_req_id):
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     try:
         doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
     except DocumentaryRequirement.DoesNotExist:
-        return Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
+        raise Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
     if request.method == 'GET':
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
@@ -526,11 +529,11 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     try:
         doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
     except DocumentaryRequirement.DoesNotExist:
-        return Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
+        raise Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
     if request.method == 'POST':
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
@@ -567,7 +570,7 @@ def mark_lc_something(request, lc_id, state_to_mark):
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     if request.method=="POST":
         if request.user.is_authenticated:
             if state_to_mark == 'request':
@@ -648,7 +651,7 @@ def mark_lc_something(request, lc_id, state_to_mark):
                 else:
                     return HttpResponseForbidden("Only employees of this LC's issuer, client, or beneficiary may notify teammates about it")
             else:
-                return Http404('Bountium only supports marking an LC\'s status with the actions "request", "draw", "evaluate", and "payout"')
+                raise Http404('Bountium only supports marking an LC\'s status with the actions "request", "draw", "evaluate", and "payout"')
         else:
             return HttpResponseForbidden('You must be logged in to update the status on an LC')
     else:
@@ -659,11 +662,11 @@ def get_dr_file(request, lc_id, doc_req_id):
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     try:
         doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
     except DocumentaryRequirement.DoesNotExist:
-        return Http404("No doc req with that id associated with this lc")
+        raise Http404("No doc req with that id associated with this lc")
     if request.method == 'GET':
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
@@ -689,11 +692,11 @@ def autopopulate_creatable_dr(request, lc_id, doc_req_id):
     try:
         lc = DigitalLC.objects.get(id=lc_id)
     except LC.DoesNotExist:
-        return Http404("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     try:
         doc_req = promote_to_child(lc.documentaryrequirement_set.get(id=doc_req_id))
     except DocumentaryRequirement.DoesNotExist:
-        return Http404("No doc req with that id associated with this lc")
+        raise Http404("No doc req with that id associated with this lc")
     return JsonResponse(doc_req.suggested_field_vals())
 
 @csrf_exempt
@@ -709,7 +712,7 @@ def supported_creatable_doc(request, doc_type):
     elif doc_type == 'multimodal_bl':
         return JsonResponse(multimodal_bl_form, safe=False)
     else:
-        return Http404("No supported creatable document with that doc_type")
+        raise Http404("No supported creatable document with that doc_type")
 
 
 @csrf_exempt
@@ -718,7 +721,9 @@ def digital_app_templates(request):
         if request.user.is_authenticated:
             try:
                 user = BusinessEmployee.objects.get(email=request.user.username)
-                templates = DigitalLCTemplate.objects.filter(user=user).values('id', 'template_name')
+                filter = {k: v for k, v in request.GET.items()}
+                filter['user'] = user
+                templates = DigitalLCTemplate.objects.filter(**filter).values('id', 'template_name')
                 return JsonResponse(list(templates), safe=False)
             except BusinessEmployee.DoesNotExist:
                 return HttpResponseForbidden("Must be a business employee to see LC templates")
@@ -729,6 +734,8 @@ def digital_app_templates(request):
             try:
                 user = BusinessEmployee.objects.get(email=request.user.username)
                 json_data = json.loads(request.body)
+                if 'template_name' not in json_data:
+                    return HttpResponseBadRequest("Must provide a template name")
                 template = DigitalLCTemplate(user=user, template_name=json_data['template_name'])
                 template.to_model(json_data)
                 try:
@@ -788,6 +795,32 @@ def digital_app_template(request, template_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, PUT")
 
+
+@csrf_exempt
+def total_credit(request, business_id):
+    if request.method == "GET":
+        if request.user.is_authenticated:
+            try:
+                user = BankEmployee.objects.get(email=request.user.username)
+                business = Business.objects.get(id=business_id)
+                apps = list(DigitalLC.objects.filter(issuer=user.bank,client=business,issuer_approved=True).values('credit_amt', 'cash_secure'))
+                sum = Decimal(0)
+                for app in apps:
+                    credit = app['credit_amt']
+                    cash_secure = app['cash_secure']
+                    if credit is not None:
+                        sum += credit
+                    if cash_secure is not None:
+                        sum -= cash_secure
+                return JsonResponse(sum, safe=False)
+            except BankEmployee.DoesNotExist:
+                return HttpResponseForbidden("Must be a bank employee to see a business's total credit")
+            except BusinessEmployee.DoesNotExist:
+                return HttpResponseForbidden("No business found for the given id")
+        else:
+            return HttpResponseForbidden("Must be logged in to see a business's total credit")
+    else:
+        return HttpResponseBadRequest("This endpoint only supports GET, PUT")
 
 
 # TODO should probably log received checkbox or radio values that are not one
@@ -1071,6 +1104,10 @@ def set_lc_specifications(lc, json_data):
     elif json_data["transferability"] == "Transferable, fees charged to the beneficiary\'s account":
         lc.transferable_to_beneficiary = True
     del json_data['transferability']
+
+    # Cash Secure Question
+    lc.cash_secure = json_data["cash_secure"]
+    del json_data["cash_secure"]
 
     # 2. for any other fields left in json_data, save them as a tuple
     #    in other_data

@@ -6,6 +6,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
+
+from business.models import Business, ApprovedCredit
 from .models import Bank, BankEmployee, LCAppQuestion
 from .values import default_questions
 from util import update_django_instance_with_subset_json
@@ -65,7 +67,7 @@ def rud_bank(request, bank_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with id " + bank_id)
+        raise Http404("No bank with id " + bank_id)
     if request.method == "GET":
         return JsonResponse(bank.to_dict())
     elif request.method == "DELETE":
@@ -102,7 +104,7 @@ def invite_teammate(request, bank_id):
             try:
                 bank = Bank.objects.get(id=bank_id)
             except Bank.DoesNotExist:
-                return Http404("No bank with id " + bank_id + " for you to invite a teammate to")
+                raise Http404("No bank with id " + bank_id + " for you to invite a teammate to")
             if not bank.bankemployee_set.filter(email=request.user.username).exists():
                 return HttpResponseForbidden("You may only invite teammates to your own bank")
             json_data = json.loads(request.body)
@@ -167,12 +169,12 @@ def register_upon_invitation(request, bank_id):
         try:
             bank = Bank.objects.get(id=bank_id)
         except Bank.DoesNotExist:
-            return Http404("There is no bank with id " + bank_id)
+            raise Http404("There is no bank with id " + bank_id)
         # b. check if there is a bankemployee with email=new_user_data['email'],
         #    and blanks for all other fields. Check for error on either.
         new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
         if new_employee is None:
-            return Http404("There is no invitation for email " + new_user_data['email'])
+            raise Http404("There is no invitation for email " + new_user_data['email'])
         if new_employee.name:
             return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
         # 2. Register the user account
@@ -201,12 +203,12 @@ def rud_bank_employee(request, bank_id, employee_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with id " + bank_id)
+        raise Http404("No bank with id " + bank_id)
     if request.method == "GET":
         try:
             return JsonResponse(model_to_dict(bank.bankemployee_set.get(id=employee_id)))
         except BankEmployee.DoesNotExist:
-            return Http404(str(bank) + " does not have an employee with id " + employee_id)
+            raise Http404(str(bank) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if bank.bankemployee_set.filter(id = employee_id).exists():
@@ -220,7 +222,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                         "users_employer" : bank.to_dict()
                     })
             else:
-                return Http404(str(bank) + " does not have an employee with id " + employee_id)
+                raise Http404(str(bank) + " does not have an employee with id " + employee_id)
         else:
             return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
@@ -235,7 +237,7 @@ def rud_bank_employee(request, bank_id, employee_id):
                 update_django_instance_with_subset_json(json_data, bank_employee)
                 bank_employee.save()
             except BankEmployee.DoesNotExist:
-                return Http404(str(bank) + " does not have an employee with id " + employee_id)
+                raise Http404(str(bank) + " does not have an employee with id " + employee_id)
             return JsonResponse({
                 "user_employee" : model_to_dict(bank.bankemployee_set.get(id = employee_id)),
                 "users_employer" : bank.to_dict()
@@ -252,7 +254,7 @@ def cr_digital_app(request, bank_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with id " + bank_id)
+        raise Http404("No bank with id " + bank_id)
     if request.method == 'GET':
         return JsonResponse(bank.get_lc_app(), safe=False)
     elif request.method == 'POST':
@@ -271,7 +273,7 @@ def ud_digital_app(request, bank_id, question_id):
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
-        return Http404("No bank with id " + bank_id)
+        raise Http404("No bank with id " + bank_id)
     if request.method == 'PUT':
         json_data = json.loads(request.body)
         question = bank.digital_application.get(id=question_id)
@@ -289,3 +291,45 @@ def ud_digital_app(request, bank_id, question_id):
         })
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT, DELETE")
+
+@csrf_exempt
+def approved_credit(request, bank_id, business_id):
+    if not (request.method == "GET" or request.method == "PUT"):
+        return HttpResponseBadRequest("This endpoint only supports GET, PUT")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to see a business's approved credit")
+    try:
+        user = BankEmployee.objects.get(email=request.user.username)
+        bank = Bank.objects.get(id=bank_id)
+        if not user.bank == bank:
+            return HttpResponseForbidden("Must be a bank employee of this bank to see its approved credit with the given business")
+        business = Business.objects.get(id=business_id)
+        if request.method == "GET":
+            approved_credit_model = ApprovedCredit.objects.get(bank=bank, business=business)
+            return JsonResponse(approved_credit_model.approved_credit_amt, safe=False)
+        else:
+            json_data = json.loads(request.body)
+            if "approved_credit_amt" not in json_data:
+                return HttpResponseBadRequest("Missing approved_credit_amt field in body")
+            if ApprovedCredit.objects.filter(bank=bank, business=business).exists():
+                approved_credit_model = ApprovedCredit.objects.get(bank=bank, business=business)
+                approved_credit_model.approved_credit_amt = json_data['approved_credit_amt']
+                success_field = 'updated_approved_credit'
+            else:
+                approved_credit_model = ApprovedCredit(bank=bank, business=business, approved_credit_amt=json_data['approved_credit_amt'])
+                success_field = 'created_approved_credit'
+            approved_credit_model.save()
+            return JsonResponse({
+                'success': True,
+                success_field: json_data['approved_credit_amt']
+            })
+    except BankEmployee.DoesNotExist:
+        return HttpResponseForbidden("Must be a bank employee to see a business's approved credit for the bank")
+    except Bank.DoesNotExist:
+        return HttpResponseBadRequest("The given bank ID does not exist")
+    except Business.DoesNotExist:
+        return HttpResponseBadRequest("The given business ID does not exist")
+    except ApprovedCredit.DoesNotExist:
+        return HttpResponseBadRequest("There is no approved credit between the bank and the business")
+    except json.decoder.JSONDecodeError:
+        return HttpResponseBadRequest("The request body is malformed")

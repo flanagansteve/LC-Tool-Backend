@@ -1,9 +1,11 @@
 from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
+    Http404, HttpResponseForbidden
 from django.core import serializers
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
 from .models import Business, BusinessEmployee
@@ -42,7 +44,7 @@ def index(request):
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(business.businessemployee_set.get(email=json_data['email'])),
-            "users_employer" : model_to_dict(business)
+            "users_employer" : business.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
@@ -53,9 +55,9 @@ def rud_business(request, business_id):
     try:
         business = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
-        return Http404("No business with id " + business_id)
+        raise Http404("No business with id " + business_id)
     if request.method == "GET":
-        return JsonResponse(model_to_dict(business))
+        return JsonResponse(business.to_dict())
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if business.businessemployee_set.filter(email = request.user.username).exists():
@@ -74,7 +76,7 @@ def rud_business(request, business_id):
                 business.save()
                 return JsonResponse({
                     "user_employee" : model_to_dict(business.businessemployee_set.get(email = request.user.username)),
-                    "users_employer" : model_to_dict(business)
+                    "users_employer" : business.to_dict()
                 })
             else:
                 return HttpResponseForbidden("You may only update the organisation you are employed by.")
@@ -90,7 +92,7 @@ def invite_teammate(request, business_id):
             try:
                 business = Business.objects.get(id=business_id)
             except Business.DoesNotExist:
-                return Http404("No business with id " + business_id + " for you to invite a teammate to")
+                raise Http404("No business with id " + business_id + " for you to invite a teammate to")
             if not business.businessemployee_set.filter(email=request.user.username).exists():
                 return HttpResponseForbidden("You may only invite teammates to your own business")
             json_data = json.loads(request.body)
@@ -159,14 +161,18 @@ def register_upon_invitation(request, business_id):
         try:
             business = Business.objects.get(id=business_id)
         except Business.DoesNotExist:
-            return Http404("There is no business with id " + business_id)
+            raise Http404("There is no business with id " + business_id)
         # b. check if there is a businessemployee with email=new_user_data['email'],
         #    and blanks for all other fields. Check for error on either.
-        new_employee = business.businessemployee_set.get(email=new_user_data['email'])
-        if new_employee is None:
-            return Http404("There is no invitation for email " + new_user_data['email'])
+        if business.businessemployee_set.filter(email=new_user_data['email']).exists():
+            new_employee = business.businessemployee_set.get(email=new_user_data['email'])
+        elif business.businessemployee_set.count() == 0:
+            new_employee = BusinessEmployee(email=new_user_data['email'], employer=business)
+            new_employee.save()
+        else:
+            return HttpResponseBadRequest("There is no invitation for email " + new_user_data['email'])
         if new_employee.name:
-            return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
+            return HttpResponseBadRequest("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.")
         # 2. Register the user account
         new_user = User.objects.create_user(username=new_user_data['email'],
                                  email=new_user_data['email'],
@@ -181,7 +187,7 @@ def register_upon_invitation(request, business_id):
         return JsonResponse({
             "session_expiry" : request.session.get_expiry_date(),
             "user_employee" : model_to_dict(business.businessemployee_set.get(email=new_user_data['email'])),
-            "users_employer" : model_to_dict(business)
+            "users_employer" : business.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
@@ -192,12 +198,12 @@ def rud_business_employee(request, business_id, employee_id):
     try:
         business = Business.objects.get(id=business_id)
     except Business.DoesNotExist:
-        return Http404("No business with id " + business_id)
+        raise Http404("No business with id " + business_id)
     if request.method == "GET":
         try:
             return JsonResponse(model_to_dict(business.businessemployee_set.get(id=employee_id)))
         except BusinessEmployee.DoesNotExist:
-            return Http404(str(business) + " does not have an employee with id " + employee_id)
+            raise Http404(str(business) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
         if request.user.is_authenticated:
             if business.businessemployee_set.filter(id = employee_id).exists():
@@ -208,10 +214,10 @@ def rud_business_employee(request, business_id, employee_id):
                     business_employee.delete()
                     return JsonResponse({
                         "success" : True,
-                        "users_employer" : model_to_dict(business)
+                        "users_employer" : business.to_dict()
                     })
             else:
-                return Http404(str(business) + " does not have an employee with id " + employee_id)
+                raise Http404(str(business) + " does not have an employee with id " + employee_id)
         else:
             return HttpResponseForbidden("You must be logged in to delete your employer's profile.")
     elif request.method == "PUT":
@@ -224,12 +230,27 @@ def rud_business_employee(request, business_id, employee_id):
                 update_django_instance_with_subset_json(json_data, business_employee)
                 business_employee.save()
             except BusinessEmployee.DoesNotExist:
-                return Http404(str(business) + " does not have an employee with id " + employee_id)
+                raise Http404(str(business) + " does not have an employee with id " + employee_id)
             return JsonResponse({
                 "user_employee" : model_to_dict(business.businessemployee_set.get(id = employee_id)),
-                "users_employer" : model_to_dict(business)
+                "users_employer" : business.to_dict()
             })
         else:
             return HttpResponseForbidden("You must be logged in to update your account.")
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, DELETE, PUT")
+
+
+@csrf_exempt
+def autocomplete(request):
+    if not request.method == "GET":
+        return HttpResponseBadRequest("This endpoint only supports GET")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to search through businesses")
+    try:
+        where = request.GET['string']
+    except MultiValueDictKeyError:
+        return HttpResponseBadRequest("Missing parameter 'string'")
+    businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address')[:10]
+    return JsonResponse(list(businesses), safe=False)
+

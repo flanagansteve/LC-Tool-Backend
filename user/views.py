@@ -34,7 +34,7 @@ def user_login(request):
                 return JsonResponse({
                     "session_expiry" : request.session.get_expiry_date(),
                     "user_employee" : model_to_dict(user_employee),
-                    "users_employer" : model_to_dict(user_employee.employer)
+                    "users_employer" : user_employee.employer.to_dict()
                 })
         else:
             return HttpResponseForbidden('Invalid credentials.py')
@@ -70,7 +70,7 @@ def this_users_info(request):
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
                 "user_employee" : model_to_dict(user_employee),
-                "users_employer" : {**model_to_dict(user_employee.employer), **{"type":"business"}}
+                "users_employer" : {**user_employee.employer.to_dict(), **{"type":"business"}}
             })
         elif BankEmployee.objects.filter(email=request.user.username).exists():
             user_employee = BankEmployee.objects.get(email=request.user.username)
@@ -80,6 +80,6 @@ def this_users_info(request):
                 "users_employer" : {**user_employee.bank.to_dict(), **{"type":"bank"}}
             })
         else:
-            return Http404("No business or bank employee found with email " + request.user.username)
+            raise Http404("No business or bank employee found with email " + request.user.username)
     else:
         return HttpResponseForbidden("Must be logged in to get your user's info")

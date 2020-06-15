@@ -65,5 +65,8 @@ urlpatterns = [
     url(r'^(?P<business_id>[0-9]+)/(?P<employee_id>[0-9]+)/$', views.rud_business_employee, name='rud_business_employee'),
 
     # /business/{business_id}/register/
-    url(r'^(?P<business_id>[0-9]+)/register/$', views.register_upon_invitation, name='register_upon_invitation')
+    url(r'^(?P<business_id>[0-9]+)/register/$', views.register_upon_invitation, name='register_upon_invitation'),
+
+    # /business/autocomplete
+    url(r'^autocomplete/$', views.autocomplete, name='autocomplete')
 ]

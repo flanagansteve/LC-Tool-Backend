@@ -41,7 +41,7 @@ default_questions = [
         'section' : 'Transaction Details'
     },
     {
-        'question_text' : 'What is the total size of this purchase, or the amount of credit you\'re seeking, in words?',
+        'question_text' : 'What is the total size of this purchase, in words?',
         'key' : 'credit_amt_verbal',
         'type' : 'text',
         'required' : True,
@@ -49,8 +49,16 @@ default_questions = [
         'section' : 'Transaction Details'
     },
     {
-        'question_text' : 'What is the total size of this purchase, or the amount of credit you\'re seeking, in figures?',
+        'question_text' : 'What is the total size of this purchase, in figures?',
         'key' : 'credit_amt',
+        'type' : 'decimal',
+        'required' : True,
+        'options' : '',
+        'section' : 'Transaction Details'
+    },
+    {
+        'question_text' : 'What is the amount you are willing to cash secure?',
+        'key' : 'cash_secure',
         'type' : 'decimal',
         'required' : True,
         'options' : '',
@@ -122,7 +130,7 @@ default_questions = [
         'required' : True,
         'options' : '',
         'section' : 'Parties',
-        'disabled' : '{"key": "forex_contract_num", "answer": [""]}'
+        'disabled' : '{"key": "forex_contract_num", "answer": ["*"]}'
     },
     {
         'question_text' : 'What good or service are you purchasing?',
