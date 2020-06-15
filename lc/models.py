@@ -72,11 +72,11 @@ class LC(models.Model):
             'documentaryrequirement_set' : self.get_doc_reqs()
         }
         if self.client:
-            to_return['client'] = model_to_dict(self.client)
+            to_return['client'] = self.client.to_dict()
         if self.beneficiary:
-            to_return['beneficiary'] = model_to_dict(self.beneficiary)
+            to_return['beneficiary'] = self.beneficiary.to_dict()
         if self.account_party:
-            to_return['account_party'] = model_to_dict(self.account_party)
+            to_return['account_party'] = self.account_party.to_dict()
         if self.advising_bank:
             to_return['advising_bank'] = self.advising_bank.to_dict()
         return to_return
@@ -147,6 +147,8 @@ class DigitalLC(LC):
     credit_amt_verbal = models.CharField(max_length=250, null=True, blank=True)
     # Goes up to 999B,999M,999K,999.99
     credit_amt = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True)
+    # How much client will cash secure
+    cash_secure = models.DecimalField(max_digits=17, decimal_places=2, blank=True, default=0)
     # TODO this should technically be an enum
     currency_denomination = models.CharField(max_length=5, default='USD')
     applicant_and_ap_j_and_s_obligated = models.BooleanField(default=False)
@@ -213,6 +215,7 @@ class DigitalLC(LC):
             'credit_delivery_means' : self.credit_delivery_means,
             'credit_amt_verbal' : self.credit_amt_verbal,
             'credit_amt' : self.credit_amt,
+            'cash_secure': self.cash_secure,
             'currency_denomination' : self.currency_denomination,
             'applicant_and_ap_j_and_s_obligated' : self.applicant_and_ap_j_and_s_obligated,
             'forex_contract_num' : self.forex_contract_num,
@@ -244,11 +247,11 @@ class DigitalLC(LC):
             'other_data' : self.other_data
         })
         if self.paying_other_banks_fees:
-            to_return['paying_other_banks_fees'] = model_to_dict(self.paying_other_banks_fees)
+            to_return['paying_other_banks_fees'] = self.paying_other_banks_fees.to_dict()
         if self.credit_expiry_location:
             to_return['credit_expiry_location'] = self.credit_expiry_location.to_dict()
         if self.paying_acceptance_and_discount_charges:
-            to_return['paying_acceptance_and_discount_charges'] = model_to_dict(self.paying_acceptance_and_discount_charges)
+            to_return['paying_acceptance_and_discount_charges'] = self.paying_acceptance_and_discount_charges.to_dict()
         return to_return
 
     def get_delegated_negotiating_banks(self):
@@ -827,3 +830,50 @@ class InsuranceDocumentRequirement(DocumentaryRequirement):
     # TODO
 
 # TODO packing list, certificate of origin, inspection cert
+
+
+class SpeciallyDesignatedNational(models.Model):
+    # name of SDN
+    name = models.CharField(max_length=350, blank=True, default='')
+    # type of SDN
+    type = models.CharField(max_length=12, blank=True, default='')
+    # sanctions program name
+    program = models.CharField(max_length=200, blank=True, default='')
+    # title of an individual
+    title = models.CharField(max_length=200, blank=True, default='')
+    # vessel call sign
+    call_sign = models.CharField(max_length=8, blank=True, default='')
+    # vessel type
+    vessel_type = models.CharField(max_length=25, blank=True, default='')
+    # vessel tonnage
+    tonnage = models.CharField(max_length=14, blank=True, default='')
+    # gross registered tonnage
+    grt = models.CharField(max_length=8, blank=True, default='')
+    # vessel flag
+    vessel_flag = models.CharField(max_length=40, blank=True, default='')
+    # vessel owner
+    vessel_owner = models.CharField(max_length=150, blank=True, default='')
+    # remarks on SDN
+    remarks = models.CharField(max_length=1000, blank=True, default='')
+
+
+class SpeciallyDesignatedNationalAddress(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # street address of SDN
+    address = models.CharField(max_length=750, blank=True, default='')
+    # city, state/province, zip/postal code
+    address_group = models.CharField(max_length=116, blank=True, default='')
+    # country of address
+    country = models.CharField(max_length=250, blank=True, default='')
+    # additional remarks
+    remarks = models.CharField(max_length=200, blank=True, default='')
+
+
+class SpeciallyDesignatedNationalAlternate(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # type of alternate identity (aka, fka, nka)
+    type = models.CharField(max_length=8, blank=True, default='')
+    # alternate identity name
+    name = models.CharField(max_length=350, blank=True, default='')
+    # remarks on alternate identity
+    remarks = models.CharField(max_length=200, blank=True, default='')

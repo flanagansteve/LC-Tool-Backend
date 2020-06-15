@@ -283,6 +283,9 @@ urlpatterns = [
     url(r'^digital_app_templates/$', views.digital_app_templates, name='digital_app_templates'),
 
     # /lc/digital_app_templates/{template_id}
-    url(r'^digital_app_templates/(?P<template_id>[0-9]+)/$', views.digital_app_template, name='digital_app_templates')
+    url(r'^digital_app_templates/(?P<template_id>[0-9]+)/$', views.digital_app_template, name='digital_app_templates'),
+
+    # /lc/total_credit/{business_id}
+    url(r'^total_credit/(?P<business_id>[0-9]+)/$', views.total_credit, name='total_credit')
 
 ]

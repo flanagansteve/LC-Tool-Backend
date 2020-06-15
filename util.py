@@ -1,5 +1,6 @@
 import decimal
 
+
 def update_django_instance_with_subset_json(json_data, obj):
     for key in json_data:
         if key in dir(obj) and json_data[key]:
