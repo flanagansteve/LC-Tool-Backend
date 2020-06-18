@@ -1,3 +1,5 @@
+import csv
+import urllib.request
 from decimal import *
 from django.db import IntegrityError
 from django.shortcuts import render

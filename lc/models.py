@@ -835,45 +835,49 @@ class InsuranceDocumentRequirement(DocumentaryRequirement):
 class SpeciallyDesignatedNational(models.Model):
     # name of SDN
     name = models.CharField(max_length=350, blank=True, default='')
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
     # type of SDN
-    type = models.CharField(max_length=12, blank=True, default='')
+    type = models.CharField(max_length=12, blank=True, default=None, null=True)
     # sanctions program name
-    program = models.CharField(max_length=200, blank=True, default='')
+    program = models.CharField(max_length=200, blank=True, default=None, null=True)
     # title of an individual
-    title = models.CharField(max_length=200, blank=True, default='')
+    title = models.CharField(max_length=200, blank=True, default=None, null=True)
     # vessel call sign
-    call_sign = models.CharField(max_length=8, blank=True, default='')
+    call_sign = models.CharField(max_length=8, blank=True, default=None, null=True)
     # vessel type
-    vessel_type = models.CharField(max_length=25, blank=True, default='')
+    vessel_type = models.CharField(max_length=25, blank=True, default=None, null=True)
     # vessel tonnage
-    tonnage = models.CharField(max_length=14, blank=True, default='')
+    tonnage = models.CharField(max_length=14, blank=True, default=None, null=True)
     # gross registered tonnage
-    grt = models.CharField(max_length=8, blank=True, default='')
+    grt = models.CharField(max_length=8, blank=True, default=None, null=True)
     # vessel flag
-    vessel_flag = models.CharField(max_length=40, blank=True, default='')
+    vessel_flag = models.CharField(max_length=40, blank=True, default=None, null=True)
     # vessel owner
-    vessel_owner = models.CharField(max_length=150, blank=True, default='')
+    vessel_owner = models.CharField(max_length=150, blank=True, default=None, null=True)
     # remarks on SDN
-    remarks = models.CharField(max_length=1000, blank=True, default='')
+    remarks = models.CharField(max_length=1000, blank=True, default=None, null=True)
 
 
 class SpeciallyDesignatedNationalAddress(models.Model):
     sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
     # street address of SDN
-    address = models.CharField(max_length=750, blank=True, default='')
+    address = models.CharField(max_length=750, blank=True, default=None, null=True)
     # city, state/province, zip/postal code
-    address_group = models.CharField(max_length=116, blank=True, default='')
+    address_group = models.CharField(max_length=116, blank=True, default=None, null=True)
     # country of address
-    country = models.CharField(max_length=250, blank=True, default='')
+    country = models.CharField(max_length=250, blank=True, default=None, null=True)
     # additional remarks
-    remarks = models.CharField(max_length=200, blank=True, default='')
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
 
 
 class SpeciallyDesignatedNationalAlternate(models.Model):
     sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
     # type of alternate identity (aka, fka, nka)
-    type = models.CharField(max_length=8, blank=True, default='')
+    type = models.CharField(max_length=8, blank=True, default=None, null=True)
     # alternate identity name
-    name = models.CharField(max_length=350, blank=True, default='')
+    name = models.CharField(max_length=350, blank=True, default=None, null=True)
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
     # remarks on alternate identity
-    remarks = models.CharField(max_length=200, blank=True, default='')
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)

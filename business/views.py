@@ -1,3 +1,6 @@
+import re
+
+from django.db.models import Q
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
@@ -8,6 +11,9 @@ from django.contrib.auth.models import User
 from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
+
+from lc.models import SpeciallyDesignatedNational, \
+    SpeciallyDesignatedNationalAlternate, SpeciallyDesignatedNationalAddress
 from .models import Business, BusinessEmployee
 from util import update_django_instance_with_subset_json
 import json, datetime
@@ -254,3 +260,59 @@ def autocomplete(request):
     businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address')[:10]
     return JsonResponse(list(businesses), safe=False)
 
+
+@csrf_exempt
+def ofac(request, business_id):
+    if request.method not in ["GET"]:
+        return HttpResponseBadRequest("This endpoint only supports GET")
+    # if not request.user.is_authenticated:
+    #     return HttpResponseForbidden("Must be logged in to check OFAC status of a business")
+    try:
+        business = Business.objects.get(id=business_id)
+        combos = business_name_combinations(business.name)
+        combo_chunks = [combos[i:i + 200] for i in range(0, len(combos), 200)]
+        sdn_matches = []
+        for chunk in combo_chunks:
+            sdn_matches += list(SpeciallyDesignatedNational.objects.filter(Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk, speciallydesignatednationalalternate__type__in=["aka", "fka"])).values())
+        to_return = []
+        seen = set()
+        for match in sdn_matches:
+            if match['id'] not in seen:
+                match['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id=match['id']).values())
+                match['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=match['id'], type__in=["aka", "fka"]).values())
+                to_return.append(match)
+                seen.add(match['id'])
+        return JsonResponse(to_return, safe=False)
+    except Business.DoesNotExist:
+        return HttpResponseBadRequest("There is no business with id " + business_id)
+
+
+def business_name_combinations(business_name):
+    business_name = business_name.upper()
+    combos = {business_name}
+    suffixes = list(map(lambda suffix: suffix.upper(),
+                        ['Agency', 'Gmbh',	'PA',
+                            'and',	'Group',	'PC',
+                            'Assn',	'Hotel',	'Pharmacy',
+                            'Assoc',	'Hotels',	'PLC',
+                            'Associates',	'Inc',	'PLLC',
+                            'Association',	'Incorporated',	'Restaurant',
+                            'Bank',	'International',	'SA',
+                            'BV',	'Intl',	'Sales',
+                            'Co',	'Limited',	'Service',
+                            'Comp',	'LLC',	'Services',
+                            'Company',	'LLP',	'Store',
+                            'Corp',	'LP',	'Svcs',
+                            'Corporation',	'Ltd',	'Travel',
+                            'DMD',	'Manufacturing',	'Unlimited',
+                            'Enterprises',	'Mfg', 'Holding']))
+    for suffix in suffixes:
+        to_remove = re.compile('(\s*)' + suffix)
+        combos.add(to_remove.sub('', business_name).strip())
+    additions = suffixes.copy()
+    for outerSuffix in suffixes:
+        for innerSuffix in suffixes:
+            additions.append(outerSuffix + " " + innerSuffix)
+    for addition in additions:
+        combos.add(business_name + " " + addition)
+    return list(combos)

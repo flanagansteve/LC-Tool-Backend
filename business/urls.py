@@ -68,5 +68,8 @@ urlpatterns = [
     url(r'^(?P<business_id>[0-9]+)/register/$', views.register_upon_invitation, name='register_upon_invitation'),
 
     # /business/autocomplete
-    url(r'^autocomplete/$', views.autocomplete, name='autocomplete')
+    url(r'^autocomplete/$', views.autocomplete, name='autocomplete'),
+
+    # /business/{business_id}/ofac
+    url(r'^(?P<business_id>[0-9]+)/ofac', views.ofac, name='ofac')
 ]
