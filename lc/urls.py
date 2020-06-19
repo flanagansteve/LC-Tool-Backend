@@ -267,6 +267,7 @@ urlpatterns = [
     # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req, name='evaluate_doc_req'),
 
+
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
 
@@ -286,6 +287,13 @@ urlpatterns = [
     url(r'^digital_app_templates/(?P<template_id>[0-9]+)/$', views.digital_app_template, name='digital_app_templates'),
 
     # /lc/total_credit/{business_id}
-    url(r'^total_credit/(?P<business_id>[0-9]+)/$', views.total_credit, name='total_credit')
+    url(r'^total_credit/(?P<business_id>[0-9]+)/$', views.total_credit, name='total_credit'),
+
+    # /lc/{lc_id}/approve_sanction
+    url(r'^(?P<lc_id>[0-9]+)/approve_sanction/$', views.approve_sanction, name='approve_sanction'),
+
+    # /lc/{lc_id}/reject_sanction
+    url(r'^(?P<lc_id>[0-9]+)/reject_sanction/$', views.reject_sanction, name='reject_sanction'),
+
 
 ]

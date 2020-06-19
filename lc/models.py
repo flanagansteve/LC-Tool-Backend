@@ -1,5 +1,5 @@
 import json
-
+from enum import Enum
 from django.db import models
 from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
@@ -11,6 +11,13 @@ def writeln(pdf, str):
     pdf.cell(200, 10, txt=str, ln=1, align="L")
 
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
+
+
+
+class status(str, Enum):
+    INC: str = "incomplete"
+    ACC: str = "accepted"
+    REJ: str = "rejected"
 
 # Abstract LC from which Pdf and Digital inherit
 class LC(models.Model):
@@ -29,6 +36,12 @@ class LC(models.Model):
     tasked_advising_bank_employees = models.ManyToManyField(BankEmployee, related_name='%(app_label)s_%(class)s_tasked_advising_bank_employees')
 
     # -- the status of an LC -- #
+    sanction_bank_approval = models.CharField(
+      max_length=10,
+      default = status.INC,
+      choices=[(tag, tag.value) for tag in status]  # Choices is a list of Tuple
+    )
+    sanction_auto_message = models.CharField(max_length=1000, null=True, blank=True)
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
     beneficiary_approved = models.BooleanField(default=False)
@@ -68,6 +81,8 @@ class LC(models.Model):
             'terms_satisfied' : self.terms_satisfied,
             'requested' : self.requested,
             'drawn' : self.drawn,
+            'sanction_auto_message': self.sanction_auto_message,
+            'sanction_bank_approval' : self.sanction_bank_approval,
             'paid_out' : self.paid_out,
             'documentaryrequirement_set' : self.get_doc_reqs()
         }

@@ -7,44 +7,45 @@ import datetime
 
 # You may not like it, but this is what peak trade finance looks like
 def create_perfect_lc():
-    client = Business(name = "Iona Imports", address = "48 Sutton Road, Needham, MA")
-    client.save()
-    client_emp = client.businessemployee_set.create(name="Steve", title="Owner", email="steve@ii.com")
-    test_client_user = User.objects.create_user(username="steve@ii.com",
-                             email="steve@ii.com",
-                             password="password")
-    beneficiary = Business(name = "Expert Exports", address = "234 Main St, Paris, France")
-    beneficiary.save()
-    bene_emp = beneficiary.businessemployee_set.create(name="Steve", title="Owner", email="steve@ee.com")
-    test_bene_user = User.objects.create_user(username="steve@ee.com",
-                             email="steve@ee.com",
-                             password="password")
-    issuer = Bank(name = "Best Bank")
-    issuer.save()
-    populate_application(issuer)
-    issuer_emp = issuer.bankemployee_set.create(name="Steve", title="Owner", email="steve@bb.com")
-    test_issuer_user = User.objects.create_user(username="steve@bb.com",
-                             email="steve@bb.com",
-                             password="password")
-    account_party = Business(name = "AccountParty McAccountParty's Accounts", address = "366 Auburndale St, Newton, MA")
-    account_party.save()
-    ap_emp = account_party.businessemployee_set.create(name="AccountParty McAccountParty", title="Owner", email="accountparty@ama.com")
-    test_ap_user = User.objects.create_user(username="accountparty@ama.com",
-                             email="accountparty@ama.com",
-                             password="password")
-    advising_bank = Bank(name = "Second Best Bank")
-    advising_bank.save()
-    populate_application(advising_bank)
-    ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@sbb.com")
-    test_ad_user = User.objects.create_user(username="advisey@sbb.com",
-                             email="advisey@sbb.com",
-                             password="password")
+    # client = Business(name = "Ex business", address = "48 Sutton Road, Needham, MA", country = "France")
+    # client.save()
+    # client_emp = client.businessemployee_set.create(name="rohil", title="vp", email="rohil@ii.com")
+    # test_client_user = User.objects.create_user(username="rohil@pp.com",
+    #                          email="rohil@ii.com",
+    #                          password="password2")
+    # beneficiary = Business(name = "Expert Exports 2", address = "234 Main St, Paris, France", country = "Iran")
+    # beneficiary.save()
+    # bene_emp = beneficiary.businessemployee_set.create(name="rohil", title="vp", email="rohil@ee.com")
+    # test_bene_user = User.objects.create_user(username="rohil@ee.com",
+    #                          email="rohil@ee.com",
+    #                          password="password2")
+    # issuer = Bank(name = "Best Bank 3")
+    # issuer.save()
+    # populate_application(issuer)
+    # issuer_emp = issuer.bankemployee_set.create(name="rohil", title="vp", email="rohil@bb.com")
+    # test_issuer_user = User.objects.create_user(username="rohil@bb.com",
+    #                          email="rohil@bb.com",
+    #                          password="password2")
+    # account_party = Business(name = "AccountParty McAccountParty's Accounts", address = "366 Auburndale St, Newton, MA")
+    # account_party.save()
+    # ap_emp = account_party.businessemployee_set.create(name="AccountParty McAccountParty", title="Owner", email="accountparty@ama.com")
+    # test_ap_user = User.objects.create_user(username="accountparty@ama.com",
+    #                          email="accountparty@ama.com",
+    #                          password="password")
+    # advising_bank = Bank(name = "Second Best Bank")
+    # advising_bank.save()
+    # populate_application(advising_bank)
+    # ad_emp = advising_bank.bankemployee_set.create(name="Advisey McAdvisey", title="Owner", email="advisey@sbb.com")
+    # test_ad_user = User.objects.create_user(username="advisey@sbb.com",
+    #                          email="advisey@sbb.com",
+    #                          password="password")
+    
     lc = DigitalLC(
-        issuer = issuer,
-        client = client,
-        beneficiary = beneficiary,
-        account_party = account_party,
-        advising_bank = advising_bank,
+        issuer  = Bank.objects.get(id=1),
+        client = Business.objects.get(id = 12),
+        beneficiary = Business.objects.get(id = 13),
+        # account_party = account_party,
+        # advising_bank = advising_bank,
         application_date = datetime.datetime.now(),
         credit_delivery_means = 'Courier',
         credit_amt_verbal = 'Sixty Thousand Euros',
@@ -57,13 +58,13 @@ def create_perfect_lc():
         units_purchased = 600,
         unit_error_tolerance = 0.0002,
         confirmation_means = 'Confirmation by a bank selected by the beneficiary',
-        paying_other_banks_fees = client,
-        credit_expiry_location = advising_bank,
+        paying_other_banks_fees = Business.objects.get(id = 12),
+        # credit_expiry_location = advising_bank,
         expiration_date = '2020-04-24',
         draft_presentation_date = '2020-04-22',
         drafts_invoice_value = 1.00,
         credit_availability = 'Payment on sight',
-        paying_acceptance_and_discount_charges = client,
+        paying_acceptance_and_discount_charges = Business.objects.get(id = 12),
         deferred_payment_date = '2020-04-26',
         merch_charge_location = 'Boston',
         late_charge_date = '2020-04-25',
@@ -78,12 +79,12 @@ def create_perfect_lc():
         }
     )
     lc.save()
-    lc.tasked_client_employees.add(client_emp)
-    lc.tasked_beneficiary_employees.add(bene_emp)
-    lc.tasked_issuer_employees.add(issuer_emp)
-    lc.tasked_account_party_employees.add(ap_emp)
-    lc.tasked_advising_bank_employees.add(ad_emp)
-    lc.delegated_negotiating_banks.add(issuer)
+    # lc.tasked_client_employees.add(client_emp)
+    # lc.tasked_beneficiary_employees.add(bene_emp)
+    # lc.tasked_issuer_employees.add(issuer_emp)
+    # lc.tasked_account_party_employees.add(ap_emp)
+    # lc.tasked_advising_bank_employees.add(ad_emp)
+    # lc.delegated_negotiating_banks.add(issuer)
     required_values = (
         "Version required: Original"
         + "\nIncoterms to show: " + lc.incoterms_to_show

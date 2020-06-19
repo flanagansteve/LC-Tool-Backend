@@ -19,6 +19,7 @@ numpy==1.17.4
 py-solc==3.2.0
 PyAudio==0.2.11
 pycparser==2.19
+pycountry==19.8.18
 pyparsing==2.4.5
 python-dateutil==2.8.1
 pyttsx3==2.7
