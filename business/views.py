@@ -265,8 +265,8 @@ def autocomplete(request):
 def ofac(request, business_id):
     if request.method not in ["GET"]:
         return HttpResponseBadRequest("This endpoint only supports GET")
-    # if not request.user.is_authenticated:
-    #     return HttpResponseForbidden("Must be logged in to check OFAC status of a business")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to check OFAC status of a business")
     try:
         business = Business.objects.get(id=business_id)
         combos = business_name_combinations(business.name)
