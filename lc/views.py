@@ -1,22 +1,24 @@
-import csv
-import urllib.request
 from decimal import *
-from django.db import IntegrityError
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse, FileResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
-from django.core import serializers
+import boto3
+import datetime
+import json
+import os
+import time
+from decimal import *
+
+import pycountry
 from django.core.mail import send_mail
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.models import User
+from django.db import IntegrityError
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
+    Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
-from .models import *
+
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee, ApprovedCredit
-from .values import commercial_invoice_form, multimodal_bl_form
 from util import update_django_instance_with_subset_json
-from django.db.models import Q
-import json, datetime, boto3, os, time
-import pycountry
+from .models import *
+from .values import commercial_invoice_form, multimodal_bl_form
 
 
 # TODO only handling DigitalLCs for now
@@ -117,7 +119,7 @@ def cr_lcs(request, bank_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
-                    lc.beneficiary = Business(name=json_data['beneficiary_name'], address=json_data['beneficiary_address'], country = json_data['beneficiary_country'])
+                    lc.beneficiary = Business(name=beneficiary_name, address=beneficiary_address, country=beneficiary_country)
                     lc.beneficiary.save()
                     ApprovedCredit(bank=bank, business=lc.beneficiary).save()
                     send_mail(
@@ -131,10 +133,9 @@ def cr_lcs(request, bank_id):
                 del json_data['beneficiary_address']
                 del json_data['beneficiary_country']
 
-                # set the sanctions message 
+                # set the sanctions message
                 lc.sanction_auto_message = sanction_approval(beneficiary_country, json_data['applicant_country'])
                 lc.save()
-
 
                 set_lc_specifications(lc, json_data)
 
@@ -554,19 +555,20 @@ def approve_sanction(request, lc_id):
         raise Http404("No lc with id " + lc_id)
     if request.method == 'POST':
         if request.user.is_authenticated:
-            json_data = json.loads(request.body)
             # if it is already approved
             if lc.sanction_bank_approval == status.ACC:
                 return JsonResponse({
-                    'success':True,
-                })            
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
             #for some reason it is both rejected and approved... just reset
-           
+
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.sanction_bank_approval = status.ACC
                 lc.save()
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
@@ -575,7 +577,7 @@ def approve_sanction(request, lc_id):
 
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
-    
+
 @csrf_exempt
 def reject_sanction(request, lc_id):
     try:
@@ -589,7 +591,7 @@ def reject_sanction(request, lc_id):
             if lc.sanction_bank_approval == False:
                     return JsonResponse({
                     'success':True,
-                })                    
+                })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.sanction_bank_approval = status.REJ
                 lc.save()
@@ -603,7 +605,7 @@ def reject_sanction(request, lc_id):
 
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
-    
+
 
 
 
@@ -907,117 +909,131 @@ def total_credit(request, business_id):
         return HttpResponseBadRequest("This endpoint only supports GET, PUT")
 
 
-
-
-
-
 def sanction_approval(beneficiary_country, applicant_country):
     # convert common names one could input to standard country name
-    #ISO codes https://gist.github.com/radcliff/f09c0f88344a7fcef373
-    country_convert = {'Iran': 'IRAN, ISLAMIC REPUBLIC OF', 'Libya': 'LIBYAN ARAB JAMAHIRIYA', 'Palestine' : 'Palestinian Territory, Occupied', 'Russia': 'RUSSIAN FEDERATION', 'Vatican City': 'Holy See (Vatican City State)',
-   'Venezuela': 'Venezuela, Bolivarian Republic of', 'Tanzania': 'Tanzania, United Republic of', 'Taiwan': 'Taiwan, Province of China', 'Macedonia': 'Macedonia, the former Yugoslav Republic of',
-   'South Korea' : 'Korea, Republic of', 'North Korea': 'Korea, Democratic People\'s Republic of', 'Syria' : 'Syrian Arab Republic', 'Bolivia': 'Bolivia, Plurinational State of'}
+    # ISO codes https://gist.github.com/radcliff/f09c0f88344a7fcef373
+    country_convert = {'Iran': 'IRAN, ISLAMIC REPUBLIC OF',
+                       'Libya': 'LIBYAN ARAB JAMAHIRIYA',
+                       'Palestine': 'Palestinian Territory, Occupied',
+                       'Russia': 'RUSSIAN FEDERATION',
+                       'Vatican City': 'Holy See (Vatican City State)',
+                       'Venezuela': 'Venezuela, Bolivarian Republic of',
+                       'Tanzania': 'Tanzania, United Republic of',
+                       'Taiwan': 'Taiwan, Province of China',
+                       'Macedonia': 'Macedonia, the former Yugoslav Republic of',
+                       'South Korea': 'Korea, Republic of',
+                       'North Korea': 'Korea, Democratic People\'s Republic of',
+                       'Syria': 'Syrian Arab Republic',
+                       'Bolivia': 'Bolivia, Plurinational State of'}
     if beneficiary_country in country_convert:
-       beneficiary_country = country_convert[beneficiary_country]
+        beneficiary_country = country_convert[beneficiary_country]
     if applicant_country in country_convert:
-       applicant_country = country_convert[applicant_country]
+        applicant_country = country_convert[applicant_country]
 
     # check if either of the countries were inputted incorrectly
     # TODO write a script that can convert common different spellings of countries to ones that can be looked up by pycountry
     try:
         beneficiary_country = pycountry.countries.lookup(beneficiary_country)
-        print(beneficiary_country)
     except:
-        return "the beneficiary country and/or the applicant country is not a valid country that can be checked for sanctions"
-    try: 
+        return None
+    try:
         applicant_country = pycountry.countries.lookup(applicant_country)
-        print(applicant_country)
     except:
-        return "the beneficiary country and/or the applicant country is not a valid country that can be checked for sanctions"
+        return None
         # check that the bank is the US first and handle that case
     if applicant_country.alpha_2 == 'US':
         # catch violations
-        violating_countries = {'MK': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'RS' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'BA' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'HR' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'ME' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'SI' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'AL' : 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'XK': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
-        'BY' : 'https://www.treasury.gov/resource-center/sanctions/Documents/belarus.pdf',
-        'BI' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/burundi.aspx',
-        'CF' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/car.aspx',
-        'CO' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/drugs.pdf',
-        'PS' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/pal_guide.pdf',
-        'CU' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/cuba.aspx',
-        'CD': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/drcongo.pdf',
-        'IR' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/iran.aspx',
-        'IQ' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/iraq.pdf',
-        'LB' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/lebanon.pdf',
-        'LY' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/libya.aspx',
-        'ML' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/mali.aspx',
-        'NI' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/nicaragua.aspx',
-        'KP' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/nkorea.aspx',
-        'SO' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/somalia.pdf',
-        'SD' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/sudan.aspx',
-        'SS' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/southsudan.pdf',
-        'SY' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/syria.pdf',
-        'UA' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/ukraine.pdf',
-        'RU' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/ukraine.pdf',
-        'VE' : 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/venezuela.aspx',
-        'YE' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/yemen.pdf',
-        'ZW' : 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/zimb.pdf'
-        }
+        violating_countries = {
+            'MK': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'RS': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'BA': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'HR': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'ME': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'SI': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'AL': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'XK': 'https://www.treasury.gov/resource-center/sanctions/Documents/balkans.pdf',
+            'BY': 'https://www.treasury.gov/resource-center/sanctions/Documents/belarus.pdf',
+            'BI': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/burundi.aspx',
+            'CF': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/car.aspx',
+            'CO': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/drugs.pdf',
+            'PS': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/pal_guide.pdf',
+            'CU': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/cuba.aspx',
+            'CD': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/drcongo.pdf',
+            'IR': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/iran.aspx',
+            'IQ': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/iraq.pdf',
+            'LB': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/lebanon.pdf',
+            'LY': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/libya.aspx',
+            'ML': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/mali.aspx',
+            'NI': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/nicaragua.aspx',
+            'KP': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/nkorea.aspx',
+            'SO': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/somalia.pdf',
+            'SD': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/sudan.aspx',
+            'SS': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/southsudan.pdf',
+            'SY': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/syria.pdf',
+            'UA': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/ukraine.pdf',
+            'RU': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/ukraine.pdf',
+            'VE': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/venezuela.aspx',
+            'YE': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/yemen.pdf',
+            'ZW': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/zimb.pdf'
+            }
         for country in violating_countries:
             if country == beneficiary_country.alpha_2:
-                return beneficiary_country.name + ' may violate US sanctions, check ' + violating_countries[beneficiary_country.alpha_2] + ' for more info'
-         
+                return violating_countries[beneficiary_country.alpha_2]
+
         # no country violations found
-        return 'did not find any immediate sanction errors'
-    
+        return ''
+
         # check if they are in the EU and act accordingly
     COUNTRY_CODES_EU = [
-  'AT' ,'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR' ,'DE', 'GR', 'HU', 'IE','IT',
-  'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE','GB']
+        'AT', 'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU',
+        'IE', 'IT',
+        'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+        'GB']
     if applicant_country.alpha_2 in COUNTRY_CODES_EU:
         # check EU violations https://www.sanctionsmap.eu/#/main
-        violating_countries = {'AF' : 'https://www.sanctionsmap.eu/#/main/details/1/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-        'BY' : 'https://www.sanctionsmap.eu/#/main/details/2/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-        'BA' : 'https://www.sanctionsmap.eu/#/main/details/4/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'BI' : 'https://www.sanctionsmap.eu/#/main/details/7/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-        'CF' : 'https://www.sanctionsmap.eu/#/main/details/9/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',               
-        'CN' : 'https://www.sanctionsmap.eu/#/main/details/10/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',               'CD' : 'https://www.sanctionsmap.eu/#/main/details/11/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',               'EG' : 'https://www.sanctionsmap.eu/#/main/details/12/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',                'GN' : 'https://www.sanctionsmap.eu/#/main/details/14/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',                'GW' : 'https://www.sanctionsmap.eu/#/main/details/15/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',                 'HT' : 'https://www.sanctionsmap.eu/#/main/details/16/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',                 'IR' : 'https://www.sanctionsmap.eu/#/main/details/17/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'IQ' : 'https://www.sanctionsmap.eu/#/main/details/19/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'LB' : 'https://www.sanctionsmap.eu/#/main/details/21/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'LY' : 'https://www.sanctionsmap.eu/#/main/details/23/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-        'ML' : 'https://www.sanctionsmap.eu/#/main/details/42/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'MD' : 'https://www.sanctionsmap.eu/#/main/details/25/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-        'ME' : 'https://www.sanctionsmap.eu/#/main/details/28/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'MM' : 'https://www.sanctionsmap.eu/#/main/details/8/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'NI' : 'https://www.sanctionsmap.eu/#/main/details/48/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'KP' : 'https://www.sanctionsmap.eu/#/main/details/20/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'RU' : 'https://www.sanctionsmap.eu/#/main/details/26/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'RS' : 'https://www.sanctionsmap.eu/#/main/details/27/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'SO' : 'https://www.sanctionsmap.eu/#/main/details/29/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'SS' : 'https://www.sanctionsmap.eu/#/main/details/30/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'SD' : 'https://www.sanctionsmap.eu/#/main/details/31/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'SY' : 'https://www.sanctionsmap.eu/#/main/details/32/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'TN' : 'https://www.sanctionsmap.eu/#/main/details/33/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'TR' : 'https://www.sanctionsmap.eu/#/main/details/49/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'UA' : 'https://www.sanctionsmap.eu/#/main/details/37/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'VE' : 'https://www.sanctionsmap.eu/#/main/details/44/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'YE' : 'https://www.sanctionsmap.eu/#/main/details/39/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D', 
-        'ZW' : 'https://www.sanctionsmap.eu/#/main/details/40/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D'}
-           
+        violating_countries = {
+            'AF': 'https://www.sanctionsmap.eu/#/main/details/1/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'BY': 'https://www.sanctionsmap.eu/#/main/details/2/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'BA': 'https://www.sanctionsmap.eu/#/main/details/4/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'BI': 'https://www.sanctionsmap.eu/#/main/details/7/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'CF': 'https://www.sanctionsmap.eu/#/main/details/9/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'CN': 'https://www.sanctionsmap.eu/#/main/details/10/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'CD': 'https://www.sanctionsmap.eu/#/main/details/11/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'EG': 'https://www.sanctionsmap.eu/#/main/details/12/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'GN': 'https://www.sanctionsmap.eu/#/main/details/14/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'GW': 'https://www.sanctionsmap.eu/#/main/details/15/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'HT': 'https://www.sanctionsmap.eu/#/main/details/16/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'IR': 'https://www.sanctionsmap.eu/#/main/details/17/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'IQ': 'https://www.sanctionsmap.eu/#/main/details/19/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'LB': 'https://www.sanctionsmap.eu/#/main/details/21/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'LY': 'https://www.sanctionsmap.eu/#/main/details/23/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'ML': 'https://www.sanctionsmap.eu/#/main/details/42/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'MD': 'https://www.sanctionsmap.eu/#/main/details/25/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'ME': 'https://www.sanctionsmap.eu/#/main/details/28/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'MM': 'https://www.sanctionsmap.eu/#/main/details/8/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'NI': 'https://www.sanctionsmap.eu/#/main/details/48/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'KP': 'https://www.sanctionsmap.eu/#/main/details/20/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'RU': 'https://www.sanctionsmap.eu/#/main/details/26/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'RS': 'https://www.sanctionsmap.eu/#/main/details/27/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'SO': 'https://www.sanctionsmap.eu/#/main/details/29/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'SS': 'https://www.sanctionsmap.eu/#/main/details/30/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'SD': 'https://www.sanctionsmap.eu/#/main/details/31/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'SY': 'https://www.sanctionsmap.eu/#/main/details/32/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'TN': 'https://www.sanctionsmap.eu/#/main/details/33/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'TR': 'https://www.sanctionsmap.eu/#/main/details/49/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'UA': 'https://www.sanctionsmap.eu/#/main/details/37/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'VE': 'https://www.sanctionsmap.eu/#/main/details/44/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'YE': 'https://www.sanctionsmap.eu/#/main/details/39/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
+            'ZW': 'https://www.sanctionsmap.eu/#/main/details/40/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D'}
+
         for country in violating_countries:
             if country == beneficiary_country.alpha_2:
-                return beneficiary_country.name + ' may violate EU sanctions, check ' + violating_countries[beneficiary_country.alpha_2] + ' for more info'
-             
+                return violating_countries[beneficiary_country.alpha_2]
+
         # no country violations found
-        return 'did not find any immediate sanction errors'
-        
-    return 'Not able to check sanction violations for this country. Please contact steve@bountium.org if you would like for this functioniality to be extended?'
+        return ''
+
+    return None
 
 
 # TODO should probably log received checkbox or radio values that are not one
