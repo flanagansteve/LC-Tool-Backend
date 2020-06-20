@@ -169,10 +169,7 @@ def rud_lc(request, lc_id):
             if (employed_by_main_party_to_lc(lc, request.user.username)):
                 json = lc.to_dict()
                 sdns = list(SDN_LC.objects.filter(lc_id = lc_id).values()) # query
-                print("here")
-                print(sdns)
                 for sdn in sdns:
-                    print(sdn['sdn_id'])
                     sdn['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id= sdn['sdn_id']).values())
                     sdn['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=sdn['sdn_id'], type__in=["aka", "fka"]).values())
                 json['sdns'] = sdns
@@ -561,7 +558,6 @@ def employed_by_main_party_to_lc(lc, username):
 # TODO possibly add an unapprove endpoint?
 @csrf_exempt
 def approve_sanction(request, lc_id):
-    print("here")
     try:
         lc = LC.objects.get(id = lc_id)
     except LC.DoesNotExist:
@@ -574,8 +570,6 @@ def approve_sanction(request, lc_id):
                 return JsonResponse({
                     'success':True,
                 })            
-            #for some reason it is both rejected and approved... just reset
-           
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.sanction_bank_approval = status.ACC
                 lc.save()
@@ -635,8 +629,6 @@ def approve_ofac(request, lc_id):
                 return JsonResponse({
                     'success':True,
                 })            
-            #for some reason it is both rejected and approved... just reset
-           
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.ofac_bank_approval = status.ACC
                 lc.save()
@@ -989,11 +981,8 @@ def ofac(beneficiary_name, lc):
     for chunk in combo_chunks:
         sdn_matches += list(SpeciallyDesignatedNational.objects.filter(Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk, speciallydesignatednationalalternate__type__in=["aka", "fka"])))
     # to_return = []
-    # print(type(sdn_matches))
     sdn_matches = set(sdn_matches)
     for match in sdn_matches:
-        print("HHELLO")
-        print(type(match))
         sdn_lc = SDN_LC(lc = lc, sdn = match)
         sdn_lc.save()
         # if match['id'] not in seen:
@@ -1054,12 +1043,10 @@ def sanction_approval(beneficiary_country, applicant_country):
     # TODO write a script that can convert common different spellings of countries to ones that can be looked up by pycountry
     try:
         beneficiary_country = pycountry.countries.lookup(beneficiary_country)
-        print(beneficiary_country)
     except:
         return "the beneficiary country and/or the applicant country is not a valid country that can be checked for sanctions"
     try: 
         applicant_country = pycountry.countries.lookup(applicant_country)
-        print(applicant_country)
     except:
         return "the beneficiary country and/or the applicant country is not a valid country that can be checked for sanctions"
         # check that the bank is the US first and handle that case
