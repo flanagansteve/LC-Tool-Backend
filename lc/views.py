@@ -11,13 +11,14 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from bank.models import Bank, BankEmployee
+from .models import SDN_LC, status
 from business.models import Business, BusinessEmployee, ApprovedCredit
 from .values import commercial_invoice_form, multimodal_bl_form
 from util import update_django_instance_with_subset_json
 from django.db.models import Q
 import json, datetime, boto3, os, time
 import pycountry
-
+import re
 
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
@@ -35,6 +36,7 @@ import pycountry
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
+    print(request.body)
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
@@ -134,6 +136,8 @@ def cr_lcs(request, bank_id):
                 # set the sanctions message 
                 lc.sanction_auto_message = sanction_approval(beneficiary_country, json_data['applicant_country'])
                 lc.save()
+                ofac(beneficiary_name, lc)
+                lc.save()
 
 
                 set_lc_specifications(lc, json_data)
@@ -163,7 +167,16 @@ def rud_lc(request, lc_id):
     if request.method == "GET":
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
-                return JsonResponse(lc.to_dict())
+                json = lc.to_dict()
+                sdns = list(SDN_LC.objects.filter(lc_id = lc_id).values()) # query
+                print("here")
+                print(sdns)
+                for sdn in sdns:
+                    print(sdn['sdn_id'])
+                    sdn['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id= sdn['sdn_id']).values())
+                    sdn['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=sdn['sdn_id'], type__in=["aka", "fka"]).values())
+                json['sdns'] = sdns
+                return JsonResponse(json)
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
         else:
@@ -548,11 +561,12 @@ def employed_by_main_party_to_lc(lc, username):
 # TODO possibly add an unapprove endpoint?
 @csrf_exempt
 def approve_sanction(request, lc_id):
+    print("here")
     try:
         lc = LC.objects.get(id = lc_id)
     except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'POST':
+        raise Http403("No lc with id " + lc_id)
+    if request.method == 'PUT':
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
             # if it is already approved
@@ -574,15 +588,16 @@ def approve_sanction(request, lc_id):
              return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
-        return HttpResponseBadRequest("This endpoint only supports POST")
+        return HttpResponseBadRequest("This endpoint only supports PUT")
     
 @csrf_exempt
 def reject_sanction(request, lc_id):
+    
     try:
         lc = LC.objects.get(id = lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
-    if request.method == 'POST':
+    if request.method == 'PUT':
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
             # if it is already approved
@@ -602,10 +617,68 @@ def reject_sanction(request, lc_id):
              return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
-        return HttpResponseBadRequest("This endpoint only supports POST")
+        return HttpResponseBadRequest("This endpoint only supports PUT")
     
 
+# TODO possibly add an unapprove endpoint?
+@csrf_exempt
+def approve_ofac(request, lc_id):
+    try:
+        lc = LC.objects.get(id = lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            json_data = json.loads(request.body)
+            # if it is already approved
+            if lc.ofac_bank_approval == status.ACC:
+                return JsonResponse({
+                    'success':True,
+                })            
+            #for some reason it is both rejected and approved... just reset
+           
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.ofac_bank_approval = status.ACC
+                lc.save()
+                return JsonResponse({
+                    'success':True,
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+        else:
+             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+
+
+@csrf_exempt
+def reject_ofac(request, lc_id):
+    try:
+        lc = LC.objects.get(id = lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            json_data = json.loads(request.body)
+            # if it is already approved
+            if lc.ofac_bank_approval == False:
+                    return JsonResponse({
+                    'success':True,
+                })                    
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.ofac_bank_approval = status.REJ
+                lc.save()
+                return JsonResponse({
+                    'success':True,
+                })
+            else:
+                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+        else:
+             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
@@ -907,6 +980,61 @@ def total_credit(request, business_id):
         return HttpResponseBadRequest("This endpoint only supports GET, PUT")
 
 
+@csrf_exempt
+def ofac(beneficiary_name, lc):
+    # business = Business.objects.get(id=business_id)
+    combos = business_name_combinations(beneficiary_name)
+    combo_chunks = [combos[i:i + 200] for i in range(0, len(combos), 200)]
+    sdn_matches = []
+    for chunk in combo_chunks:
+        sdn_matches += list(SpeciallyDesignatedNational.objects.filter(Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk, speciallydesignatednationalalternate__type__in=["aka", "fka"])))
+    # to_return = []
+    # print(type(sdn_matches))
+    sdn_matches = set(sdn_matches)
+    for match in sdn_matches:
+        print("HHELLO")
+        print(type(match))
+        sdn_lc = SDN_LC(lc = lc, sdn = match)
+        sdn_lc.save()
+        # if match['id'] not in seen:
+            #     match['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id=match['id']).values())
+            #     match['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=match['id'], type__in=["aka", "fka"]).values())
+            #     to_return.append(match)
+                # seen.add(match['id'])
+        # return JsonResponse(to_return, safe=False)
+    # except Business.DoesNotExist:
+    #     return HttpResponseBadRequest("There is no business with id " + business_id)
+    
+
+def business_name_combinations(business_name):
+    business_name = business_name.upper()
+    combos = {business_name}
+    suffixes = list(map(lambda suffix: suffix.upper(),
+                        ['Agency', 'Gmbh',	'PA',
+                            'and',	'Group',	'PC',
+                            'Assn',	'Hotel',	'Pharmacy',
+                            'Assoc',	'Hotels',	'PLC',
+                            'Associates',	'Inc',	'PLLC',
+                            'Association',	'Incorporated',	'Restaurant',
+                            'Bank',	'International',	'SA',
+                            'BV',	'Intl',	'Sales',
+                            'Co',	'Limited',	'Service',
+                            'Comp',	'LLC',	'Services',
+                            'Company',	'LLP',	'Store',
+                            'Corp',	'LP',	'Svcs',
+                            'Corporation',	'Ltd',	'Travel',
+                            'DMD',	'Manufacturing',	'Unlimited',
+                            'Enterprises',	'Mfg', 'Holding']))
+    for suffix in suffixes:
+        to_remove = re.compile('(\s*)' + suffix)
+        combos.add(to_remove.sub('', business_name).strip())
+    additions = suffixes.copy()
+    for outerSuffix in suffixes:
+        for innerSuffix in suffixes:
+            additions.append(outerSuffix + " " + innerSuffix)
+    for addition in additions:
+        combos.add(business_name + " " + addition)
+    return list(combos)
 
 
 

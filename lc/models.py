@@ -12,12 +12,27 @@ def writeln(pdf, str):
 
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
 
+class opac_sanction(models.Model):
+    address = models.CharField(max_length=1000, null=True, blank=True)
+    alias = models.CharField(max_length=1000, null=True, blank=True)
+    message = models.CharField(max_length=1000, null=True, blank=True)
+
+    def to_dict(self):
+        return self.get_base_fields()
+
+    def get_base_fields(self):
+        to_return = {
+            'address' : self.address,
+            'alias' : self.alias,
+            'message' : self.message
+        }
 
 
 class status(str, Enum):
     INC: str = "incomplete"
     ACC: str = "accepted"
     REJ: str = "rejected"
+
 
 # Abstract LC from which Pdf and Digital inherit
 class LC(models.Model):
@@ -42,6 +57,13 @@ class LC(models.Model):
       choices=[(tag, tag.value) for tag in status]  # Choices is a list of Tuple
     )
     sanction_auto_message = models.CharField(max_length=1000, null=True, blank=True)
+    
+    ofac_bank_approval = models.CharField(
+        max_length = 10,
+        default = status.INC,
+        choices=[(tag, tag.value) for tag in status]  # Choices is a list of Tuple
+    )
+
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
     beneficiary_approved = models.BooleanField(default=False)
@@ -896,3 +918,18 @@ class SpeciallyDesignatedNationalAlternate(models.Model):
     cleansed_name = models.CharField(max_length=350, blank=True, default='')
     # remarks on alternate identity
     remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
+
+class SDN_LC(models.Model):
+    lc = models.ForeignKey(LC, on_delete=models.CASCADE, null=True, blank=True)
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE, null=True, blank=True)
+
+    def to_dict(self):
+        return self.get_base_fields()
+    
+    def get_base_fields(self):
+        to_return = {
+            'lc' : self.lc.to_dict(),
+            'sdn': self.lc.to_dict()
+        }
+
+
