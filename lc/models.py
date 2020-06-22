@@ -12,23 +12,66 @@ def writeln(pdf, str):
 
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
 
-class opac_sanction(models.Model):
-    address = models.CharField(max_length=1000, null=True, blank=True)
-    alias = models.CharField(max_length=1000, null=True, blank=True)
-    message = models.CharField(max_length=1000, null=True, blank=True)
+
+class SpeciallyDesignatedNational(models.Model):
+    # name of SDN
+    name = models.CharField(max_length=350, blank=True, default='')
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
+    # type of SDN
+    type = models.CharField(max_length=12, blank=True, default=None, null=True)
+    # sanctions program name
+    program = models.CharField(max_length=200, blank=True, default=None, null=True)
+    # title of an individual
+    title = models.CharField(max_length=200, blank=True, default=None, null=True)
+    # vessel call sign
+    call_sign = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # vessel type
+    vessel_type = models.CharField(max_length=25, blank=True, default=None, null=True)
+    # vessel tonnage
+    tonnage = models.CharField(max_length=14, blank=True, default=None, null=True)
+    # gross registered tonnage
+    grt = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # vessel flag
+    vessel_flag = models.CharField(max_length=40, blank=True, default=None, null=True)
+    # vessel owner
+    vessel_owner = models.CharField(max_length=150, blank=True, default=None, null=True)
+    # remarks on SDN
+    remarks = models.CharField(max_length=1000, blank=True, default=None, null=True)
 
     def to_dict(self):
-        return self.get_base_fields()
-
-    def get_base_fields(self):
-        to_return = {
-            'address' : self.address,
-            'alias' : self.alias,
-            'message' : self.message
-        }
+        to_return = vars(self)
+        to_return['addresses'] = list(self.speciallydesignatednationaladdress_set.values())
+        to_return['aliases'] = list(self.speciallydesignatednationalalternate_set.values())
+        to_return.pop('_state', None)
+        return to_return
 
 
-class status(str, Enum):
+class SpeciallyDesignatedNationalAddress(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # street address of SDN
+    address = models.CharField(max_length=750, blank=True, default=None, null=True)
+    # city, state/province, zip/postal code
+    address_group = models.CharField(max_length=116, blank=True, default=None, null=True)
+    # country of address
+    country = models.CharField(max_length=250, blank=True, default=None, null=True)
+    # additional remarks
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
+
+
+class SpeciallyDesignatedNationalAlternate(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # type of alternate identity (aka, fka, nka)
+    type = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # alternate identity name
+    name = models.CharField(max_length=350, blank=True, default=None, null=True)
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
+    # remarks on alternate identity
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
+
+
+class Status(str, Enum):
     INC: str = "incomplete"
     ACC: str = "accepted"
     REJ: str = "rejected"
@@ -53,16 +96,17 @@ class LC(models.Model):
     # -- the status of an LC -- #
     sanction_bank_approval = models.CharField(
       max_length=10,
-      default = status.INC,
-      choices=[(tag, tag.value) for tag in status]  # Choices is a list of Tuple
+      default = Status.INC,
+      choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     sanction_auto_message = models.CharField(max_length=1000, null=True, blank=True)
-    
+
     ofac_bank_approval = models.CharField(
         max_length = 10,
-        default = status.INC,
-        choices=[(tag, tag.value) for tag in status]  # Choices is a list of Tuple
+        default = Status.INC,
+        choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
+    ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
 
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
@@ -105,6 +149,8 @@ class LC(models.Model):
             'drawn' : self.drawn,
             'sanction_auto_message': self.sanction_auto_message,
             'sanction_bank_approval' : self.sanction_bank_approval,
+            'ofac_bank_approval': self.ofac_bank_approval,
+            'ofac_sanctions': list(map(lambda sanction: sanction.to_dict(), self.ofac_sanctions.all())),
             'paid_out' : self.paid_out,
             'documentaryrequirement_set' : self.get_doc_reqs()
         }
@@ -867,69 +913,5 @@ class InsuranceDocumentRequirement(DocumentaryRequirement):
     # TODO
 
 # TODO packing list, certificate of origin, inspection cert
-
-
-class SpeciallyDesignatedNational(models.Model):
-    # name of SDN
-    name = models.CharField(max_length=350, blank=True, default='')
-    # name without commas or dots
-    cleansed_name = models.CharField(max_length=350, blank=True, default='')
-    # type of SDN
-    type = models.CharField(max_length=12, blank=True, default=None, null=True)
-    # sanctions program name
-    program = models.CharField(max_length=200, blank=True, default=None, null=True)
-    # title of an individual
-    title = models.CharField(max_length=200, blank=True, default=None, null=True)
-    # vessel call sign
-    call_sign = models.CharField(max_length=8, blank=True, default=None, null=True)
-    # vessel type
-    vessel_type = models.CharField(max_length=25, blank=True, default=None, null=True)
-    # vessel tonnage
-    tonnage = models.CharField(max_length=14, blank=True, default=None, null=True)
-    # gross registered tonnage
-    grt = models.CharField(max_length=8, blank=True, default=None, null=True)
-    # vessel flag
-    vessel_flag = models.CharField(max_length=40, blank=True, default=None, null=True)
-    # vessel owner
-    vessel_owner = models.CharField(max_length=150, blank=True, default=None, null=True)
-    # remarks on SDN
-    remarks = models.CharField(max_length=1000, blank=True, default=None, null=True)
-
-
-class SpeciallyDesignatedNationalAddress(models.Model):
-    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
-    # street address of SDN
-    address = models.CharField(max_length=750, blank=True, default=None, null=True)
-    # city, state/province, zip/postal code
-    address_group = models.CharField(max_length=116, blank=True, default=None, null=True)
-    # country of address
-    country = models.CharField(max_length=250, blank=True, default=None, null=True)
-    # additional remarks
-    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
-
-
-class SpeciallyDesignatedNationalAlternate(models.Model):
-    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
-    # type of alternate identity (aka, fka, nka)
-    type = models.CharField(max_length=8, blank=True, default=None, null=True)
-    # alternate identity name
-    name = models.CharField(max_length=350, blank=True, default=None, null=True)
-    # name without commas or dots
-    cleansed_name = models.CharField(max_length=350, blank=True, default='')
-    # remarks on alternate identity
-    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
-
-class SDN_LC(models.Model):
-    lc = models.ForeignKey(LC, on_delete=models.CASCADE, null=True, blank=True)
-    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE, null=True, blank=True)
-
-    def to_dict(self):
-        return self.get_base_fields()
-    
-    def get_base_fields(self):
-        to_return = {
-            'lc' : self.lc.to_dict(),
-            'sdn': self.lc.to_dict()
-        }
 
 

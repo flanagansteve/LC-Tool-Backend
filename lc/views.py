@@ -13,7 +13,7 @@ from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 from bank.models import Bank, BankEmployee
-from .models import SDN_LC, status
+from .models import Status
 from business.models import Business, BusinessEmployee, ApprovedCredit
 from util import update_django_instance_with_subset_json
 from django.db.models import Q
@@ -139,7 +139,6 @@ def cr_lcs(request, bank_id):
 
                 # set the sanctions message
                 lc.sanction_auto_message = sanction_approval(beneficiary_country, json_data['applicant_country'])
-                lc.save()
                 ofac(beneficiary_name, lc)
                 lc.save()
 
@@ -171,11 +170,6 @@ def rud_lc(request, lc_id):
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
                 json = lc.to_dict()
-                sdns = list(SDN_LC.objects.filter(lc_id = lc_id).values()) # query
-                for sdn in sdns:
-                    sdn['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id= sdn['sdn_id']).values())
-                    sdn['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=sdn['sdn_id'], type__in=["aka", "fka"]).values())
-                json['sdns'] = sdns
                 return JsonResponse(json)
             else:
                 return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
@@ -564,11 +558,11 @@ def approve_sanction(request, lc_id):
     try:
         lc = LC.objects.get(id = lc_id)
     except LC.DoesNotExist:
-        raise Http403("No lc with id " + lc_id)
+        raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
         if request.user.is_authenticated:
             # if it is already approved
-            if lc.sanction_bank_approval == status.ACC:
+            if lc.sanction_bank_approval == Status.ACC:
                 return JsonResponse({
                     'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
@@ -576,7 +570,7 @@ def approve_sanction(request, lc_id):
             #for some reason it is both rejected and approved... just reset
 
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.sanction_bank_approval = status.ACC
+                lc.sanction_bank_approval = Status.ACC
                 lc.save()
                 return JsonResponse({
                     'success': True,
@@ -589,27 +583,27 @@ def approve_sanction(request, lc_id):
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
-    
+
 @csrf_exempt
 def reject_sanction(request, lc_id):
-    
     try:
         lc = LC.objects.get(id = lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
         if request.user.is_authenticated:
-            json_data = json.loads(request.body)
             # if it is already approved
-            if lc.sanction_bank_approval == False:
-                    return JsonResponse({
-                    'success':True,
+            if not lc.sanction_bank_approval:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.sanction_bank_approval = status.REJ
+                lc.sanction_bank_approval = Status.REJ
                 lc.save()
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
@@ -618,7 +612,7 @@ def reject_sanction(request, lc_id):
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
-    
+
 
 # TODO possibly add an unapprove endpoint?
 @csrf_exempt
@@ -629,17 +623,18 @@ def approve_ofac(request, lc_id):
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
         if request.user.is_authenticated:
-            json_data = json.loads(request.body)
             # if it is already approved
-            if lc.ofac_bank_approval == status.ACC:
+            if lc.ofac_bank_approval == Status.ACC:
                 return JsonResponse({
                     'success':True,
-                })            
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.ofac_bank_approval = status.ACC
+                lc.ofac_bank_approval = Status.ACC
                 lc.save()
                 return JsonResponse({
                     'success':True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
@@ -658,17 +653,18 @@ def reject_ofac(request, lc_id):
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
         if request.user.is_authenticated:
-            json_data = json.loads(request.body)
             # if it is already approved
             if lc.ofac_bank_approval == False:
-                    return JsonResponse({
+                return JsonResponse({
                     'success':True,
-                })                    
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.ofac_bank_approval = status.REJ
+                lc.ofac_bank_approval = Status.REJ
                 lc.save()
                 return JsonResponse({
                     'success':True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
                 return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
@@ -980,26 +976,16 @@ def total_credit(request, business_id):
 
 @csrf_exempt
 def ofac(beneficiary_name, lc):
-    # business = Business.objects.get(id=business_id)
     combos = business_name_combinations(beneficiary_name)
     combo_chunks = [combos[i:i + 200] for i in range(0, len(combos), 200)]
     sdn_matches = []
     for chunk in combo_chunks:
         sdn_matches += list(SpeciallyDesignatedNational.objects.filter(Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk, speciallydesignatednationalalternate__type__in=["aka", "fka"])))
-    # to_return = []
     sdn_matches = set(sdn_matches)
     for match in sdn_matches:
-        sdn_lc = SDN_LC(lc = lc, sdn = match)
-        sdn_lc.save()
-        # if match['id'] not in seen:
-            #     match['addresses'] = list(SpeciallyDesignatedNationalAddress.objects.filter(sdn_id=match['id']).values())
-            #     match['aliases'] = list(SpeciallyDesignatedNationalAlternate.objects.filter(sdn_id=match['id'], type__in=["aka", "fka"]).values())
-            #     to_return.append(match)
-                # seen.add(match['id'])
-        # return JsonResponse(to_return, safe=False)
-    # except Business.DoesNotExist:
-    #     return HttpResponseBadRequest("There is no business with id " + business_id)
-    
+        lc.ofac_sanctions.add(match)
+        lc.save()
+
 
 def business_name_combinations(business_name):
     business_name = business_name.upper()

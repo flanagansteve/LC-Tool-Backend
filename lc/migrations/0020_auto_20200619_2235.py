@@ -19,6 +19,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='lc',
             name='sanction_bank_approval',
-            field=models.CharField(choices=[(lc.models.status['INC'], 'incomplete'), (lc.models.status['ACC'], 'accepted'), (lc.models.status['REJ'], 'rejected')], default=lc.models.status['INC'], max_length=10),
+            field=models.CharField(choices=[(lc.models.Status['INC'], 'incomplete'), (lc.models.Status['ACC'], 'accepted'), (lc.models.Status['REJ'], 'rejected')], default=lc.models.Status['INC'], max_length=10),
         ),
     ]
