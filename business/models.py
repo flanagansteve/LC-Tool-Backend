@@ -18,7 +18,7 @@ class Business(models.Model):
     balance_available = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     approved_credit = models.ManyToManyField(Bank, through='ApprovedCredit')
     # TODO should be an enum among supported countries
-    country = models.CharField(max_length=250, default="USA")
+    country = models.CharField(max_length=250, default="United States")
 
     def to_dict(self):
         return {
