@@ -258,6 +258,19 @@ urlpatterns = [
     # /lc/{lc_id}/request_ofac
     url(r'^(?P<lc_id>[0-9]+)/request_ofac/$', views.request_ofac, name='request_ofac'),
 
+    # /lc/{lc_id}/approve_license
+    url(r'^(?P<lc_id>[0-9]+)/approve_license/$', views.approve_license, name='approve_license'),
+    
+    # /lc/{lc_id}/reject_license
+    url(r'^(?P<lc_id>[0-9]+)/reject_license/$', views.reject_license, name='reject_license'),
+
+
+    # /lc/{lc_id}/def request_license(request, lc_id):
+    url(r'^(?P<lc_id>[0-9]+)/request_license/$', views.request_license, name='request_license'),
+
+
+    # /lc/{lc_id}/request_license
+   
     # /lc/by_bank/{bank_id}/
     url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
