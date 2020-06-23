@@ -109,7 +109,12 @@ class LC(models.Model):
         choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
-    import_license_message = models.TextField(null = True, blank = True, default = " ")
+    import_license_message = models.CharField(max_length = 5000, null = True, blank = True, default = " ")
+    
+    import_license_approval = models.CharField(
+    max_length = 10,
+    default = Status.INC,
+    choices=[(tag, tag.value) for tag in Status] ) # Choices is a list of Tuple
 
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
@@ -145,6 +150,7 @@ class LC(models.Model):
             'client_approved' : self.client_approved,
             'beneficiary_approved' : self.beneficiary_approved,
             'import_license_message' : self.import_license_message,
+            'import_license_approval' : self.import_license_approval,
             'issuer_approved' : self.issuer_approved,
             'latest_version_notes' : self.latest_version_notes,
             'application_date' : self.application_date,
