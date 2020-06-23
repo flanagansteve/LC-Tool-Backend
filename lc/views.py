@@ -991,8 +991,7 @@ def ofac(beneficiary_name, lc):
 
 @csrf_exempt
 def import_license(hts_code, lc):
-    print('impport liense')
-    print(hts_code)
+
     #first check the entire code 
     full_search = search_dict(hts_code)
     if full_search != '':
@@ -1089,12 +1088,10 @@ def sanction_approval(beneficiary_country, applicant_country):
     # TODO write a script that can convert common different spellings of countries to ones that can be looked up by pycountry
     try:
         beneficiary_country = pycountry.countries.lookup(beneficiary_country)
-        print(beneficiary_country)
     except:
         return None
     try:
         applicant_country = pycountry.countries.lookup(applicant_country)
-        print(applicant_country)
     except:
         return None
         # check that the bank is the US first and handle that case
