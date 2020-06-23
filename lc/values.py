@@ -283,3 +283,117 @@ multimodal_bl_form = [
         'options':''
     }
 ]
+
+import_permits = {
+
+#dairy
+('04') : ['dairy','''
+These products may be imported only byholders of permits from:
+
+Department of Health and Human Services 
+Food and Drug Administration 
+Center for Food Safety and Applied Nutrition
+Office of Food Labeling (HFS-156)
+and the Department of Agriculture.''' ],
+
+#fruits, vegetables, nuts
+('07', '08', '14') : ['fruits, vegetables, nuts' , '''an inspection certificate must be
+issued by USDA’s Food Safety and Inspection Service to indicate import compliance.
+Inquiries on general requirements should be made to USDA’s Agricultural Marketing
+Service, Washington, DC 20250.'''],
+
+#live animals
+('01'): 
+['live animals',
+'''A permit for importation must be obtained from APHIS before shipping from the country
+of origin.''' ],
+
+#wildlife
+('0106') : ['wildlife', ''' Any commercial importer or exporter (there are some exceptions for exporters)
+planning to import or export wildlife must first obtain a license from the Fish and
+Wildlife Service. Applications and further information may be obtained from the Fish
+and Wildlife Service, Assistant Regional Director for Law Enforcement, for the region in
+which the importer or exporter is located. '''],
+
+
+#insects
+('0106.49.00') : ['insects', ''''All packages containing live insects or their eggs, pupae, or larvae that
+are not injurious to crops or trees are permitted entry into the United States
+only if:
+• They have a permit issued by the Animal and Plant Health Inspection
+Service of the Department of Agriculture, and
+• They are not prohibited by the U.S. Fish and Wildlife Service. '''],
+
+
+# meat/poultry
+('02') :
+['meat/poultry' , 
+''' All commercial shipments of meat and meat food products (derived from cattle, sheep,
+swine, goats, and horses) offered for entry into the United States are subject to USDA
+regulations and must be inspected by the Food Safety and Inspection Service (FSIS) of
+that department and by CBP’s Agriculture Program and Liaison Office.
+''']
+,
+
+#plant product
+('06') : [
+'plant_products',  '''Import permits are required. Further information should be obtained from APHIS.'''],
+
+#tobacco
+('24') : [
+'tobacco',  ''' Importers of commercial quantities of
+tobacco products must obtain an import permit from the Alcohol and
+Tobacco Tax and Trade Bureau (TTB) of the Department of the
+Treasury. '''],
+
+#alcohol 
+('22') : [
+'alcohol',  '''  distilled spirits, wines containing at least seven percent alcohol, or malt beverages
+must first obtain an importer’s basic permit from the Alcohol and Tobacco Tax and Trade
+Bureau (TTB) of the U.S. Treasury Department.  '''], 
+
+#arms
+('93') : [
+'arms_ammunition' , '''These items are
+prohibited importations except when a license is issued by the Bureau of Alcohol,
+Tobacco, Firearms and Explosives of the Department of Justice ''' ],
+
+#food/food_products
+('16', '17', '18', '19', '20', '21') : [
+'food_products',  ''' The BTA’s key elements require that manufacturers and shippers register the
+facilities from which they export food and food products to the U.S. with the Food and
+Drug Administration. Manufacturers and shippers must also provide the FDA with prior
+notification (PN) for any food shipment covered by BTA regulations. '''],
+
+# #bio TODO
+# 'biological_drugs' : ''' Domestic as well as
+# foreign manufacturers of such products must obtain a U.S. license for both the
+# manufacturing establishment and for the product intended to be produced or imported.
+# Additional information may be obtained from the Food and Drug Administration,  ''' ,
+
+('6804.21.00') : 
+['rough_diamonds', ''' The importation of rough diamonds into the United States requires a Kimberley
+Process Certificate and must be sealed in a tamper resistant container. '''],
+
+# #fabrics
+# 'textiles' : ''' Regulations and pamphlets containing the text of the Textile Fiber Products Identification
+# Act may be obtained from the Federal Trade Commission, Washington, DC 20580. ''',
+
+# 'wool' : ''' The provisions of the Wool Products Labeling Act apply to products
+# manufactured in the United States as well as to imported products. Pamphlets containing
+# the text of the Wool Products Labeling Act and regulations may be obtained from the
+# Federal Trade Commission, Washington, DC 20580. ''',
+
+# 'fur' : ''' Regulations and pamphlets
+# containing the text of the Fur Products Labeling Act may be obtained from the Federal
+# Trade Commission, Washington, DC 20580. ''',
+
+
+#petroleum
+('27') : [
+'petroleum' , ''' An import license
+is no longer required, but an import authorization may be needed. These importations
+may be subject to an oil-import license fee, which is collected and administered by the
+Department of Energy. Inquiries should be directed to the Department of Energy ''' 
+]
+    }
