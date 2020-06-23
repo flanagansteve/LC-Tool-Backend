@@ -2,3 +2,4 @@ db.sqlite3
 lc_tool_backend/credentials.py
 __pycache__
 .idea
+nohup.out
