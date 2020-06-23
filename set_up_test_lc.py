@@ -1,6 +1,7 @@
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 from lc.models import *
+from lc.views import sanction_approval, import_license
 from bank.views import populate_application
 from django.contrib.auth.models import User
 import datetime
@@ -40,7 +41,7 @@ def create_perfect_lc():
                              email="advisey@sbb.com",
                              password="password")
 
-    
+
     lc = DigitalLC(
         issuer = issuer,
         client = client,
@@ -113,4 +114,6 @@ def create_perfect_lc():
         due_date="2020-04-21"
     )
     lc.save()
+    lc.sanction_auto_message = sanction_approval(beneficiary.country, client.country)
+    lc.import_license_message = import_license("2204.10.11", lc)
     print(lc.to_dict())
