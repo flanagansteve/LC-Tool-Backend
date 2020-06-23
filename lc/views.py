@@ -812,7 +812,104 @@ def request_ofac(request, lc_id):
             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
+        return HttpResponseBadRequest("This endpoint only supports PUT") 
+
+@csrf_exempt
+def approve_license(request, lc_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            # if it is already approved
+            if lc.import_license_approval == Status.ACC:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            # for some reason it is both rejected and approved... just reset
+
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.import_license_approval = Status.ACC
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            else:
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
+
+@csrf_exempt
+def reject_license(request, lc_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            # if it is already approved
+            if lc.import_license_approval == False:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.import_license_approval = Status.REJ
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            else:
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+
+
+    
+
+@csrf_exempt
+def request_license(request, lc_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            # if it is already approved
+            if lc.import_license_approval == Status.REQ:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.import_license_approval = Status.REQ
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            else:
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may request the sanction requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+
+    
 
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?

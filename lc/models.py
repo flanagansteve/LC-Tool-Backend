@@ -144,6 +144,7 @@ class LC(models.Model):
             'tasked_advising_bank_employees' : self.get_tasked_advising_bank_employees(),
             'client_approved' : self.client_approved,
             'beneficiary_approved' : self.beneficiary_approved,
+            'import_license_message' : self.import_license_message,
             'issuer_approved' : self.issuer_approved,
             'latest_version_notes' : self.latest_version_notes,
             'application_date' : self.application_date,
