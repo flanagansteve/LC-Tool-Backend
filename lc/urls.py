@@ -265,7 +265,7 @@ urlpatterns = [
     url(r'^(?P<lc_id>[0-9]+)/reject_license/$', views.reject_license, name='reject_license'),
 
 
-    # /lc/{lc_id}/def request_license(request, lc_id):
+    # /lc/{lc_id}/request_license(request, lc_id):
     url(r'^(?P<lc_id>[0-9]+)/request_license/$', views.request_license, name='request_license'),
 
 
