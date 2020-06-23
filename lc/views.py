@@ -1,10 +1,7 @@
-from decimal import *
-import boto3
-import datetime
-import json
-import os
+import re
 import time
 from decimal import *
+
 import pycountry
 from django.core.mail import send_mail
 from django.db import IntegrityError
@@ -12,30 +9,24 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
-from bank.models import Bank, BankEmployee
-from .models import Status
-from business.models import Business, BusinessEmployee, ApprovedCredit
+
+from business.models import ApprovedCredit
 from util import update_django_instance_with_subset_json
-from django.db.models import Q
-import json, datetime, boto3, os, time
-import pycountry
-import re
 from .models import *
 from .values import commercial_invoice_form, multimodal_bl_form
 
 
 # TODO only handling DigitalLCs for now
-# TODO none of these distinguish between different employees within each party - only verifying that you are A employee of the appropriate party to perform an action
+# TODO none of these distinguish between different employees within each party - only verifying that you are A
+#  employee of the appropriate party to perform an action
 # TODO keyerrors... unhandled key errors everywhere
-# TODO currently only allowing the issuer, client, and beneficiary to do stuff - ignoring the account_party and advising_bank, even though we are setting() them
-# TODO for claiming beneficiary / advising_bank / account_party status, we should somehow ensure the claimant is the party they claim to be.
-    # could check logged_in_user.employer.name == name submitted by applicant
-    # Could let client or issuer approve
+# TODO currently only allowing the issuer, client, and beneficiary to do stuff - ignoring the account_party and
+#  advising_bank, even though we are setting() them
+# TODO for claiming beneficiary / advising_bank / account_party status, we should somehow ensure the claimant is the
+#  party they claim to be.
+# could check logged_in_user.employer.name == name submitted by applicant
+# Could let client or issuer approve
 # TODO ensure the links in all send_mail(s are accurate per ryan
-
-
-
-
 
 
 @csrf_exempt
@@ -62,40 +53,45 @@ def cr_lcs(request, bank_id):
             if bank.bankemployee_set.filter(email=request.user.username).exists():
                 # 1. create the initial LC instance with parties, creating new
                 #    accounts/inviting registrants where applicable
-                lc = DigitalLC(issuer = bank)
+                lc = DigitalLC(issuer=bank)
                 lc.save()
                 lc.tasked_issuer_employees.add(bank.bankemployee_set.get(email=request.user.username))
                 if Business.objects.filter(name=json_data['applicant_name']).exists():
                     if lc.client.businessemployee_set.filter(email=json_data['applicant_employee_contact']).exists():
-                        lc.tasked_client_employees.add(Business.businessemployee_set.get(email=json_data['applicant_employee_contact']))
+                        lc.tasked_client_employees.add(
+                              Business.businessemployee_set.get(email=json_data['applicant_employee_contact']))
                     else:
                         # TODO decide - either
-                            # send an email 'set your employee account up at <insert employee registration link>'
+                        # send an email 'set your employee account up at <insert employee registration link>'
                         # or return an error, since the business exists, so it
                         # was probably a mistyped email
                         pass
                     # TODO mail the business inviting them to fill the app out
                     send_mail(
-                        bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
-                        "Fill out your app at https://app.bountium.org/business/finishApp/" + lc.id,
-                        "steve@bountium.org",
-                        [json_data['applicant_employee_contact']],
-                        fail_silently=False,
+                          bank.bankemployee_set.get(
+                                email=request.user.username).name + " has started your LC for you on Bountium!",
+                          "Fill out your app at https://app.bountium.org/business/finishApp/" + lc.id,
+                          "steve@bountium.org",
+                          [json_data['applicant_employee_contact']],
+                          fail_silently=False,
                     )
                 else:
-                    # TODO create the business, and invite applicant_employee_contact to register then fill out the LC app
+                    # TODO create the business, and invite applicant_employee_contact to register then fill out the
+                    #  LC app
                     send_mail(
-                        bank.bankemployee_set.get(email=request.user.username).name + " has started your LC for you on Bountium!",
-                        "1. Set your business up at https://app.bountium.org/business/register, 2. fill out your app at https://bountium.org/business/finishApp/" + lc.id,
-                        "steve@bountium.org",
-                        [json_data['applicant_employee_contact']],
-                        fail_silently=False,
+                          bank.bankemployee_set.get(
+                                email=request.user.username).name + " has started your LC for you on Bountium!",
+                          "1. Set your business up at https://app.bountium.org/business/register, 2. fill out your "
+                          "app at https://bountium.org/business/finishApp/" + lc.id,
+                          "steve@bountium.org",
+                          [json_data['applicant_employee_contact']],
+                          fail_silently=False,
                     )
                     pass
                 # 3. return success & the created lc
                 return JsonResponse({
-                    'success':True,
-                    'created_lc':lc.to_dict()
+                    'success': True,
+                    'created_lc': lc.to_dict()
                 })
             elif BusinessEmployee.objects.filter(email=request.user.username).exists():
                 employee_applying = BusinessEmployee.objects.get(email=request.user.username)
@@ -108,9 +104,12 @@ def cr_lcs(request, bank_id):
                 applicant_name = json_data['applicant_name']
                 applicant_address = json_data['applicant_address']
                 if (applicant_name != employee_applying.employer.name
-                    or applicant_address != employee_applying.employer.address):
-                    return HttpResponseForbidden("You may only apply for an LC on behalf of your own business. Check the submitted applicant_name and applicant_address for correctness - one or both differed from the business name and address associated with this user\'s employer")
-                lc = DigitalLC(issuer = bank, client = employee_applying.employer, application_date = datetime.datetime.now())
+                      or applicant_address != employee_applying.employer.address):
+                    return HttpResponseForbidden(
+                          "You may only apply for an LC on behalf of your own business. Check the submitted "
+                          "applicant_name and applicant_address for correctness - one or both differed from the "
+                          "business name and address associated with this user\'s employer")
+                lc = DigitalLC(issuer=bank, client=employee_applying.employer, application_date=datetime.datetime.now())
                 lc.save()
                 lc.tasked_client_employees.add(employee_applying)
                 del json_data['applicant_name']
@@ -123,15 +122,21 @@ def cr_lcs(request, bank_id):
                 if Business.objects.filter(name=beneficiary_name).exists():
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
-                    lc.beneficiary = Business(name=beneficiary_name, address=beneficiary_address, country=beneficiary_country)
+                    lc.beneficiary = Business(name=beneficiary_name, address=beneficiary_address,
+                                              country=beneficiary_country)
                     lc.beneficiary.save()
                     ApprovedCredit(bank=bank, business=lc.beneficiary).save()
                     send_mail(
-                        employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://bountium.org/business/register/" + lc.beneficiary.id + ". 2. Navigate to you home page to see the newly created LC.",
-                        "steve@bountium.org",
-                        [employee_applying.email],
-                        fail_silently=False,
+                          employee_applying.employer.name + " has created their LC to work with you on Bountium",
+                          employee_applying.employer.name + ": Forward these instructions to a contact at your "
+                                                            "beneficiary, so that they can upload documentary "
+                                                            "requirements and request payment on Bountium. "
+                                                            "\nInstructions for beneficiary: 1. Set your business up "
+                                                            "at https://bountium.org/business/register/" +
+                          lc.beneficiary.id + ". 2. Navigate to you home page to see the newly created LC.",
+                          "steve@bountium.org",
+                          [employee_applying.email],
+                          fail_silently=False,
                     )
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
@@ -148,16 +153,19 @@ def cr_lcs(request, bank_id):
 
                 # 4. save and return back!
                 return JsonResponse({
-                    'success' : True,
-                    'created_lc' : lc.to_dict()
+                    'success': True,
+                    'created_lc': lc.to_dict()
                 })
 
             else:
-                return HttpResponseForbidden("You may only create LCs with the bank of the ID at this endpoint by being a member of this bank, or by being a business requesting an LC from this bank")
+                return HttpResponseForbidden(
+                      "You may only create LCs with the bank of the ID at this endpoint by being a member of this "
+                      "bank, or by being a business requesting an LC from this bank")
         else:
             return HttpResponseForbidden("Must be logged in to create an LC")
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
+
 
 @csrf_exempt
 def rud_lc(request, lc_id):
@@ -169,10 +177,10 @@ def rud_lc(request, lc_id):
     if request.method == "GET":
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
-                json = lc.to_dict()
-                return JsonResponse(json)
+                return JsonResponse(lc.to_dict())
             else:
-                return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
+                return HttpResponseForbidden(
+                      'Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
         else:
             return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == "POST":
@@ -189,18 +197,25 @@ def rud_lc(request, lc_id):
                     lc.beneficiary = Business.objects.get(name=beneficiary_name)
                 else:
                     send_mail(
-                        employee_applying.employer.name + " has created their LC to work with you on Bountium",
-                        employee_applying.employer.name + ": Forward these instructions to a contact at your beneficiary, so that they can upload documentary requirements and request payment on Bountium. \nInstructions for beneficiary: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your beneficiary status at https://bountium.org/business/claimBeneficiary/" + str(lc.id) + "/",
-                        "steve@bountium.org",
-                        [request.user.username],
-                        fail_silently=False,
+                          employee_applying.employer.name + " has created their LC to work with you on Bountium",
+                          employee_applying.employer.name + ": Forward these instructions to a contact at your "
+                                                            "beneficiary, so that they can upload documentary "
+                                                            "requirements and request payment on Bountium. "
+                                                            "\nInstructions for beneficiary: 1. Set your business up "
+                                                            "at https://app.bountium.org/business/register, "
+                                                            "2. Claim your beneficiary status at "
+                                                            "https://bountium.org/business/claimBeneficiary/" + str(
+                                lc.id) + "/",
+                          "steve@bountium.org",
+                          [request.user.username],
+                          fail_silently=False,
                     )
                     pass
                 del json_data['beneficiary_name']
                 del json_data['beneficiary_address']
                 set_lc_specifications(lc, json_data)
                 return JsonResponse({
-                    'success' : True
+                    'success': True
                 })
             else:
                 return HttpResponseForbidden("Only employees of the business applying for this LC can create the LC")
@@ -211,8 +226,8 @@ def rud_lc(request, lc_id):
             json_data = json.loads(request.body)
             if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                 return JsonResponse({
-                    'success':False,
-                    'reason':'This LC has been approved by all parties, and may not be modified'
+                    'success': False,
+                    'reason': 'This LC has been approved by all parties, and may not be modified'
                 })
             else:
                 if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
@@ -220,56 +235,90 @@ def rud_lc(request, lc_id):
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.client_approved, lc.beneficiary_approved = False, False
                     lc.issuer_approved = True
-                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + json_data['latest_version_notes']
+                    if 'latest_version_notes' in json_data:
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + \
+                                                  json_data['latest_version_notes']
+                    if 'comment' in json_data:
+                        comment = json_data['comment']
+                        if 'action' not in comment or 'message' not in comment:
+                            return HttpResponseBadRequest(
+                                "The given comment must have an 'action' field and a 'message' field")
+                        created = Comment(lc=lc, author_type="issuer", action=comment['action'],
+                                          date=datetime.datetime.now(), message=comment['message'],
+                                          issuer_viewable=True, client_viewable=True, respondable='client')
+                        created.save()
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success' : True
+                        'success': True,
+                        'updated_lc': lc.to_dict()
                     })
-                elif lc.beneficiary is not None and lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                elif lc.beneficiary is not None and lc.beneficiary.businessemployee_set.filter(
+                      email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved, lc.client_approved = False, False
                     lc.beneficiary_approved = True
-                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary updated: ' + json_data['latest_version_notes']
+                    if 'latest_version_notes' in json_data:
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary updated: ' \
+                                                  + \
+                                                  json_data['latest_version_notes']
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success' : True
+                        'success': True,
+                        'updated_lc': lc.to_dict()
                     })
                 elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved, lc.beneficiary_approved = False, False
                     lc.client_approved = True
-                    lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['latest_version_notes']
+                    if 'latest_version_notes' in json_data:
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + \
+                                                  json_data['latest_version_notes']
+                    if 'comment' in json_data:
+                        comment = json_data['comment']
+                        if 'action' not in comment or 'message' not in comment:
+                            return HttpResponseBadRequest(
+                                  "The given comment must have an 'action' field and a 'message' field")
+                        created = Comment(lc=lc, author_type="client", action=comment['action'],
+                                          date=datetime.datetime.now(), message=comment['message'],
+                                          issuer_viewable=True, client_viewable=True, respondable='issuer')
+                        created.save()
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success' : True
+                        'success': True,
+                        'updated_lc': lc.to_dict()
                     })
                 else:
-                    return HttpResponseForbidden('Only an employee of the issuer, the applicant, or the beneficiary to the LC may modify it')
+                    return HttpResponseForbidden(
+                          'Only an employee of the issuer, the applicant, or the beneficiary to the LC may modify it')
     elif request.method == "DELETE":
         if request.user.is_authenticated:
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or lc.client.businessemployee_set.filter(email=request.user.username).exists():
+            if lc.issuer.bankemployee_set.filter(
+                  email=request.user.username).exists() or lc.client.businessemployee_set.filter(
+                  email=request.user.username).exists():
                 if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                     return JsonResponse({
-                        'success':False,
-                        'reason':'This LC has been approved by all parties, and may not be revoked'
+                        'success': False,
+                        'reason': 'This LC has been approved by all parties, and may not be revoked'
                     })
                 else:
                     # TODO should probably notify everybody of this deletion
                     lc.delete()
                     return JsonResponse({
-                        'success':True
+                        'success': True
                     })
             else:
-                return HttpResponseForbidden('Only an employee of either the issuer or applicant to the LC may delete it')
+                return HttpResponseForbidden(
+                      'Only an employee of either the issuer or applicant to the LC may delete it')
         else:
             return HttpResponseForbidden('Must be logged in to delete an LC')
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
+
 
 @csrf_exempt
 def get_filtered_lcs(request, bank_id, filter):
@@ -279,14 +328,15 @@ def get_filtered_lcs(request, bank_id, filter):
         raise Http404("No bank with that id")
     to_return = []
     filter_vals = {
-        'live' : Q(client_approved=True, issuer_approved=True, beneficiary_approved=True),
-        'awaiting_issuer_approval' : Q(issuer_approved=False),
-        'awaiting_client_approval' : Q(client_approved=False),
-        'awaiting_beneficiary_approval' : Q(beneficiary_approved=False)
+        'live': Q(client_approved=True, issuer_approved=True, beneficiary_approved=True),
+        'awaiting_issuer_approval': Q(issuer_approved=False),
+        'awaiting_client_approval': Q(client_approved=False),
+        'awaiting_beneficiary_approval': Q(beneficiary_approved=False)
     }
     for lc in DigitalLC.objects.filter(filter_vals[filter], issuer=bank, paid_out=False):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
+
 
 @csrf_exempt
 def get_lcs_by_client(request, business_id):
@@ -299,6 +349,7 @@ def get_lcs_by_client(request, business_id):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
 
+
 @csrf_exempt
 def get_lcs_by_beneficiary(request, business_id):
     try:
@@ -310,17 +361,19 @@ def get_lcs_by_beneficiary(request, business_id):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
 
+
 def form_note(lc, json_data, sending_user):
     note = sending_user.name + ' would like you to examine the LC at https://app.bountium.org/lc/' + lc.id
     if 'note' in json_data:
         note = json_data['note']
     send_mail(
-        sending_user.name + ' sent a notification on Bountium',
-        note,
-        'steve@bountium.org',
-        [json_data['to_notify']],
-        fail_silently=False,
+          sending_user.name + ' sent a notification on Bountium',
+          note,
+          'steve@bountium.org',
+          [json_data['to_notify']],
+          fail_silently=False,
     )
+
 
 # TODO the following 3 functions, claim_x, should be abstracted & parameterised
 @csrf_exempt
@@ -339,8 +392,8 @@ def claim_relation_to_lc(request, lc_id, relation):
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'claimed_on':str(datetime.datetime.now())
+                        'success': True,
+                        'claimed_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only a business registered on Bountium may claim beneficiary status')
@@ -352,11 +405,12 @@ def claim_relation_to_lc(request, lc_id, relation):
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'claimed_on':str(datetime.datetime.now())
+                        'success': True,
+                        'claimed_on': str(datetime.datetime.now())
                     })
                 else:
-                    return HttpResponseForbidden('Only a business registered on Bountium may claim account party status')
+                    return HttpResponseForbidden(
+                          'Only a business registered on Bountium may claim account party status')
             elif relation == 'advising':
                 if BankEmployee.objects.filter(email=request.user.username).exists():
                     advising_bank_employee = BankEmployee.objects.get(email=request.user.username)
@@ -365,17 +419,19 @@ def claim_relation_to_lc(request, lc_id, relation):
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'claimed_on':str(datetime.datetime.now())
+                        'success': True,
+                        'claimed_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only a bank registered on Bountium may claim advising bank status')
             else:
-                raise Http404('Bountium is only supporting the LC relations "beneficiary", "account_party", and "advising"')
+                raise Http404(
+                      'Bountium is only supporting the LC relations "beneficiary", "account_party", and "advising"')
         else:
             return HttpResponseForbidden('You must be logged in to claim an LC relation')
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
+
 
 @csrf_exempt
 def cr_doc_reqs(request, lc_id):
@@ -385,7 +441,9 @@ def cr_doc_reqs(request, lc_id):
                 this_lcs_doc_reqs = LC.objects.get(id=lc_id).documentaryrequirement_set
                 return JsonResponse(list(this_lcs_doc_reqs.values()), safe=False)
             else:
-                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
+                return HttpResponseForbidden(
+                      'Only an employee of the issuer, the client, or the beneficiary to the LC may view its '
+                      'documentary requirements')
         else:
             return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'POST':
@@ -396,13 +454,15 @@ def cr_doc_reqs(request, lc_id):
                 except LC.DoesNotExist:
                     raise Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
-                lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'], link_to_submitted_doc = json['link_to_submitted_doc'])
+                lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'],
+                                                     link_to_submitted_doc=json['link_to_submitted_doc'])
                 lc.save()
                 return JsonResponse({
-                    'doc_req_id' : lc.documentaryrequirement_set.get(doc_name=json_data['doc_name']).id
+                    'doc_req_id': lc.documentaryrequirement_set.get(doc_name=json_data['doc_name']).id
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the beneficiary to this LC may create documentary requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the beneficiary to this LC may create documentary requirements")
         else:
             return HttpResponseForbidden("You must be logged in to create documentary requirements")
     else:
@@ -428,7 +488,9 @@ def rud_doc_req(request, lc_id, doc_req_id):
             if (employed_by_main_party_to_lc(lc, request.user.username)):
                 return JsonResponse(promote_to_child(doc_req).to_dict())
             else:
-                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements')
+                return HttpResponseForbidden(
+                      'Only an employee of the issuer, the client, or the beneficiary to the LC may view its '
+                      'documentary requirements')
         else:
             return HttpResponseForbidden("Must be logged in to view an LC")
     elif request.method == 'PUT':
@@ -448,9 +510,9 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 lc.save()
                 # TODO notify parties
                 return JsonResponse({
-                    'success':True,
-                    'modified_and_notified_on':str(datetime.datetime.now()),
-                    'doc_req':doc_req.to_dict()
+                    'success': True,
+                    'modified_and_notified_on': str(datetime.datetime.now()),
+                    'doc_req': doc_req.to_dict()
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 json_data = json.loads(request.body)
@@ -468,12 +530,14 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 lc.save()
                 # TODO notify parties
                 return JsonResponse({
-                    'success':True,
-                    'modified_and_notified_on':str(datetime.datetime.now()),
-                    'doc_req':doc_req.to_dict()
+                    'success': True,
+                    'modified_and_notified_on': str(datetime.datetime.now()),
+                    'doc_req': doc_req.to_dict()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update documentary requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC, or the beneficiary of this LC, may update "
+                      "documentary requirements")
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement redline")
     elif request.method == 'POST':
@@ -482,16 +546,17 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 # issuer uploading on behalf of the bene (presumably a scan or something)
                 if request.content_type == 'application/pdf':
                     s3 = boto3.resource('s3')
-                    submitted_doc_name = lc.issuer.name + "-submitted-on-behalf-of-bene-on" + str(datetime.datetime.now()) + ".pdf"
+                    submitted_doc_name = lc.issuer.name + "-submitted-on-behalf-of-bene-on" + str(
+                          datetime.datetime.now()) + ".pdf"
                     s3.Bucket('docreqs').put_object(Key=submitted_doc_name, Body=request.body)
                     doc_req.link_to_submitted_doc = "https://docreqs.s3.us-east-2.amazonaws.com/" + submitted_doc_name
                     doc_req.rejected = False
                     doc_req.save()
                     # TODO notify someone
                     return JsonResponse({
-                        'success':True,
-                        'submitted_and_notified_on':str(datetime.datetime.now()),
-                        'doc_req':doc_req.to_dict()
+                        'success': True,
+                        'submitted_and_notified_on': str(datetime.datetime.now()),
+                        'doc_req': doc_req.to_dict()
                     })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 if request.content_type == 'application/pdf':
@@ -503,9 +568,9 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     doc_req.save()
                     # TODO notify someone
                     return JsonResponse({
-                        'success':True,
-                        'submitted_and_notified_on':str(datetime.datetime.now()),
-                        'doc_req':doc_req.to_dict()
+                        'success': True,
+                        'submitted_and_notified_on': str(datetime.datetime.now()),
+                        'doc_req': doc_req.to_dict()
                     })
                 else:
                     json_data = json.loads(request.body)
@@ -516,12 +581,14 @@ def rud_doc_req(request, lc_id, doc_req_id):
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'modified_and_notified_on':str(datetime.datetime.now()),
-                        'doc_req':doc_req.to_dict()
+                        'success': True,
+                        'modified_and_notified_on': str(datetime.datetime.now()),
+                        'doc_req': doc_req.to_dict()
                     })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or the beneficiary of this LC, may submit documentary requirement candidates")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC, or the beneficiary of this LC, may submit "
+                      "documentary requirement candidates")
         else:
             return HttpResponseForbidden("You must be logged in to submit a documentary requirement candidate")
     elif request.method == 'DELETE':
@@ -529,15 +596,17 @@ def rud_doc_req(request, lc_id, doc_req_id):
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 doc_req.delete()
                 return JsonResponse({
-                    'success':True,
-                    'doc_reqs':lc.get_doc_reqs()
+                    'success': True,
+                    'doc_reqs': lc.get_doc_reqs()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC may delete documentary requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may delete documentary requirements")
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement deletion")
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
+
 
 def promote_to_child(doc_req):
     if doc_req.type == 'commercial_invoice':
@@ -546,17 +615,18 @@ def promote_to_child(doc_req):
         return MultimodalTransportDocumentRequirement.objects.get(id=doc_req.id)
     return doc_req
 
+
 def employed_by_main_party_to_lc(lc, username):
     return (lc.issuer.bankemployee_set.filter(email=username).exists()
-        or lc.client.businessemployee_set.filter(email=username).exists()
-        or lc.beneficiary.businessemployee_set.filter(email=username).exists())
+            or lc.client.businessemployee_set.filter(email=username).exists()
+            or lc.beneficiary.businessemployee_set.filter(email=username).exists())
 
 
 # TODO possibly add an unapprove endpoint?
 @csrf_exempt
 def approve_sanction(request, lc_id):
     try:
-        lc = LC.objects.get(id = lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
@@ -567,7 +637,7 @@ def approve_sanction(request, lc_id):
                     'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
-            #for some reason it is both rejected and approved... just reset
+            # for some reason it is both rejected and approved... just reset
 
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.sanction_bank_approval = Status.ACC
@@ -577,17 +647,19 @@ def approve_sanction(request, lc_id):
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
         else:
-             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
 
+
 @csrf_exempt
 def reject_sanction(request, lc_id):
     try:
-        lc = LC.objects.get(id = lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
@@ -606,9 +678,43 @@ def reject_sanction(request, lc_id):
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
         else:
-             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+
+
+@csrf_exempt
+def request_sanction(request, lc_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            # if it is already approved
+            if lc.sanction_bank_approval == Status.REQ:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            # for some reason it is both rejected and approved... just reset
+
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.sanction_bank_approval = Status.REQ
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            else:
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may request the sanction requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
@@ -618,7 +724,7 @@ def reject_sanction(request, lc_id):
 @csrf_exempt
 def approve_ofac(request, lc_id):
     try:
-        lc = LC.objects.get(id = lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
@@ -626,20 +732,21 @@ def approve_ofac(request, lc_id):
             # if it is already approved
             if lc.ofac_bank_approval == Status.ACC:
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.ofac_bank_approval = Status.ACC
                 lc.save()
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
         else:
-             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
@@ -648,7 +755,7 @@ def approve_ofac(request, lc_id):
 @csrf_exempt
 def reject_ofac(request, lc_id):
     try:
-        lc = LC.objects.get(id = lc_id)
+        lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     if request.method == 'PUT':
@@ -656,23 +763,56 @@ def reject_ofac(request, lc_id):
             # if it is already approved
             if lc.ofac_bank_approval == False:
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 lc.ofac_bank_approval = Status.REJ
                 lc.save()
                 return JsonResponse({
-                    'success':True,
+                    'success': True,
                     'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC may approve the sanction requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
         else:
-             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
+
+
+@csrf_exempt
+def request_ofac(request, lc_id):
+    try:
+        lc = LC.objects.get(id=lc_id)
+    except LC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
+    if request.method == 'PUT':
+        if request.user.is_authenticated:
+            # if it is already approved
+            if lc.ofac_bank_approval == Status.REQ:
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                lc.ofac_bank_approval = Status.REQ
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
+                })
+            else:
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC may request the sanction requirements")
+        else:
+            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
+
+    else:
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
@@ -696,8 +836,8 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 doc_req.save()
                 lc.save()
                 return JsonResponse({
-                    'success':True,
-                    'doc_reqs':lc.get_doc_reqs()
+                    'success': True,
+                    'doc_reqs': lc.get_doc_reqs()
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 doc_req.modified_and_awaiting_beneficiary_approval = json_data['approve']
@@ -706,15 +846,18 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                 doc_req.save()
                 lc.save()
                 return JsonResponse({
-                    'success':True,
-                    'doc_reqs':lc.get_doc_reqs()
+                    'success': True,
+                    'doc_reqs': lc.get_doc_reqs()
                 })
             else:
-                return HttpResponseForbidden("Only an employee of the bank which issued this LC, or an employee to the beneficiary of thsi LC, may evaluate documentary requirements")
+                return HttpResponseForbidden(
+                      "Only an employee of the bank which issued this LC, or an employee to the beneficiary of this "
+                      "LC, may evaluate documentary requirements")
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement evaluation")
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
+
 
 @csrf_exempt
 def mark_lc_something(request, lc_id, state_to_mark):
@@ -722,15 +865,15 @@ def mark_lc_something(request, lc_id, state_to_mark):
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
-    if request.method=="POST":
+    if request.method == "POST":
         if request.user.is_authenticated:
             if state_to_mark == 'request':
                 if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                     lc.requested = True
                     lc.save()
                     return JsonResponse({
-                        'success':True,
-                        'requested_on':str(datetime.datetime.now())
+                        'success': True,
+                        'requested_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
@@ -739,8 +882,8 @@ def mark_lc_something(request, lc_id, state_to_mark):
                     lc.drawn = True
                     lc.save()
                     return JsonResponse({
-                        'success':True,
-                        'drawn_on':str(datetime.datetime.now())
+                        'success': True,
+                        'drawn_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
@@ -749,8 +892,8 @@ def mark_lc_something(request, lc_id, state_to_mark):
                     lc.paid_out = True
                     lc.save()
                     return JsonResponse({
-                        'success':True,
-                        'marked_paid_out_on':str(datetime.datetime.now())
+                        'success': True,
+                        'marked_paid_out_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only the issuer of an LC may mark it paid out')
@@ -759,32 +902,35 @@ def mark_lc_something(request, lc_id, state_to_mark):
                 if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                     lc.issuer_approved = json_data['approve']
                     if 'complaints' in json_data and json_data['complaints'] != '':
-                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + json_data['complaints']
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + \
+                                                  json_data['complaints']
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'evaluated_on':str(datetime.datetime.now())
+                        'success': True,
+                        'evaluated_on': str(datetime.datetime.now())
                     })
                 elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                     lc.beneficiary_approved = json_data['approve']
                     if 'complaints' in json_data and json_data['complaints'] != '':
-                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary said: ' + json_data['complaints']
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary said: ' + \
+                                                  json_data['complaints']
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'evaluated_on':str(datetime.datetime.now())
+                        'success': True,
+                        'evaluated_on': str(datetime.datetime.now())
                     })
                 elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
                     lc.client_approved = json_data['approve']
                     if 'complaints' in json_data and json_data['complaints'] != '':
-                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + json_data['complaints']
+                        lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + \
+                                                  json_data['complaints']
                     lc.save()
                     # TODO notify parties
                     return JsonResponse({
-                        'success':True,
-                        'evaluated_on':str(datetime.datetime.now())
+                        'success': True,
+                        'evaluated_on': str(datetime.datetime.now())
                     })
                 else:
                     return HttpResponseForbidden('Only the issuer, beneficiary, or client to an LC may evaluate it')
@@ -800,13 +946,17 @@ def mark_lc_something(request, lc_id, state_to_mark):
                     form_note(lc, json_data, lc.beneficiary.businessemployee_set.get(email=request.user.username))
                     lc.tasked_beneficiary_employees.add(BusinessEmployee.objects.get(email=json_data['to_notify']))
                 else:
-                    return HttpResponseForbidden("Only employees of this LC's issuer, client, or beneficiary may notify teammates about it")
+                    return HttpResponseForbidden(
+                          "Only employees of this LC's issuer, client, or beneficiary may notify teammates about it")
             else:
-                raise Http404('Bountium only supports marking an LC\'s status with the actions "request", "draw", "evaluate", and "payout"')
+                raise Http404(
+                      'Bountium only supports marking an LC\'s status with the actions "request", "draw", "evaluate", '
+                      'and "payout"')
         else:
             return HttpResponseForbidden('You must be logged in to update the status on an LC')
     else:
         return HttpResponseBadRequest("This endpoint only supports POST")
+
 
 @csrf_exempt
 def get_dr_file(request, lc_id, doc_req_id):
@@ -820,23 +970,28 @@ def get_dr_file(request, lc_id, doc_req_id):
         raise Http404("No doc req with that id associated with this lc")
     if request.method == 'GET':
         if request.user.is_authenticated:
-            if (employed_by_main_party_to_lc(lc, request.user.username)):
-                submitted_doc_name = doc_req.link_to_submitted_doc[doc_req.link_to_submitted_doc.index('aws.com/') + len('aws.com/'):]
+            if employed_by_main_party_to_lc(lc, request.user.username):
+                submitted_doc_name = doc_req.link_to_submitted_doc[
+                                     doc_req.link_to_submitted_doc.index('aws.com/') + len('aws.com/'):]
                 s3 = boto3.resource('s3')
                 s3client = boto3.client('s3')
                 file_size = s3client.head_object(Bucket='docreqs', Key=submitted_doc_name)['ContentLength']
-                the_file = s3.Bucket('docreqs').download_file(Filename='/tmp/' + submitted_doc_name, Key=submitted_doc_name)
+                the_file = s3.Bucket('docreqs').download_file(Filename='/tmp/' + submitted_doc_name,
+                                                              Key=submitted_doc_name)
                 while os.path.getsize('/tmp/' + submitted_doc_name) < file_size:
                     time.sleep(1)
                 res = HttpResponse(open('/tmp/' + submitted_doc_name, 'rb'))
                 res['Content-Type'] = "binary/octet-stream"
                 return res
             else:
-                return HttpResponseForbidden('Only an employee of the issuer, the client, or the beneficiary to the LC may view its documentary requirements\' submitted candidate docs')
+                return HttpResponseForbidden(
+                      'Only an employee of the issuer, the client, or the beneficiary to the LC may view its '
+                      'documentary requirements\' submitted candidate docs')
         else:
             return HttpResponseForbidden('You must be logged in to get a documentary requirement\'s submitted file')
     else:
         return HttpResponseBadRequest("This endpoint only supports GET")
+
 
 @csrf_exempt
 def autopopulate_creatable_dr(request, lc_id, doc_req_id):
@@ -850,11 +1005,13 @@ def autopopulate_creatable_dr(request, lc_id, doc_req_id):
         raise Http404("No doc req with that id associated with this lc")
     return JsonResponse(doc_req.suggested_field_vals())
 
+
 @csrf_exempt
 def supported_creatable_docs(request):
     return JsonResponse([
         'commercial_invoice', 'multimodal_bl'
     ], safe=False)
+
 
 @csrf_exempt
 def supported_creatable_doc(request, doc_type):
@@ -872,9 +1029,9 @@ def digital_app_templates(request):
         if request.user.is_authenticated:
             try:
                 user = BusinessEmployee.objects.get(email=request.user.username)
-                filter = {k: v for k, v in request.GET.items()}
-                filter['user'] = user
-                templates = DigitalLCTemplate.objects.filter(**filter).values('id', 'template_name')
+                where = {k: v for k, v in request.GET.items()}
+                where['user'] = user
+                templates = DigitalLCTemplate.objects.filter(**where).values('id', 'template_name')
                 return JsonResponse(list(templates), safe=False)
             except BusinessEmployee.DoesNotExist:
                 return HttpResponseForbidden("Must be a business employee to see LC templates")
@@ -937,7 +1094,7 @@ def digital_app_template(request, template_id):
                         'success': True,
                         'updated_lc_template': model_to_dict(template)
                     })
-                except  DigitalLCTemplate.DoesNotExist:
+                except DigitalLCTemplate.DoesNotExist:
                     return HttpResponseBadRequest("The template ID given does not exist")
             except BusinessEmployee.DoesNotExist:
                 return HttpResponseForbidden("Must be a business employee to update an LC template")
@@ -954,7 +1111,8 @@ def total_credit(request, business_id):
             try:
                 user = BankEmployee.objects.get(email=request.user.username)
                 business = Business.objects.get(id=business_id)
-                apps = list(DigitalLC.objects.filter(issuer=user.bank,client=business,issuer_approved=True).values('credit_amt', 'cash_secure'))
+                apps = list(DigitalLC.objects.filter(issuer=user.bank, client=business, issuer_approved=True).values(
+                      'credit_amt', 'cash_secure'))
                 sum = Decimal(0)
                 for app in apps:
                     credit = app['credit_amt']
@@ -980,7 +1138,9 @@ def ofac(beneficiary_name, lc):
     combo_chunks = [combos[i:i + 200] for i in range(0, len(combos), 200)]
     sdn_matches = []
     for chunk in combo_chunks:
-        sdn_matches += list(SpeciallyDesignatedNational.objects.filter(Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk, speciallydesignatednationalalternate__type__in=["aka", "fka"])))
+        sdn_matches += list(SpeciallyDesignatedNational.objects.filter(
+              Q(cleansed_name__in=chunk) | Q(speciallydesignatednationalalternate__cleansed_name__in=chunk,
+                                             speciallydesignatednationalalternate__type__in=["aka", "fka"])))
     sdn_matches = set(sdn_matches)
     for match in sdn_matches:
         lc.ofac_sanctions.add(match)
@@ -991,21 +1151,21 @@ def business_name_combinations(business_name):
     business_name = business_name.upper()
     combos = {business_name}
     suffixes = list(map(lambda suffix: suffix.upper(),
-                        ['Agency', 'Gmbh',	'PA',
-                            'and',	'Group',	'PC',
-                            'Assn',	'Hotel',	'Pharmacy',
-                            'Assoc',	'Hotels',	'PLC',
-                            'Associates',	'Inc',	'PLLC',
-                            'Association',	'Incorporated',	'Restaurant',
-                            'Bank',	'International',	'SA',
-                            'BV',	'Intl',	'Sales',
-                            'Co',	'Limited',	'Service',
-                            'Comp',	'LLC',	'Services',
-                            'Company',	'LLP',	'Store',
-                            'Corp',	'LP',	'Svcs',
-                            'Corporation',	'Ltd',	'Travel',
-                            'DMD',	'Manufacturing',	'Unlimited',
-                            'Enterprises',	'Mfg', 'Holding']))
+                        ['Agency', 'Gmbh', 'PA',
+                         'and', 'Group', 'PC',
+                         'Assn', 'Hotel', 'Pharmacy',
+                         'Assoc', 'Hotels', 'PLC',
+                         'Associates', 'Inc', 'PLLC',
+                         'Association', 'Incorporated', 'Restaurant',
+                         'Bank', 'International', 'SA',
+                         'BV', 'Intl', 'Sales',
+                         'Co', 'Limited', 'Service',
+                         'Comp', 'LLC', 'Services',
+                         'Company', 'LLP', 'Store',
+                         'Corp', 'LP', 'Svcs',
+                         'Corporation', 'Ltd', 'Travel',
+                         'DMD', 'Manufacturing', 'Unlimited',
+                         'Enterprises', 'Mfg', 'Holding']))
     for suffix in suffixes:
         to_remove = re.compile('(\s*)' + suffix)
         combos.add(to_remove.sub('', business_name).strip())
@@ -1016,8 +1176,6 @@ def business_name_combinations(business_name):
     for addition in additions:
         combos.add(business_name + " " + addition)
     return list(combos)
-
-
 
 
 def sanction_approval(beneficiary_country, applicant_country):
@@ -1042,7 +1200,8 @@ def sanction_approval(beneficiary_country, applicant_country):
         applicant_country = country_convert[applicant_country]
 
     # check if either of the countries were inputted incorrectly
-    # TODO write a script that can convert common different spellings of countries to ones that can be looked up by pycountry
+    # TODO write a script that can convert common different spellings of countries to ones that can be looked up by
+    #  pycountry
     try:
         beneficiary_country = pycountry.countries.lookup(beneficiary_country)
     except:
@@ -1086,7 +1245,7 @@ def sanction_approval(beneficiary_country, applicant_country):
             'VE': 'https://www.treasury.gov/resource-center/sanctions/Programs/pages/venezuela.aspx',
             'YE': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/yemen.pdf',
             'ZW': 'https://www.treasury.gov/resource-center/sanctions/Programs/Documents/zimb.pdf'
-            }
+        }
         for country in violating_countries:
             if country == beneficiary_country.alpha_2:
                 return violating_countries[beneficiary_country.alpha_2]
@@ -1103,39 +1262,72 @@ def sanction_approval(beneficiary_country, applicant_country):
     if applicant_country.alpha_2 in COUNTRY_CODES_EU:
         # check EU violations https://www.sanctionsmap.eu/#/main
         violating_countries = {
-            'AF': 'https://www.sanctionsmap.eu/#/main/details/1/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'BY': 'https://www.sanctionsmap.eu/#/main/details/2/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'BA': 'https://www.sanctionsmap.eu/#/main/details/4/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'BI': 'https://www.sanctionsmap.eu/#/main/details/7/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'CF': 'https://www.sanctionsmap.eu/#/main/details/9/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'CN': 'https://www.sanctionsmap.eu/#/main/details/10/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'CD': 'https://www.sanctionsmap.eu/#/main/details/11/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'EG': 'https://www.sanctionsmap.eu/#/main/details/12/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'GN': 'https://www.sanctionsmap.eu/#/main/details/14/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'GW': 'https://www.sanctionsmap.eu/#/main/details/15/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'HT': 'https://www.sanctionsmap.eu/#/main/details/16/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'IR': 'https://www.sanctionsmap.eu/#/main/details/17/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'IQ': 'https://www.sanctionsmap.eu/#/main/details/19/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'LB': 'https://www.sanctionsmap.eu/#/main/details/21/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'LY': 'https://www.sanctionsmap.eu/#/main/details/23/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'ML': 'https://www.sanctionsmap.eu/#/main/details/42/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'MD': 'https://www.sanctionsmap.eu/#/main/details/25/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'ME': 'https://www.sanctionsmap.eu/#/main/details/28/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'MM': 'https://www.sanctionsmap.eu/#/main/details/8/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'NI': 'https://www.sanctionsmap.eu/#/main/details/48/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'KP': 'https://www.sanctionsmap.eu/#/main/details/20/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'RU': 'https://www.sanctionsmap.eu/#/main/details/26/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'RS': 'https://www.sanctionsmap.eu/#/main/details/27/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'SO': 'https://www.sanctionsmap.eu/#/main/details/29/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'SS': 'https://www.sanctionsmap.eu/#/main/details/30/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'SD': 'https://www.sanctionsmap.eu/#/main/details/31/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'SY': 'https://www.sanctionsmap.eu/#/main/details/32/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'TN': 'https://www.sanctionsmap.eu/#/main/details/33/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'TR': 'https://www.sanctionsmap.eu/#/main/details/49/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'UA': 'https://www.sanctionsmap.eu/#/main/details/37/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'VE': 'https://www.sanctionsmap.eu/#/main/details/44/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'YE': 'https://www.sanctionsmap.eu/#/main/details/39/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D',
-            'ZW': 'https://www.sanctionsmap.eu/#/main/details/40/?search=%7B%22value%22:%22%22,%22searchType%22:%7B%7D%7D'}
+            'AF': 'https://www.sanctionsmap.eu/#/main/details/1/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'BY': 'https://www.sanctionsmap.eu/#/main/details/2/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'BA': 'https://www.sanctionsmap.eu/#/main/details/4/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'BI': 'https://www.sanctionsmap.eu/#/main/details/7/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'CF': 'https://www.sanctionsmap.eu/#/main/details/9/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'CN': 'https://www.sanctionsmap.eu/#/main/details/10/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'CD': 'https://www.sanctionsmap.eu/#/main/details/11/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'EG': 'https://www.sanctionsmap.eu/#/main/details/12/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'GN': 'https://www.sanctionsmap.eu/#/main/details/14/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'GW': 'https://www.sanctionsmap.eu/#/main/details/15/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'HT': 'https://www.sanctionsmap.eu/#/main/details/16/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'IR': 'https://www.sanctionsmap.eu/#/main/details/17/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'IQ': 'https://www.sanctionsmap.eu/#/main/details/19/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'LB': 'https://www.sanctionsmap.eu/#/main/details/21/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'LY': 'https://www.sanctionsmap.eu/#/main/details/23/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'ML': 'https://www.sanctionsmap.eu/#/main/details/42/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'MD': 'https://www.sanctionsmap.eu/#/main/details/25/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'ME': 'https://www.sanctionsmap.eu/#/main/details/28/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'MM': 'https://www.sanctionsmap.eu/#/main/details/8/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'NI': 'https://www.sanctionsmap.eu/#/main/details/48/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'KP': 'https://www.sanctionsmap.eu/#/main/details/20/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'RU': 'https://www.sanctionsmap.eu/#/main/details/26/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'RS': 'https://www.sanctionsmap.eu/#/main/details/27/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'SO': 'https://www.sanctionsmap.eu/#/main/details/29/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'SS': 'https://www.sanctionsmap.eu/#/main/details/30/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'SD': 'https://www.sanctionsmap.eu/#/main/details/31/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'SY': 'https://www.sanctionsmap.eu/#/main/details/32/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'TN': 'https://www.sanctionsmap.eu/#/main/details/33/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'TR': 'https://www.sanctionsmap.eu/#/main/details/49/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'UA': 'https://www.sanctionsmap.eu/#/main/details/37/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'VE': 'https://www.sanctionsmap.eu/#/main/details/44/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'YE': 'https://www.sanctionsmap.eu/#/main/details/39/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D',
+            'ZW': 'https://www.sanctionsmap.eu/#/main/details/40/?search=%7B%22value%22:%22%22,'
+                  '%22searchType%22:%7B%7D%7D'}
 
         for country in violating_countries:
             if country == beneficiary_country.alpha_2:
@@ -1156,7 +1348,8 @@ def set_lc_specifications(lc, json_data):
     lc.credit_amt_verbal = json_data['credit_amt_verbal']
     lc.credit_amt = json_data['credit_amt']
     lc.currency_denomination = json_data['currency_denomination']
-    del json_data['credit_delivery_means'], json_data['credit_amt_verbal'], json_data['credit_amt'], json_data['currency_denomination']
+    del json_data['credit_delivery_means'], json_data['credit_amt_verbal'], json_data['credit_amt'], json_data[
+        'currency_denomination']
 
     # Question 9
     if json_data['account_party']:
@@ -1168,11 +1361,15 @@ def set_lc_specifications(lc, json_data):
             lc.account_party = Business.objects.get(name=account_party_name)
         else:
             send_mail(
-                lc.client.name + " has created their LC to work with you on Bountium",
-                lc.client.name + ": Forward these instructions to a contact at your account party, so that they can view the LC on Bountium. \nInstructions for account party: 1. Set your business up at https://app.bountium.org/business/register, 2. Claim your acccount party status at https://app.bountium.org/business/claimAccountParty/" + str(lc.id) + "/",
-                "steve@bountium.org",
-                [list(lc.tasked_client_employees.all())[0].email],
-                fail_silently=False,
+                  lc.client.name + " has created their LC to work with you on Bountium",
+                  lc.client.name + ": Forward these instructions to a contact at your account party, so that they can "
+                                   "view the LC on Bountium. \nInstructions for account party: 1. Set your business "
+                                   "up at https://app.bountium.org/business/register, 2. Claim your acccount party "
+                                   "status at https://app.bountium.org/business/claimAccountParty/" + str(
+                        lc.id) + "/",
+                  "steve@bountium.org",
+                  [list(lc.tasked_client_employees.all())[0].email],
+                  fail_silently=False,
             )
             pass
     del json_data['account_party']
@@ -1189,7 +1386,10 @@ def set_lc_specifications(lc, json_data):
             # TODO this breaks for lcs where issuer empl has not yet been assigned
             """send_mail(
                 lc.issuer.name + " has created an LC to work with you on Bountium",
-                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at https://app.bountium.org/bank/register, 2. Claim your advising bank status at https://app.bountium.org/bank/claimAdvising/" + str(lc.id) + "/",
+                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can 
+                view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at 
+                https://app.bountium.org/bank/register, 2. Claim your advising bank status at 
+                https://app.bountium.org/bank/claimAdvising/" + str(lc.id) + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_issuer_employees.all())[0]],
                 fail_silently=False,
@@ -1209,7 +1409,8 @@ def set_lc_specifications(lc, json_data):
     lc.units_purchased = json_data['units_purchased']
     lc.unit_error_tolerance = json_data['unit_error_tolerance']
     lc.confirmation_means = json_data['confirmation_means']
-    del json_data['exchange_rate_tolerance'], json_data['purchased_item'], json_data['unit_of_measure'], json_data['units_purchased'], json_data['unit_error_tolerance'], json_data['confirmation_means']
+    del json_data['exchange_rate_tolerance'], json_data['purchased_item'], json_data['unit_of_measure'], json_data[
+        'units_purchased'], json_data['unit_error_tolerance'], json_data['confirmation_means']
 
     # Question 21
     if json_data['paying_other_banks_fees'] == "The beneficiary":
@@ -1223,10 +1424,9 @@ def set_lc_specifications(lc, json_data):
         lc.credit_expiry_location = lc.issuer
     else:
         # TODO this assumes that the advising bank and confirming bank are one and the same.
-            # See Justins email around March 20 or so... isnt always the case.
+        # See Justins email around March 20 or so... isnt always the case.
         lc.credit_expiry_location = lc.advising_bank
     del json_data['credit_expiry_location']
-
 
     # Question 23-24
     # TODO what format does a model.DateField have to be in?
@@ -1264,8 +1464,8 @@ def set_lc_specifications(lc, json_data):
     # Question 29
     for delegated_negotiating_bank in json_data['delegated_negotiating_banks']:
         # TODO look up each named bank;
-            # if they're there, lc.delegated_negotiating_banks.add
-            # otherwise, invite them and let them 'claim' it in the same fashion as other invitees to an LC
+        # if they're there, lc.delegated_negotiating_banks.add
+        # otherwise, invite them and let them 'claim' it in the same fashion as other invitees to an LC
         pass
     del json_data['delegated_negotiating_banks']
 
@@ -1298,7 +1498,8 @@ def set_lc_specifications(lc, json_data):
     lc.named_place_of_destination = json_data['named_place_of_destination']
     del json_data['named_place_of_destination']
 
-    # TODO typed: when creating doc reqs, actually use all the fields in json_data, updating specifically typed doc reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
+    # TODO typed: when creating doc reqs, actually use all the fields in json_data, updating specifically typed doc
+    #  reqs if some of them are missing. don't have to use in is_satisfied if you're scared of conflicting with ucp600
 
     # Question 37
     if json_data['commercial_invoice']['original'] or json_data['commercial_invoice']['copies'] > 0:
@@ -1310,18 +1511,18 @@ def set_lc_specifications(lc, json_data):
         else:
             version = "Copies"
         required_values = (
-            "Version required: " + version
-            + "\nIncoterms to show: " + lc.incoterms_to_show
-            + "\nNamed place of destination: " + lc.named_place_of_destination
+              "Version required: " + version
+              + "\nIncoterms to show: " + lc.incoterms_to_show
+              + "\nNamed place of destination: " + lc.named_place_of_destination
         )
         required_values += "\nCopies: " + str(json_data['commercial_invoice']['copies'])
         # TODO typed: test
         ci = CommercialInvoiceRequirement(
-            for_lc = lc,
-            doc_name="Commercial Invoice",
-            required_values=required_values,
-            due_date=lc.draft_presentation_date,
-            type="commercial_invoice"
+              for_lc=lc,
+              doc_name="Commercial Invoice",
+              required_values=required_values,
+              due_date=lc.draft_presentation_date,
+              type="commercial_invoice"
         )
         ci.save()
     del json_data['commercial_invoice']
@@ -1337,9 +1538,9 @@ def set_lc_specifications(lc, json_data):
         # we support
         for required_transport_doc in json_data['required_transport_docs']:
             lc.documentaryrequirement_set.create(
-                doc_name=required_transport_doc['name'],
-                due_date=lc.draft_presentation_date,
-                required_values=required_values
+                  doc_name=required_transport_doc['name'],
+                  due_date=lc.draft_presentation_date,
+                  required_values=required_values
             )
         del json_data['required_transport_docs']
 
@@ -1349,8 +1550,8 @@ def set_lc_specifications(lc, json_data):
     if 'packing_list' in json_data:
         if json_data['packing_list']['copies'] != 0:
             lc.documentaryrequirement_set.create(
-                doc_name="Packing List",
-                due_date=lc.draft_presentation_date
+                  doc_name="Packing List",
+                  due_date=lc.draft_presentation_date
             )
         del json_data['packing_list']
 
@@ -1358,8 +1559,8 @@ def set_lc_specifications(lc, json_data):
     if 'certificate_of_origin' in json_data:
         if json_data['certificate_of_origin']['copies'] != 0:
             lc.documentaryrequirement_set.create(
-                doc_name="Certificate of Origin",
-                due_date=lc.draft_presentation_date
+                  doc_name="Certificate of Origin",
+                  due_date=lc.draft_presentation_date
             )
         del json_data['certificate_of_origin']
 
@@ -1368,8 +1569,8 @@ def set_lc_specifications(lc, json_data):
     if 'inspection_certificate' in json_data:
         if json_data['inspection_certificate']['copies'] != 0:
             lc.documentaryrequirement_set.create(
-                doc_name="Inspection Certificate",
-                due_date=lc.draft_presentation_date
+                  doc_name="Inspection Certificate",
+                  due_date=lc.draft_presentation_date
             )
         del json_data['inspection_certificate']
 
@@ -1385,9 +1586,9 @@ def set_lc_specifications(lc, json_data):
                 required_values += "\nCovers " + risk_covered
             # TODO typed: use inspeciton certificate model
             lc.documentaryrequirement_set.create(
-                doc_name="Negotiable Insurance Policy or Certificate",
-                due_date=lc.draft_presentation_date,
-                required_values=required_values
+                  doc_name="Negotiable Insurance Policy or Certificate",
+                  due_date=lc.draft_presentation_date,
+                  required_values=required_values
             )
             del json_data['other_insurance_risks_covered']
             del json_data['selected_insurance_risks_covered']
@@ -1397,9 +1598,9 @@ def set_lc_specifications(lc, json_data):
     if 'other_draft_accompiants' in json_data:
         for doc_req in json_data['other_draft_accompiants']:
             lc.documentaryrequirement_set.create(
-                doc_name=doc_req['name'],
-                due_date=doc_req['due_date'],
-                required_values=doc_req['required_values']
+                  doc_name=doc_req['name'],
+                  due_date=doc_req['due_date'],
+                  required_values=doc_req['required_values']
             )
         del json_data['other_draft_accompiants']
 

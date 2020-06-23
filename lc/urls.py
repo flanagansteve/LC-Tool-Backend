@@ -239,18 +239,24 @@ and receive back
 urlpatterns = [
     # /lc/{lc_id}/
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
-        
+
     # /lc/{lc_id}/approve_sanction
     url(r'^(?P<lc_id>[0-9]+)/approve_sanction/$', views.approve_sanction, name='approve_sanction'),
 
     # /lc/{lc_id}/reject_sanction
     url(r'^(?P<lc_id>[0-9]+)/reject_sanction/$', views.reject_sanction, name='reject_sanction'),
 
+    # /lc/{lc_id}/request_sanction
+    url(r'^(?P<lc_id>[0-9]+)/request_sanction/$', views.request_sanction, name='request_sanction'),
+
     # /lc/{lc_id}/approve_ofac
     url(r'^(?P<lc_id>[0-9]+)/approve_ofac/$', views.approve_ofac, name='approve_ofac'),
 
     # /lc/{lc_id}/reject_ofac
     url(r'^(?P<lc_id>[0-9]+)/reject_ofac/$', views.reject_ofac, name='reject_ofac'),
+
+    # /lc/{lc_id}/request_ofac
+    url(r'^(?P<lc_id>[0-9]+)/request_ofac/$', views.request_ofac, name='request_ofac'),
 
     # /lc/by_bank/{bank_id}/
     url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),

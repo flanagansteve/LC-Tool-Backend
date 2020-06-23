@@ -75,6 +75,7 @@ class Status(str, Enum):
     INC: str = "incomplete"
     ACC: str = "accepted"
     REJ: str = "rejected"
+    REQ: str = "requested"
 
 
 # Abstract LC from which Pdf and Digital inherit
@@ -151,6 +152,7 @@ class LC(models.Model):
             'sanction_bank_approval' : self.sanction_bank_approval,
             'ofac_bank_approval': self.ofac_bank_approval,
             'ofac_sanctions': list(map(lambda sanction: sanction.to_dict(), self.ofac_sanctions.all())),
+            'comments': list(self.comment_set.values()),
             'paid_out' : self.paid_out,
             'documentaryrequirement_set' : self.get_doc_reqs()
         }
@@ -381,6 +383,19 @@ class DigitalLCTemplate(models.Model):
             setattr(self, key, value)
 
 
+class Comment(models.Model):
+    lc = models.ForeignKey(LC, on_delete=models.CASCADE)
+    # "issuer", "client", "beneficiary"
+    author_type = models.CharField(max_length=20)
+    action = models.CharField(max_length=100)
+    date = models.DateTimeField()
+    message = models.CharField(max_length=500)
+    client_viewable = models.BooleanField(blank=True, default=False)
+    issuer_viewable = models.BooleanField(blank=True, default=False)
+    beneficiary_viewable = models.BooleanField(blank=True, default=False)
+    respondable = models.CharField(blank=True, default='', max_length=20)
+
+
 class LCAppQuestionResponse(models.Model):
     for_question = models.ForeignKey(LCAppQuestion, on_delete=models.CASCADE)
     for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
@@ -392,10 +407,10 @@ class DocumentaryRequirement(models.Model):
     doc_name = models.CharField(max_length=250)
     # NOTE for now just letting users define the required values
     # as a string, ie:
-        # "The inspection grade must be a B+ or higher"
+    # "The inspection grade must be a B+ or higher"
     # enabling manual evaluation. down the line,
     # we should store a mapping of
-        # "required_value_name : required_value_value"
+    # "required_value_name : required_value_value"
     # so that we could intelligently scan a submitted doc req
     # for this value
     required_values = models.CharField(max_length=500, null=True, blank=True)
