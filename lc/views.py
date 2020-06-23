@@ -477,8 +477,8 @@ def cr_doc_reqs(request, lc_id):
 @csrf_exempt
 def rud_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
+        lc = DigitalLC.objects.get(id=lc_id)
+    except DigitalLC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     try:
         doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
@@ -920,7 +920,7 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
     except LC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     try:
-        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
+        doc_req = DigitalLC.documentaryrequirement_set.get(id=doc_req_id)
     except DocumentaryRequirement.DoesNotExist:
         raise Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
     if request.method == 'POST':
