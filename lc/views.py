@@ -812,7 +812,7 @@ def request_ofac(request, lc_id):
             return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
 
     else:
-        return HttpResponseBadRequest("This endpoint only supports PUT") 
+        return HttpResponseBadRequest("This endpoint only supports PUT")
 
 @csrf_exempt
 def approve_license(request, lc_id):
@@ -877,7 +877,7 @@ def reject_license(request, lc_id):
         return HttpResponseBadRequest("This endpoint only supports PUT")
 
 
-    
+
 
 @csrf_exempt
 def request_license(request, lc_id):
@@ -909,7 +909,7 @@ def request_license(request, lc_id):
     else:
         return HttpResponseBadRequest("This endpoint only supports PUT")
 
-    
+
 
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
@@ -1059,8 +1059,8 @@ def mark_lc_something(request, lc_id, state_to_mark):
 @csrf_exempt
 def get_dr_file(request, lc_id, doc_req_id):
     try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
+        lc = DigitalLC.objects.get(id=lc_id)
+    except DigitalLC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     try:
         doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
@@ -1249,7 +1249,7 @@ def ofac(beneficiary_name, lc):
 @csrf_exempt
 def import_license(hts_code, lc):
 
-    #first check the entire code 
+    #first check the entire code
     full_search = search_dict(hts_code)
     if full_search != '':
         lc.import_license_message = full_search
@@ -1276,9 +1276,9 @@ def import_license(hts_code, lc):
         return
     lc.import_license_message = ''
     lc.save()
-    return 
+    return
 
-    
+
 def search_dict(abbrev_code):
     for k, v in import_permits.items():
         if abbrev_code in k:
