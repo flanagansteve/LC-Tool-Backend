@@ -156,6 +156,15 @@ default_questions = [
         'options' : '',
         'section' : 'Goods Details'
     },
+        {
+        'question_text' : 'What is the HTS code of this good or service?',
+        'key' : 'hts_code',
+        'type' : 'text',
+        'required' : True,
+        'options' : '',
+        'section' : 'Goods Details'
+    },
+
     {
         'question_text' : 'What is the unit of measure of your purchase? IE - barrels, pounds, logs, or service contract',
         'key' : 'unit_of_measure',

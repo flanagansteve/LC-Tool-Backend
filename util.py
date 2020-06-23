@@ -74,3 +74,5 @@ def update_ofac():
                                                  name=row[3],
                                                  cleansed_name=row[3].replace(",", "").replace(".", ""),
                                                  remarks=row[4]).save()
+
+
