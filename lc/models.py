@@ -109,12 +109,13 @@ class LC(models.Model):
         choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
-    import_license_message = models.CharField(max_length = 5000, null = True, blank = True, default = " ")
-    
     import_license_approval = models.CharField(
     max_length = 10,
     default = Status.INC,
     choices=[(tag, tag.value) for tag in Status] ) # Choices is a list of Tuple
+
+    import_license_message = models.TextField(null = True, blank = True, default = " ")
+    
 
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
