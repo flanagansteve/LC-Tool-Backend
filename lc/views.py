@@ -436,6 +436,10 @@ def claim_relation_to_lc(request, lc_id, relation):
 
 @csrf_exempt
 def cr_doc_reqs(request, lc_id):
+    try:
+        lc = DigitalLC.objects.get(id=lc_id)
+    except DigitalLC.DoesNotExist:
+        raise Http404("No lc with id " + lc_id)
     if request.method == 'GET':
         if request.user.is_authenticated:
             if (employed_by_main_party_to_lc(lc, request.user.username)):
@@ -450,10 +454,6 @@ def cr_doc_reqs(request, lc_id):
     elif request.method == 'POST':
         if request.user.is_authenticated:
             if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
-                try:
-                    lc = LC.objects.get(id=lc_id)
-                except LC.DoesNotExist:
-                    raise Http404("No lc with id " + lc_id)
                 json_data = json.loads(request.body)
                 lc.documentaryrequirement_set.create(doc_name=json_data['doc_name'],
                                                      link_to_submitted_doc=json['link_to_submitted_doc'])
@@ -499,7 +499,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
         if request.user.is_authenticated:
             if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                 json_data = json.loads(request.body)
-                if 'due_date' in json_date:
+                if 'due_date' in json_data:
                     if json_data['due_date'] > doc_req.due_date:
                         doc_req.modified_and_awaiting_beneficiary_approval = True
                     doc_req.due_date = json_data['due_date']
@@ -517,7 +517,7 @@ def rud_doc_req(request, lc_id, doc_req_id):
                 })
             elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
                 json_data = json.loads(request.body)
-                if 'due_date' in json_date:
+                if 'due_date' in json_data:
                     """ TODO we need something like this:
                     if json_data['due_date'] > doc_req.due_date:
                         doc_req.modified_and_awaiting_issuer_approval = True"""
@@ -916,11 +916,11 @@ def request_license(request, lc_id):
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
     try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
+        lc = DigitalLC.objects.get(id=lc_id)
+    except DigitalLC.DoesNotExist:
         raise Http404("No lc with id " + lc_id)
     try:
-        doc_req = DigitalLC.documentaryrequirement_set.get(id=doc_req_id)
+        doc_req = lc.documentaryrequirement_set.get(id=doc_req_id)
     except DocumentaryRequirement.DoesNotExist:
         raise Http404("No doc req with id " + doc_req_id + " associated with the lc with id " + lc_id)
     if request.method == 'POST':
