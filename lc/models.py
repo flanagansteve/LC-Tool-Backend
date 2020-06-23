@@ -47,6 +47,7 @@ class SpeciallyDesignatedNational(models.Model):
         return to_return
 
 
+
 class SpeciallyDesignatedNationalAddress(models.Model):
     sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
     # street address of SDN
@@ -107,6 +108,7 @@ class LC(models.Model):
         choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
+    import_license_message = models.TextField(null = True, blank = True, default = " ")
 
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)

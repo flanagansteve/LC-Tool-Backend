@@ -21,7 +21,7 @@ import json, datetime, boto3, os, time
 import pycountry
 import re
 from .models import *
-from .values import commercial_invoice_form, multimodal_bl_form
+from .values import commercial_invoice_form, multimodal_bl_form, import_permits
 
 
 # TODO only handling DigitalLCs for now
@@ -140,6 +140,7 @@ def cr_lcs(request, bank_id):
                 # set the sanctions message
                 lc.sanction_auto_message = sanction_approval(beneficiary_country, json_data['applicant_country'])
                 ofac(beneficiary_name, lc)
+                import_license(json_data['hts_code'], lc)
                 lc.save()
 
                 set_lc_specifications(lc, json_data)
@@ -987,6 +988,48 @@ def ofac(beneficiary_name, lc):
         lc.save()
 
 
+
+@csrf_exempt
+def import_license(hts_code, lc):
+    print('impport liense')
+    print(hts_code)
+    #first check the entire code 
+    full_search = search_dict(hts_code)
+    if full_search != '':
+        lc.import_license_message = full_search
+        lc.save()
+        return
+    # check the six code (more general code)
+    six_search = search_dict(hts_code[:7])
+    if six_search != '':
+        lc.import_license_message = six_search
+        lc.save()
+        return
+
+    # check the six code (more general code)
+    four_search = search_dict(hts_code[:3])
+    if four_search != '':
+        lc.import_license_message = four_search
+        lc.save()
+        return
+    # check the chapter
+    chapter_search = search_dict(hts_code[:2])
+    if chapter_search != '':
+        lc.import_license_message = chapter_search
+        lc.save()
+        return
+    lc.import_license_message = ''
+    lc.save()
+    return 
+
+    
+def search_dict(abbrev_code):
+    for k, v in import_permits.items():
+        if abbrev_code in k:
+            return v[0] + ': ' + v[1]
+    return ''
+
+
 def business_name_combinations(business_name):
     business_name = business_name.upper()
     combos = {business_name}
@@ -1021,6 +1064,7 @@ def business_name_combinations(business_name):
 
 
 def sanction_approval(beneficiary_country, applicant_country):
+
     # convert common names one could input to standard country name
     # ISO codes https://gist.github.com/radcliff/f09c0f88344a7fcef373
     country_convert = {'Iran': 'IRAN, ISLAMIC REPUBLIC OF',
@@ -1045,10 +1089,12 @@ def sanction_approval(beneficiary_country, applicant_country):
     # TODO write a script that can convert common different spellings of countries to ones that can be looked up by pycountry
     try:
         beneficiary_country = pycountry.countries.lookup(beneficiary_country)
+        print(beneficiary_country)
     except:
         return None
     try:
         applicant_country = pycountry.countries.lookup(applicant_country)
+        print(applicant_country)
     except:
         return None
         # check that the bank is the US first and handle that case
