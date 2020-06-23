@@ -240,6 +240,24 @@ urlpatterns = [
     # /lc/{lc_id}/
     url(r'^(?P<lc_id>[0-9]+)/$', views.rud_lc, name='rud_lc'),
 
+    # /lc/{lc_id}/approve_sanction
+    url(r'^(?P<lc_id>[0-9]+)/approve_sanction/$', views.approve_sanction, name='approve_sanction'),
+
+    # /lc/{lc_id}/reject_sanction
+    url(r'^(?P<lc_id>[0-9]+)/reject_sanction/$', views.reject_sanction, name='reject_sanction'),
+
+    # /lc/{lc_id}/request_sanction
+    url(r'^(?P<lc_id>[0-9]+)/request_sanction/$', views.request_sanction, name='request_sanction'),
+
+    # /lc/{lc_id}/approve_ofac
+    url(r'^(?P<lc_id>[0-9]+)/approve_ofac/$', views.approve_ofac, name='approve_ofac'),
+
+    # /lc/{lc_id}/reject_ofac
+    url(r'^(?P<lc_id>[0-9]+)/reject_ofac/$', views.reject_ofac, name='reject_ofac'),
+
+    # /lc/{lc_id}/request_ofac
+    url(r'^(?P<lc_id>[0-9]+)/request_ofac/$', views.request_ofac, name='request_ofac'),
+
     # /lc/by_bank/{bank_id}/
     url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
@@ -251,6 +269,12 @@ urlpatterns = [
 
     # /lc/by_beneficiary/{business_id}/
     url(r'^by_beneficiary/(?P<business_id>[0-9]+)/$', views.get_lcs_by_beneficiary, name='get_lcs_by_beneficiary'),
+
+    # /lc/{lc_id}/approve_sanction
+    url(r'^(?P<lc_id>[0-9]+)/approve_sanction/$', views.approve_sanction, name='approve_sanction'),
+
+    # /lc/{lc_id}/reject_sanction
+    url(r'^(?P<lc_id>[0-9]+)/reject_sanction/$', views.reject_sanction, name='reject_sanction'),
 
     # /lc/{lc_id}/{state_to_mark}/
     url(r'^(?P<lc_id>[0-9]+)/(?P<state_to_mark>[\w\-]+)/$', views.mark_lc_something, name='mark_lc_something'),
@@ -266,6 +290,7 @@ urlpatterns = [
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req, name='evaluate_doc_req'),
+
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),

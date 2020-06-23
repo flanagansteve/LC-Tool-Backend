@@ -1,5 +1,5 @@
 import json
-
+from enum import Enum
 from django.db import models
 from bank.models import Bank, BankEmployee, LCAppQuestion
 from business.models import Business, BusinessEmployee
@@ -11,6 +11,72 @@ def writeln(pdf, str):
     pdf.cell(200, 10, txt=str, ln=1, align="L")
 
 # TODO lc.client_approved might be redundant and in fact inconvenient if the client expects the issuer to handle negotiations
+
+
+class SpeciallyDesignatedNational(models.Model):
+    # name of SDN
+    name = models.CharField(max_length=350, blank=True, default='')
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
+    # type of SDN
+    type = models.CharField(max_length=12, blank=True, default=None, null=True)
+    # sanctions program name
+    program = models.CharField(max_length=200, blank=True, default=None, null=True)
+    # title of an individual
+    title = models.CharField(max_length=200, blank=True, default=None, null=True)
+    # vessel call sign
+    call_sign = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # vessel type
+    vessel_type = models.CharField(max_length=25, blank=True, default=None, null=True)
+    # vessel tonnage
+    tonnage = models.CharField(max_length=14, blank=True, default=None, null=True)
+    # gross registered tonnage
+    grt = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # vessel flag
+    vessel_flag = models.CharField(max_length=40, blank=True, default=None, null=True)
+    # vessel owner
+    vessel_owner = models.CharField(max_length=150, blank=True, default=None, null=True)
+    # remarks on SDN
+    remarks = models.CharField(max_length=1000, blank=True, default=None, null=True)
+
+    def to_dict(self):
+        to_return = vars(self)
+        to_return['addresses'] = list(self.speciallydesignatednationaladdress_set.values())
+        to_return['aliases'] = list(self.speciallydesignatednationalalternate_set.values())
+        to_return.pop('_state', None)
+        return to_return
+
+
+class SpeciallyDesignatedNationalAddress(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # street address of SDN
+    address = models.CharField(max_length=750, blank=True, default=None, null=True)
+    # city, state/province, zip/postal code
+    address_group = models.CharField(max_length=116, blank=True, default=None, null=True)
+    # country of address
+    country = models.CharField(max_length=250, blank=True, default=None, null=True)
+    # additional remarks
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
+
+
+class SpeciallyDesignatedNationalAlternate(models.Model):
+    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
+    # type of alternate identity (aka, fka, nka)
+    type = models.CharField(max_length=8, blank=True, default=None, null=True)
+    # alternate identity name
+    name = models.CharField(max_length=350, blank=True, default=None, null=True)
+    # name without commas or dots
+    cleansed_name = models.CharField(max_length=350, blank=True, default='')
+    # remarks on alternate identity
+    remarks = models.CharField(max_length=200, blank=True, default=None, null=True)
+
+
+class Status(str, Enum):
+    INC: str = "incomplete"
+    ACC: str = "accepted"
+    REJ: str = "rejected"
+    REQ: str = "requested"
+
 
 # Abstract LC from which Pdf and Digital inherit
 class LC(models.Model):
@@ -29,6 +95,20 @@ class LC(models.Model):
     tasked_advising_bank_employees = models.ManyToManyField(BankEmployee, related_name='%(app_label)s_%(class)s_tasked_advising_bank_employees')
 
     # -- the status of an LC -- #
+    sanction_bank_approval = models.CharField(
+      max_length=10,
+      default = Status.INC,
+      choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
+    )
+    sanction_auto_message = models.CharField(max_length=1000, null=True, blank=True)
+
+    ofac_bank_approval = models.CharField(
+        max_length = 10,
+        default = Status.INC,
+        choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
+    )
+    ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
+
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
     beneficiary_approved = models.BooleanField(default=False)
@@ -68,6 +148,11 @@ class LC(models.Model):
             'terms_satisfied' : self.terms_satisfied,
             'requested' : self.requested,
             'drawn' : self.drawn,
+            'sanction_auto_message': self.sanction_auto_message,
+            'sanction_bank_approval' : self.sanction_bank_approval,
+            'ofac_bank_approval': self.ofac_bank_approval,
+            'ofac_sanctions': list(map(lambda sanction: sanction.to_dict(), self.ofac_sanctions.all())),
+            'comments': list(self.comment_set.values()),
             'paid_out' : self.paid_out,
             'documentaryrequirement_set' : self.get_doc_reqs()
         }
@@ -298,6 +383,19 @@ class DigitalLCTemplate(models.Model):
             setattr(self, key, value)
 
 
+class Comment(models.Model):
+    lc = models.ForeignKey(LC, on_delete=models.CASCADE)
+    # "issuer", "client", "beneficiary"
+    author_type = models.CharField(max_length=20)
+    action = models.CharField(max_length=100)
+    date = models.DateTimeField()
+    message = models.CharField(max_length=500)
+    client_viewable = models.BooleanField(blank=True, default=False)
+    issuer_viewable = models.BooleanField(blank=True, default=False)
+    beneficiary_viewable = models.BooleanField(blank=True, default=False)
+    respondable = models.CharField(blank=True, default='', max_length=20)
+
+
 class LCAppQuestionResponse(models.Model):
     for_question = models.ForeignKey(LCAppQuestion, on_delete=models.CASCADE)
     for_lc = models.ForeignKey(DigitalLC, on_delete=models.CASCADE)
@@ -309,10 +407,10 @@ class DocumentaryRequirement(models.Model):
     doc_name = models.CharField(max_length=250)
     # NOTE for now just letting users define the required values
     # as a string, ie:
-        # "The inspection grade must be a B+ or higher"
+    # "The inspection grade must be a B+ or higher"
     # enabling manual evaluation. down the line,
     # we should store a mapping of
-        # "required_value_name : required_value_value"
+    # "required_value_name : required_value_value"
     # so that we could intelligently scan a submitted doc req
     # for this value
     required_values = models.CharField(max_length=500, null=True, blank=True)
@@ -832,48 +930,3 @@ class InsuranceDocumentRequirement(DocumentaryRequirement):
 # TODO packing list, certificate of origin, inspection cert
 
 
-class SpeciallyDesignatedNational(models.Model):
-    # name of SDN
-    name = models.CharField(max_length=350, blank=True, default='')
-    # type of SDN
-    type = models.CharField(max_length=12, blank=True, default='')
-    # sanctions program name
-    program = models.CharField(max_length=200, blank=True, default='')
-    # title of an individual
-    title = models.CharField(max_length=200, blank=True, default='')
-    # vessel call sign
-    call_sign = models.CharField(max_length=8, blank=True, default='')
-    # vessel type
-    vessel_type = models.CharField(max_length=25, blank=True, default='')
-    # vessel tonnage
-    tonnage = models.CharField(max_length=14, blank=True, default='')
-    # gross registered tonnage
-    grt = models.CharField(max_length=8, blank=True, default='')
-    # vessel flag
-    vessel_flag = models.CharField(max_length=40, blank=True, default='')
-    # vessel owner
-    vessel_owner = models.CharField(max_length=150, blank=True, default='')
-    # remarks on SDN
-    remarks = models.CharField(max_length=1000, blank=True, default='')
-
-
-class SpeciallyDesignatedNationalAddress(models.Model):
-    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
-    # street address of SDN
-    address = models.CharField(max_length=750, blank=True, default='')
-    # city, state/province, zip/postal code
-    address_group = models.CharField(max_length=116, blank=True, default='')
-    # country of address
-    country = models.CharField(max_length=250, blank=True, default='')
-    # additional remarks
-    remarks = models.CharField(max_length=200, blank=True, default='')
-
-
-class SpeciallyDesignatedNationalAlternate(models.Model):
-    sdn = models.ForeignKey(SpeciallyDesignatedNational, on_delete=models.CASCADE)
-    # type of alternate identity (aka, fka, nka)
-    type = models.CharField(max_length=8, blank=True, default='')
-    # alternate identity name
-    name = models.CharField(max_length=350, blank=True, default='')
-    # remarks on alternate identity
-    remarks = models.CharField(max_length=200, blank=True, default='')
