@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from decimal import *
@@ -31,7 +32,6 @@ from .values import commercial_invoice_form, multimodal_bl_form, import_permits
 
 @csrf_exempt
 def cr_lcs(request, bank_id):
-    print(request.body)
     try:
         bank = Bank.objects.get(id=bank_id)
     except Bank.DoesNotExist:
@@ -146,6 +146,7 @@ def cr_lcs(request, bank_id):
                 lc.sanction_auto_message = sanction_approval(beneficiary_country, json_data['applicant_country'])
                 ofac(beneficiary_name, lc)
                 import_license(json_data['hts_code'], lc)
+
                 lc.save()
 
                 set_lc_specifications(lc, json_data)
@@ -234,8 +235,16 @@ def rud_lc(request, lc_id):
                 if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
                     # TODO would be good to somehow mark changes from the prev version...
                     update_django_instance_with_subset_json(json_data['lc'], lc)
-                    lc.client_approved, lc.beneficiary_approved = False, False
-                    lc.issuer_approved = True
+                    if 'hold_status' not in json_data or not json_data['hold_status']:
+                        lc.client_approved, lc.beneficiary_approved = False, False
+                        lc.issuer_approved = True
+                        if 'other_instructions' in json_data and pycountry.countries.lookup(
+                              lc.beneficiary.country).alpha_2 == 'US' or pycountry.countries.lookup(
+                              lc.client.country).alpha_2 == 'US':
+                            BoycottLanguage.objects.filter(lc=lc).delete()
+                        boycott_phrases = boycott_language(lc.other_instructions)
+                        for phrase in boycott_phrases:
+                            BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
                     if 'latest_version_notes' in json_data:
                         lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the issuer said: ' + \
                                                   json_data['latest_version_notes']
@@ -243,7 +252,7 @@ def rud_lc(request, lc_id):
                         comment = json_data['comment']
                         if 'action' not in comment or 'message' not in comment:
                             return HttpResponseBadRequest(
-                                "The given comment must have an 'action' field and a 'message' field")
+                                  "The given comment must have an 'action' field and a 'message' field")
                         created = Comment(lc=lc, author_type="issuer", action=comment['action'],
                                           date=datetime.datetime.now(), message=comment['message'],
                                           issuer_viewable=True, client_viewable=True, respondable='client')
@@ -260,6 +269,13 @@ def rud_lc(request, lc_id):
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved, lc.client_approved = False, False
                     lc.beneficiary_approved = True
+                    if 'other_instructions' in json_data and pycountry.countries.lookup(
+                          lc.beneficiary.country).alpha_2 == 'US' or pycountry.countries.lookup(
+                          lc.client.country).alpha_2 == 'US':
+                        BoycottLanguage.objects.filter(lc=lc).delete()
+                    boycott_phrases = boycott_language(lc.other_instructions)
+                    for phrase in boycott_phrases:
+                        BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
                     if 'latest_version_notes' in json_data:
                         lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the beneficiary updated: ' \
                                                   + \
@@ -275,6 +291,13 @@ def rud_lc(request, lc_id):
                     update_django_instance_with_subset_json(json_data['lc'], lc)
                     lc.issuer_approved, lc.beneficiary_approved = False, False
                     lc.client_approved = True
+                    if 'other_instructions' in json_data and pycountry.countries.lookup(
+                          lc.beneficiary.country).alpha_2 == 'US' or pycountry.countries.lookup(
+                          lc.client.country).alpha_2 == 'US':
+                        BoycottLanguage.objects.filter(lc=lc).delete()
+                    boycott_phrases = boycott_language(lc.other_instructions)
+                    for phrase in boycott_phrases:
+                        BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
                     if 'latest_version_notes' in json_data:
                         lc.latest_version_notes = 'On ' + str(datetime.datetime.now()) + ' the client said: ' + \
                                                   json_data['latest_version_notes']
@@ -623,295 +646,6 @@ def employed_by_main_party_to_lc(lc, username):
             or lc.beneficiary.businessemployee_set.filter(email=username).exists())
 
 
-# TODO possibly add an unapprove endpoint?
-@csrf_exempt
-def approve_sanction(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.sanction_bank_approval == Status.ACC:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            # for some reason it is both rejected and approved... just reset
-
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.sanction_bank_approval = Status.ACC
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-@csrf_exempt
-def reject_sanction(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if not lc.sanction_bank_approval:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.sanction_bank_approval = Status.REJ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-@csrf_exempt
-def request_sanction(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.sanction_bank_approval == Status.REQ:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            # for some reason it is both rejected and approved... just reset
-
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.sanction_bank_approval = Status.REQ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may request the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-# TODO possibly add an unapprove endpoint?
-@csrf_exempt
-def approve_ofac(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.ofac_bank_approval == Status.ACC:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.ofac_bank_approval = Status.ACC
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-@csrf_exempt
-def reject_ofac(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.ofac_bank_approval == False:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.ofac_bank_approval = Status.REJ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-@csrf_exempt
-def request_ofac(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.ofac_bank_approval == Status.REQ:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.ofac_bank_approval = Status.REQ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may request the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-@csrf_exempt
-def approve_license(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.import_license_approval == Status.ACC:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            # for some reason it is both rejected and approved... just reset
-
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.import_license_approval = Status.ACC
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may approve the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-@csrf_exempt
-def reject_license(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.import_license_approval == False:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.import_license_approval = Status.REJ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may reject the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-
-
-@csrf_exempt
-def request_license(request, lc_id):
-    try:
-        lc = LC.objects.get(id=lc_id)
-    except LC.DoesNotExist:
-        raise Http404("No lc with id " + lc_id)
-    if request.method == 'PUT':
-        if request.user.is_authenticated:
-            # if it is already approved
-            if lc.import_license_approval == Status.REQ:
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
-                lc.import_license_approval = Status.REQ
-                lc.save()
-                return JsonResponse({
-                    'success': True,
-                    'updated_lc': DigitalLC.objects.get(id=lc_id).to_dict()
-                })
-            else:
-                return HttpResponseForbidden(
-                      "Only an employee of the bank which issued this LC may request the sanction requirements")
-        else:
-            return HttpResponseForbidden("You must be logged in to attempt a sanction approval")
-
-    else:
-        return HttpResponseBadRequest("This endpoint only supports PUT")
-
-
-
-
 # TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
@@ -1245,11 +979,35 @@ def ofac(beneficiary_name, lc):
         lc.save()
 
 
+def boycott_language(string):
+    combos = ['Israel', 'Arab', 'boycott', 'blacklist']
+    combos += combinations([['vessel', 'airplane', 'ship', 'craft', 'carrier', 'ship', 'port'],
+                            ['allow', 'prohibit', 'authorize', 'permit', 'sanction', 'grant', 'license', 'admit',
+                             'forbid', 'banned', 'barred', 'disallow']])
+    regex = '|'.join(combos)
+    matches = list(re.finditer(regex, string, re.IGNORECASE))
+    index_set = set()
+    for match in matches:
+        beg = string.rfind('.', 0, match.start())
+        beg = 0 if beg == -1 else beg + 2
+        end = string.find('.', match.end())
+        end = len(string) if end == -1 else end + 1
+        index_set.add((beg, end))
+    return list(map(lambda index: string[index[0]: index[1]], index_set))
+
+
+def combinations(words):
+    combos = []
+    for outerWord in words[0]:
+        for innerWord in words[1]:
+            combos.append(outerWord + "(.)*" + innerWord)
+            combos.append(innerWord + "(.)*" + outerWord)
+    return combos
+
 
 @csrf_exempt
 def import_license(hts_code, lc):
-
-    #first check the entire code
+    # first check the entire code
     full_search = search_dict(hts_code)
     if full_search != '':
         lc.import_license_message = full_search
@@ -1318,7 +1076,6 @@ def business_name_combinations(business_name):
 
 
 def sanction_approval(beneficiary_country, applicant_country):
-
     # convert common names one could input to standard country name
     # ISO codes https://gist.github.com/radcliff/f09c0f88344a7fcef373
     country_convert = {'Iran': 'IRAN, ISLAMIC REPUBLIC OF',
@@ -1757,6 +1514,11 @@ def set_lc_specifications(lc, json_data):
     # Question 49
     if 'other_instructions' in json_data:
         lc.other_instructions = json_data['other_instructions']
+        if pycountry.countries.lookup(lc.beneficiary.country).alpha_2 == 'US' or pycountry.countries.lookup(
+              lc.client.country).alpha_2 == 'US':
+            boycott_phrases = boycott_language(json_data['other_instructions'])
+        for phrase in boycott_phrases:
+            BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
         del json_data['other_instructions']
 
     # Question 50
