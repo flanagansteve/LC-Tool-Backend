@@ -148,23 +148,22 @@ default_questions = [
         'section' : 'Parties',
         'disabled' : '{"key": "forex_contract_num", "answer": ["*"]}'
     },
-    {
+        {
         'question_text' : 'What good or service are you purchasing?',
         'key' : 'purchased_item',
-        'type' : 'text',
+        'type' : 'hts',
         'required' : True,
         'options' : '',
         'section' : 'Goods Details'
     },
-        {
-        'question_text' : 'What is the HTS code of this good or service?',
+            {
+        'question_text' : 'What is the HTS code of the good or service?',
         'key' : 'hts_code',
         'type' : 'text',
         'required' : True,
         'options' : '',
         'section' : 'Goods Details'
     },
-
     {
         'question_text' : 'What is the unit of measure of your purchase? IE - barrels, pounds, logs, or service contract',
         'key' : 'unit_of_measure',

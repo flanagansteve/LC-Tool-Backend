@@ -881,6 +881,7 @@ def reject_license(request, lc_id):
 
 @csrf_exempt
 def request_license(request, lc_id):
+    print("HERE")
     try:
         lc = LC.objects.get(id=lc_id)
     except LC.DoesNotExist:
