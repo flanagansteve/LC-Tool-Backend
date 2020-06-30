@@ -287,6 +287,12 @@ urlpatterns = [
     url(r'^digital_app_templates/(?P<template_id>[0-9]+)/$', views.digital_app_template, name='digital_app_templates'),
 
     # /lc/total_credit/{business_id}
-    url(r'^total_credit/(?P<business_id>[0-9]+)/$', views.total_credit, name='total_credit')
+    url(r'^total_credit/(?P<business_id>[0-9]+)/$', views.total_credit, name='total_credit'),
+
+    # /lc/check_text_for_boycott
+    url(r'^check_text_for_boycott/$', views.check_text_for_boycott, name='check_text_for_boycott'),
+
+    # /lc/check_file_for_boycott
+    url(r'^check_file_for_boycott/$', views.check_file_for_boycott, name='check_file_for_boycott')
 
 ]

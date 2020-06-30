@@ -1,24 +1,26 @@
 from bank.models import Bank, BankEmployee
 from business.models import Business, BusinessEmployee
 from lc.models import *
-from lc.views import sanction_approval, import_license
+from lc.views import ofac, sanction_approval, import_license
 from bank.views import populate_application
 from django.contrib.auth.models import User
+from util import update_ofac
 import datetime
 
 # You may not like it, but this is what peak trade finance looks like
 def create_perfect_lc():
+    update_ofac()
     client = Business(name = "Iona Imports", address = "48 Sutton Road, Needham, MA")
     client.save()
     client_emp = client.businessemployee_set.create(name="Steve", title="Owner", email="steve@ii.com")
     test_client_user = User.objects.create_user(username="steve@ii.com",
                              email="steve@ii.com",
                              password="password")
-    beneficiary = Business(name = "Expert Exports", address = "234 Main St, Paris, France")
+    beneficiary = Business(name = "Delvest", address = "234 Main St, Bogota, Venezuela", country="Venezuela")
     beneficiary.save()
-    bene_emp = beneficiary.businessemployee_set.create(name="Steve", title="Owner", email="steve@ee.com")
-    test_bene_user = User.objects.create_user(username="steve@ee.com",
-                             email="steve@ee.com",
+    bene_emp = beneficiary.businessemployee_set.create(name="Steve", title="Owner", email="steve@delvest.com")
+    test_bene_user = User.objects.create_user(username="steve@delvest.com",
+                             email="steve@delvest.com",
                              password="password")
     issuer = Bank(name = "Best Bank")
     issuer.save()
@@ -114,6 +116,7 @@ def create_perfect_lc():
         due_date="2020-04-21"
     )
     lc.save()
+    ofac(beneficiary.name, lc)
     lc.sanction_auto_message = sanction_approval(beneficiary.country, client.country)
     lc.import_license_message = import_license("2204.10.11", lc)
     print(lc.to_dict())
