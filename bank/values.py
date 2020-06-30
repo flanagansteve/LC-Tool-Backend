@@ -178,7 +178,7 @@ default_questions = [
         'options': '["No unit of measure", "square meters", "thousands of kilowatt-hours", "meters", "number of '
                    'items", "number of pairs", "liters", "kilograms", "thousands of items", "packages", '
                    '"dozen of items", "cubic meters", "carats"]',
-        'settings': 'kilograms',
+        'initial_value': 'kilograms',
         'section': 'Goods Details'
     },
     {
