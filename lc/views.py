@@ -3,7 +3,9 @@ import re
 import time
 from decimal import *
 
+import numpy as np
 import pycountry
+import requests
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.db.models import Q
@@ -1090,6 +1092,65 @@ def business_name_combinations(business_name):
     return list(combos)
 
 
+def believable_price_of_goods(hts_code, unit_of_measure):
+    hts_code = hts_code.replace(".", "")[:6]
+    if GoodsInfo.objects.filter(hts_code=hts_code).exists():
+        return
+    unit_map = {
+        "m^2": 2,
+        "area in square meters": 2,
+        "square meters": 2,
+        "meters squared": 2,
+        "thousands of kilowatt-hours": 3,
+        "electrical energy in thousands of kilowatt-hours": 3,
+        "1000 kwh": 3,
+        "meters": 4,
+        "m": 4,
+        "length in meters": 4,
+        "u": 5,
+        "items": 5,
+        "number of items": 5,
+        "2u": 6,
+        "pairs": 6,
+        "number of pairs": 6,
+        "l": 7,
+        "liters": 7,
+        "volume in liters": 7,
+        "kg": 8,
+        "kilograms": 8,
+        "weight in kilograms": 8,
+        "weight in kg": 8,
+        "1000u": 9,
+        "thousands of items": 9,
+        "jeu": 10,
+        "pack": 10,
+        "packages": 10,
+        "number of packages": 10,
+        "12u": 11,
+        "dozen of items": 11,
+        "dozen": 11,
+        "dozens": 11,
+        "m3": 12,
+        "cubic meters": 12,
+        "meters cubed": 12,
+        "volume in cubic meters": 12,
+        "carat": 13,
+        "carats": 13,
+        "weight in carats": 13
+    }
+    unit_of_measure = unit_map[unit_of_measure.lower()]
+    res = requests.get(
+          "https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=now&r=all&p=0&rg=1%2C2&cc=" + hts_code).json()
+    data = []
+    for trade in res['dataset']:
+        if trade['qtCode'] == unit_of_measure and trade['TradeValue'] is not None and trade['TradeValue'] > 0:
+            data.append(trade['TradeQuantity'] / trade['TradeValue'])
+    if len(data) < 50:
+        return
+    GoodsInfo(hts_code=hts_code, standard_deviation=np.std(data), mean=np.mean(data),
+              created_date=datetime.datetime.now()).save()
+
+
 def sanction_approval(beneficiary_country, applicant_country):
     # convert common names one could input to standard country name
     # ISO codes https://gist.github.com/radcliff/f09c0f88344a7fcef373
@@ -1321,8 +1382,10 @@ def set_lc_specifications(lc, json_data):
     lc.units_purchased = json_data['units_purchased']
     lc.unit_error_tolerance = json_data['unit_error_tolerance']
     lc.confirmation_means = json_data['confirmation_means']
+    lc.hts_code = json_data['hts_code']
+    believable_price_of_goods(json_data['hts_code'], json_data['unit_of_measure'])
     del json_data['exchange_rate_tolerance'], json_data['purchased_item'], json_data['unit_of_measure'], json_data[
-        'units_purchased'], json_data['unit_error_tolerance'], json_data['confirmation_means']
+        'units_purchased'], json_data['unit_error_tolerance'], json_data['confirmation_means'], json_data['hts_code']
 
     # Question 21
     if json_data['paying_other_banks_fees'] == "The beneficiary":
