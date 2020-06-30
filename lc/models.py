@@ -135,6 +135,8 @@ class LC(models.Model):
     import_license_message = models.TextField(null=True, blank=True, default=" ")
     boycott_language_status = models.CharField(max_length=10, default=Status.INC,
                                                choices=[(tag, tag.value) for tag in Status])
+    believable_price_of_goods_status = models.CharField(max_length=10, default=Status.INC,
+                                                        choices=[(tag, tag.value) for tag in Status])
 
     client_approved = models.BooleanField(default=True)
     issuer_approved = models.BooleanField(default=False)
@@ -192,6 +194,7 @@ class LC(models.Model):
             'comments': list(self.comment_set.values()),
             'boycott_language_status': self.boycott_language_status,
             'boycott_language': boycott_to_dict(),
+            'believable_price_of_goods_status': self.believable_price_of_goods_status,
             'paid_out': self.paid_out,
             'documentaryrequirement_set': self.get_doc_reqs()
         }
@@ -269,6 +272,8 @@ class DigitalLC(LC):
     # ['Commercial', 'Standby', 'Import', 'Export']
     type = models.CharField(max_length=20, default='Commercial')
 
+    # HTS code
+    hts_code = models.CharField(max_length=12, default="")
     # -- the user-provided data of this lc per our default questions -- #
     # CDM can be ('Courier', 'SWIFT') or other
     credit_delivery_means = models.CharField(max_length=250, null=True, blank=True)
@@ -355,6 +360,7 @@ class DigitalLC(LC):
             'applicant_and_ap_j_and_s_obligated': self.applicant_and_ap_j_and_s_obligated,
             'forex_contract_num': self.forex_contract_num,
             'exchange_rate_tolerance': self.exchange_rate_tolerance,
+            'hts_code': self.hts_code,
             'purchased_item': self.purchased_item,
             'unit_of_measure': self.unit_of_measure,
             'units_purchased': self.units_purchased,
@@ -387,6 +393,9 @@ class DigitalLC(LC):
             to_return['credit_expiry_location'] = self.credit_expiry_location.to_dict()
         if self.paying_acceptance_and_discount_charges:
             to_return['paying_acceptance_and_discount_charges'] = self.paying_acceptance_and_discount_charges.to_dict()
+        hts_code = self.hts_code.replace(".", "")[:6]
+        if GoodsInfo.objects.filter(hts_code=hts_code).exists():
+            to_return['goods_info'] = model_to_dict(GoodsInfo.objects.get(hts_code=hts_code))
         return to_return
 
     def get_delegated_negotiating_banks(self):
@@ -450,6 +459,13 @@ class BoycottLanguage(models.Model):
     lc = models.ForeignKey(LC, on_delete=models.CASCADE)
     phrase = models.CharField(max_length=1000)
     source = models.CharField(max_length=100)
+
+
+class GoodsInfo(models.Model):
+    hts_code = models.CharField(max_length=6, unique=True)
+    standard_deviation = models.DecimalField(max_digits=19, decimal_places=2)
+    mean = models.DecimalField(max_digits=19, decimal_places=2)
+    created_date = models.DateField()
 
 
 class LCAppQuestionResponse(models.Model):
