@@ -16,6 +16,8 @@ from util import update_django_instance_with_subset_json
 from .models import *
 from .values import commercial_invoice_form, multimodal_bl_form, import_permits
 
+import textract
+import uuid
 
 # TODO only handling DigitalLCs for now
 # TODO none of these distinguish between different employees within each party - only verifying that you are A
@@ -978,6 +980,19 @@ def ofac(beneficiary_name, lc):
         lc.ofac_sanctions.add(match)
         lc.save()
 
+@csrf_exempt
+def check_file_for_boycott(request):
+    file_name = str(uuid.uuid4()) + ".pdf"
+    with open("/tmp/" + file_name, "wb+") as received_file:
+        received_file.write(request.body)
+    text = textract.process("/tmp/" + file_name)
+    print(text)
+    return JsonResponse(list(map(lambda bytes: str(bytes), boycott_language(str(text)))), safe=False)
+
+@csrf_exempt
+def check_text_for_boycott(request):
+    json_data = json.loads(request.body)
+    return JsonResponse(boycott_language(json_data.lc_text), safe=False)
 
 def boycott_language(string):
     combos = ['Israel', 'Arab', 'boycott', 'blacklist']
@@ -1283,9 +1298,9 @@ def set_lc_specifications(lc, json_data):
             # TODO this breaks for lcs where issuer empl has not yet been assigned
             """send_mail(
                 lc.issuer.name + " has created an LC to work with you on Bountium",
-                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can 
-                view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at 
-                https://app.bountium.org/bank/register, 2. Claim your advising bank status at 
+                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can
+                view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at
+                https://app.bountium.org/bank/register, 2. Claim your advising bank status at
                 https://app.bountium.org/bank/claimAdvising/" + str(lc.id) + "/",
                 "steve@bountium.org",
                 [list(lc.tasked_issuer_employees.all())[0]],
