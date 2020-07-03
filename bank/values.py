@@ -17,12 +17,13 @@ default_questions = [
         'section': 'Parties'
     },
     {
-        'question_text': 'What is your business\'s country',
+        'question_text': 'What is your business\'s country?',
         'key': 'applicant_country',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
+
     },
     {
         'question_text': 'What is the beneficiary (IE, the other party to this transaction)\'s name?',
@@ -40,18 +41,19 @@ default_questions = [
         'options': '',
         'section': 'Parties'
     },
-    {'question_text': 'What is the beneficiary\'s country',
-     'key': 'beneficiary_country',
-     'type': 'text',
-     'required': True,
-     'options': '',
-     'section': 'Parties'
+    {
+        'question_text': 'What is the beneficiary\'s country?',
+        'key': 'beneficiary_country',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties'
 
-     },
+    },
     {
         'question_text': 'Through what means will you forward the credit for this transaction, to either the '
-                         'beneficiary, SVB, or a bank selected by SVB? Standard options include S.W.I.F.T or Courier, '
-                         'but feel free to specify your own below.',
+                         'beneficiary, your issuing bank, or a bank selected by your issuing bank? Standard options,'
+                         'include S.W.I.F.T or Courier but feel free to specify your own below.',
         'key': 'credit_delivery_means',
         'type': 'text',
         'required': True,
