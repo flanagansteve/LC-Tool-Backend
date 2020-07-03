@@ -16,14 +16,14 @@ default_questions = [
         'options': '',
         'section': 'Parties'
     },
-    {'question_text': 'What is your business\'s country',
-     'key': 'applicant_country',
-     'type': 'text',
-     'required': True,
-     'options': '',
-     'section': 'Parties'
-
-     },
+    {
+        'question_text': 'What is your business\'s country',
+        'key': 'applicant_country',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties'
+    },
     {
         'question_text': 'What is the beneficiary (IE, the other party to this transaction)\'s name?',
         'key': 'beneficiary_name',
@@ -170,8 +170,7 @@ default_questions = [
         'section': 'Goods Details'
     },
     {
-        'question_text': 'What is the unit of measure of your purchase? IE - barrels, pounds, logs, or service '
-                         'contract',
+        'question_text': 'What is the unit of measure of your purchase?',
         'key': 'unit_of_measure',
         'type': 'dropdown',
         'required': True,

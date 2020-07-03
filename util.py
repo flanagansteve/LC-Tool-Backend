@@ -26,6 +26,8 @@ def update_ofac():
     cr = csv.reader(response)
     for row in cr:
         if len(row) == 12:
+            if SpeciallyDesignatedNational.objects.filter(id=row[0]).exists():
+                continue
             for colIndex, col in enumerate(row):
                 if col == '-0- ':
                     row[colIndex] = None
@@ -49,6 +51,8 @@ def update_ofac():
     cr = csv.reader(response)
     for row in cr:
         if len(row) == 6:
+            if SpeciallyDesignatedNationalAddress.objects.filter(id=row[1]).exists():
+                continue
             for colIndex, col in enumerate(row):
                 if col == '-0- ':
                     row[colIndex] = None
@@ -65,6 +69,8 @@ def update_ofac():
     cr = csv.reader(response)
     for row in cr:
         if len(row) == 5:
+            if SpeciallyDesignatedNationalAlternate.objects.filter(id=row[1]).exists():
+                continue
             for colIndex, col in enumerate(row):
                 if col == '-0- ':
                     row[colIndex] = None
