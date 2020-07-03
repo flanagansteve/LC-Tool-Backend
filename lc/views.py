@@ -106,9 +106,7 @@ def cr_lcs(request, bank_id):
 
                 # Questions 1 and 2
                 if (employee_applying.authorized_banks.filter(id = bank.id).exists()):
-                    print("hello")   
                 else:
-                    print(employee_applying.authorized_banks)
                     bankAuth = AuthorizedBanks(bank = bank, status = AuthStatus.REJ)
                     bankAuth.save()
                     employee_applying.authorized_banks.add(bankAuth)
@@ -239,7 +237,6 @@ def rud_lc(request, lc_id):
     elif request.method == "PUT":
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
-            print(json_data)
             if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                 return JsonResponse({
                     'success': False,
