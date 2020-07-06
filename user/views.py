@@ -31,9 +31,10 @@ def user_login(request):
                 })
             else:
                 user_employee = BusinessEmployee.objects.get(email=user.username)
+                print(user_employee.employer.to_dict())
                 return JsonResponse({
                     "session_expiry" : request.session.get_expiry_date(),
-                    "user_employee" : model_to_dict(user_employee),
+                    "user_employee" : user_employee.to_dict(),
                     "users_employer" : user_employee.employer.to_dict()
                 })
         else:
@@ -69,7 +70,7 @@ def this_users_info(request):
             user_employee = BusinessEmployee.objects.get(email=request.user.username)
             return JsonResponse({
                 "session_expiry" : request.session.get_expiry_date(),
-                "user_employee" : model_to_dict(user_employee),
+                "user_employee" : user_employee.to_dict(),
                 "users_employer" : {**user_employee.employer.to_dict(), **{"type":"business"}}
             })
         elif BankEmployee.objects.filter(email=request.user.username).exists():

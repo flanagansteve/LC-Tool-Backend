@@ -7,8 +7,22 @@ from lc.models import SpeciallyDesignatedNational, \
 
 
 def update_django_instance_with_subset_json(json_data, obj):
+
+    # check for auth first
     for key in json_data:
-        if key in dir(obj) and json_data[key]:
+        if key == 'due_authorization':
+            # TODO shouldn't be only the first client should it
+            employees = obj.tasked_client_employees.all()
+            auth_banks = employees[:1].get().authorized_banks.all()
+            for item in auth_banks:
+                itemBank = getattr(item, 'bank')
+                lcBank = getattr(obj, 'issuer')
+                if itemBank.id == lcBank.id:
+                    item.status = json_data[key]
+                    item.save()
+                    
+        elif key in dir(obj) and json_data[key]:
+            # have to set internal 
             if 'decimal.Decimal' in str(type(getattr(obj, key))):
                 setattr(obj, key, decimal.Decimal(str(json_data[key])))
             else:

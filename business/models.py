@@ -1,5 +1,5 @@
 from django.db import models
-
+from enum import Enum
 
 # A business working with LCs
 # - could be an LC-seeking-business
@@ -7,6 +7,11 @@ from django.db import models
 # - could be sometimes one sometimes the other!
 from bank.models import Bank
 
+
+class AuthStatus(str, Enum):
+    ACC: str = "accepted"
+    REJ: str = "rejected"
+    REQ: str = "requested"
 
 class Business(models.Model):
     name = models.CharField(max_length=250)
@@ -34,15 +39,36 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
+class AuthorizedBanks(models.Model):
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, default=AuthStatus.REJ,
+                                               choices=[(tag, tag.value) for tag in AuthStatus])
+
+    def  to_dict(self):
+        return {
+            'id' : self.id,
+            'bank': {'id': self.bank.id, 'name': self.bank.name},
+            'status' : self.status
+        }
 
 class BusinessEmployee(models.Model):
     name = models.CharField(max_length=250, null=True, blank=True)
     title = models.CharField(max_length=250, null=True, blank=True)
     email = models.CharField(max_length=50)
     employer = models.ForeignKey(Business, on_delete=models.CASCADE)
+    authorized_banks = models.ManyToManyField(AuthorizedBanks)
 
     def __str__(self):
         return self.name + ', ' + self.title + ' at ' + str(self.employer)
+
+    def to_dict(self):
+        return {
+        'name' : self.name,
+        'title' : self.title,
+        'email' : self.email,
+        'employer' : self.employer.to_dict(),
+        'authorized_banks' : list(map(lambda x: x.to_dict(), self.authorized_banks.all())),
+        }
 
 
 class ApprovedCredit(models.Model):

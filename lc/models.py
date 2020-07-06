@@ -214,13 +214,13 @@ class LC(models.Model):
     def get_tasked_client_employees(self):
         to_return = []
         for employee in self.tasked_client_employees.all():
-            to_return.append(model_to_dict(employee))
+            to_return.append(employee.to_dict())
         return to_return
 
     def get_tasked_beneficiary_employees(self):
         to_return = []
         for employee in self.tasked_beneficiary_employees.all():
-            to_return.append(model_to_dict(employee))
+            to_return.append(employee.to_dict())
         return to_return
 
     def get_tasked_issuer_employees(self):
