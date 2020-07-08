@@ -16,9 +16,8 @@ from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
-from business.models import ApprovedCredit
-
 from lc.forms import BankInitiatedLC
+from business.models import ApprovedCredit, AuthorizedBanks, AuthStatus
 from util import update_django_instance_with_subset_json
 from .models import *
 from .values import commercial_invoice_form, multimodal_bl_form, import_permits
@@ -103,6 +102,11 @@ def cr_lcs(request, bank_id):
             #   b. do something with it
             #   c. remove it from the list
 
+            if not employee_applying.authorized_banks.filter(id = bank.id).exists():
+                bankAuth = AuthorizedBanks(bank = bank, status = AuthStatus.REJ)
+                bankAuth.save()
+                employee_applying.authorized_banks.add(bankAuth)
+                employee_applying.save()
             # Questions 1 and 2
             applicant_name = json_data.pop('applicant_name', None)
             applicant_address = json_data.pop('applicant_address', None)

@@ -50,7 +50,7 @@ def index(request):
         # 4. return the objects created (user object, business) as well as a session obj
         return JsonResponse({
             "session_expiry": request.session.get_expiry_date(),
-            "user_employee": model_to_dict(business.businessemployee_set.get(email=json_data['email'])),
+            "user_employee": business.businessemployee_set.get(email=json_data['email']).to_dict(),
             "users_employer": business.to_dict()
         })
     else:
@@ -83,7 +83,7 @@ def rud_business(request, business_id):
                 update_django_instance_with_subset_json(json_data, business)
                 business.save()
                 return JsonResponse({
-                    "user_employee": model_to_dict(business.businessemployee_set.get(email=request.user.username)),
+                    "user_employee": business.businessemployee_set.get(email=request.user.username).to_dict(),
                     "users_employer": business.to_dict()
                 })
             else:
@@ -117,7 +117,7 @@ def invite_teammate(request, business_id):
                 # 2. if so - have they registered?
                 if invitee.name is not None:
                     # 2a. if they have - return status:registered and the user object
-                    response["employee"] = model_to_dict(invitee)
+                    response["employee"] = invitee.to_dict()
                 else:
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
                     # TODO confirm with ryan that this is the registration link / that we don't need to embed url
@@ -203,7 +203,7 @@ def register_upon_invitation(request, business_id):
         # 4. return user object w/token
         return JsonResponse({
             "session_expiry": request.session.get_expiry_date(),
-            "user_employee": model_to_dict(business.businessemployee_set.get(email=new_user_data['email'])),
+            "user_employee": business.businessemployee_set.get(email=new_user_data['email']).to_dict(),
             "users_employer": business.to_dict()
         })
     else:
@@ -219,7 +219,7 @@ def rud_business_employee(request, business_id, employee_id):
         raise Http404("No business with id " + business_id)
     if request.method == "GET":
         try:
-            return JsonResponse(model_to_dict(business.businessemployee_set.get(id=employee_id)))
+            return JsonResponse(business.businessemployee_set.get(id=employee_id).to_dict())
         except BusinessEmployee.DoesNotExist:
             raise Http404(str(business) + " does not have an employee with id " + employee_id)
     elif request.method == "DELETE":
@@ -254,7 +254,7 @@ def rud_business_employee(request, business_id, employee_id):
             except BusinessEmployee.DoesNotExist:
                 raise Http404(str(business) + " does not have an employee with id " + employee_id)
             return JsonResponse({
-                "user_employee": model_to_dict(business.businessemployee_set.get(id=employee_id)),
+                "user_employee": business.businessemployee_set.get(id=employee_id).to_dict(),
                 "users_employer": business.to_dict()
             })
         else:
