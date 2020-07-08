@@ -67,6 +67,7 @@ class BusinessEmployee(models.Model):
 
     def to_dict(self):
         return {
+            'id': self.id,
             'name': self.name,
             'title': self.title,
             'email': self.email,

@@ -1,5 +1,4 @@
 from datetime import datetime
-from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -140,6 +139,10 @@ class TestModels(TestCase):
         client_emp = client.businessemployee_set.create(name="Steve", title="Owner", email="steve@ii.com")
         client_emp.save()
         self.lc.tasked_client_employees.add(client_emp)
+        bank_auth = AuthorizedBanks(bank=issuer, status=AuthStatus.REJ)
+        bank_auth.save()
+        client_emp.authorized_banks.add(bank_auth)
+        client_emp.save()
         bene_emp = beneficiary.businessemployee_set.create(name="Steve", title="Owner", email="steve@delvest.com")
         bene_emp.save()
         self.lc.tasked_beneficiary_employees.add(bene_emp)
@@ -325,10 +328,10 @@ class TestModels(TestCase):
                                          'approved_credit': [],
                                          'balance_available': 0,
                                          'country': 'United States',
-                                         'id': 3,
+                                         'id': Business.objects.get(name="AccountParty McAccountParty's Accounts").id,
                                          'name': "AccountParty McAccountParty's Accounts"},
                        'advising_bank': {'digital_application': [],
-                                         'id': 2,
+                                         'id': Bank.objects.get(name='Second Best Bank').id,
                                          'name': 'Second Best Bank',
                                          'using_digital_app': False},
                        'applicant_and_ap_j_and_s_obligated': True,
@@ -340,11 +343,12 @@ class TestModels(TestCase):
                                        'approved_credit': [],
                                        'balance_available': 0,
                                        'country': 'Venezuela',
-                                       'id': 2,
+                                       'id': Business.objects.get(name='Delvest').id,
                                        'name': 'Delvest'},
                        'beneficiary_approved': False,
-                       'boycott_language': {'other_instructions': [{'id': 1,
-                                                                    'lc_id': 1,
+                       'boycott_language': {'other_instructions': [{'id': BoycottLanguage.objects.get(
+                               phrase='No items from Israel.', source='other_instructions', lc=self.lc).id,
+                                                                    'lc_id': self.lc.id,
                                                                     'phrase': 'No items from Israel.',
                                                                     'source': 'other_instructions'}]},
                        'boycott_language_status': Status.INC,
@@ -355,7 +359,7 @@ class TestModels(TestCase):
                                   'approved_credit': [],
                                   'balance_available': 0,
                                   'country': 'United States',
-                                  'id': 1,
+                                  'id': Business.objects.get(name="Iona Imports").id,
                                   'name': 'Iona Imports'},
                        'client_approved': True,
                        'comments': [],
@@ -365,7 +369,7 @@ class TestModels(TestCase):
                        'credit_availability': 'Payment on sight',
                        'credit_delivery_means': 'Courier',
                        'credit_expiry_location': {'digital_application': [],
-                                                  'id': 2,
+                                                  'id': Bank.objects.get(name="Second Best Bank").id,
                                                   'name': 'Second Best Bank',
                                                   'using_digital_app': False},
                        'currency_denomination': 'USD',
@@ -374,7 +378,8 @@ class TestModels(TestCase):
                        'doc_reception_notifees': 'My customer Freddys Drinks in Newton',
                        'documentaryrequirement_set': [{'doc_name': 'Commercial Invoice',
                                                        'due_date': datetime.date(2020, 4, 22),
-                                                       'id': 1,
+                                                       'id': DocumentaryRequirement.objects.get(
+                                                               doc_name='Commercial Invoice', for_lc=self.lc).id,
                                                        'link_to_submitted_doc': None,
                                                        'modification_complaints': None,
                                                        'modified_and_awaiting_beneficiary_approval': False,
@@ -390,7 +395,8 @@ class TestModels(TestCase):
                                                        'type': 'commercial_invoice'},
                                                       {'doc_name': 'Multimodal Bill of Lading',
                                                        'due_date': datetime.date(2020, 4, 22),
-                                                       'id': 2,
+                                                       'id': DocumentaryRequirement.objects.get(
+                                                               doc_name='Multimodal Bill of Lading', for_lc=self.lc).id,
                                                        'link_to_submitted_doc': None,
                                                        'modification_complaints': None,
                                                        'modified_and_awaiting_beneficiary_approval': False,
@@ -401,7 +407,8 @@ class TestModels(TestCase):
                                                        'type': 'multimodal_bl'},
                                                       {'doc_name': 'Packing List',
                                                        'due_date': datetime.date(2020, 4, 21),
-                                                       'id': 3,
+                                                       'id': DocumentaryRequirement.objects.get(doc_name='Packing List',
+                                                                                                for_lc=self.lc).id,
                                                        'link_to_submitted_doc': None,
                                                        'modification_complaints': None,
                                                        'modified_and_awaiting_beneficiary_approval': False,
@@ -420,16 +427,16 @@ class TestModels(TestCase):
                        'forex_contract_num': None,
                        'goods_info': {'created_date': datetime.datetime.now().date(),
                                       'hts_code': '220410',
-                                      'id': 1,
+                                      'id': GoodsInfo.objects.get(hts_code='220410').id,
                                       'mean': Decimal('1581.60'),
                                       'standard_deviation': Decimal('14353.07')},
                        'hts_code': '2204.10.11',
-                       'id': 1,
+                       'id': self.lc.id,
                        'import_license_approval': Status.INC,
                        'import_license_message': None,
                        'incoterms_to_show': '["EXW", "CPT"]',
                        'issuer': {'digital_application': [],
-                                  'id': 1,
+                                  'id': Bank.objects.get(name="Best Bank").id,
                                   'name': 'Best Bank',
                                   'using_digital_app': False},
                        'issuer_approved': False,
@@ -456,14 +463,14 @@ class TestModels(TestCase):
                                                                   'approved_credit': [],
                                                                   'balance_available': 0,
                                                                   'country': 'United States',
-                                                                  'id': 1,
+                                                                  'id': Business.objects.get(name="Iona Imports").id,
                                                                   'name': 'Iona Imports'},
                        'paying_other_banks_fees': {'address': '48 Sutton Road, Needham, MA',
                                                    'annual_cashflow': 0,
                                                    'approved_credit': [],
                                                    'balance_available': 0,
                                                    'country': 'United States',
-                                                   'id': 1,
+                                                   'id': Business.objects.get(name="Iona Imports").id,
                                                    'name': 'Iona Imports'},
                        'purchased_item': 'Champagne',
                        'requested': False,
@@ -471,30 +478,54 @@ class TestModels(TestCase):
                            'https://www.treasury.gov/resource-center/sanctions/Programs/pages/venezuela.aspx',
                        'sanction_bank_approval': Status.INC,
                        'tasked_account_party_employees': [{'email': 'accountparty@ama.com',
-                                                           'employer_id': 3,
-                                                           'id': 3,
+                                                           'employer': Business.objects.get(
+                                                                   name="AccountParty McAccountParty's "
+                                                                        "Accounts").to_dict(),
+                                                           'id': BusinessEmployee.objects.get(
+                                                                   name='AccountParty McAccountParty',
+                                                                   employer=Business.objects.get(
+                                                                           name="AccountParty McAccountParty's "
+                                                                                "Accounts")).id,
                                                            'name': 'AccountParty McAccountParty',
-                                                           'title': 'Owner'}],
-                       'tasked_advising_bank_employees': [{'bank_id': 2,
+                                                           'title': 'Owner',
+                                                           'authorized_banks': []}],
+                       'tasked_advising_bank_employees': [{'bank_id': Bank.objects.get(name="Second Best Bank").id,
                                                            'email': 'advisey@sbb.com',
-                                                           'id': 2,
+                                                           'id': BankEmployee.objects.get(name="Advisey McAdvisey",
+                                                                                          bank=Bank.objects.get(
+                                                                                                  name="Second Best "
+                                                                                                       "Bank")).id,
                                                            'name': 'Advisey McAdvisey',
                                                            'title': 'Owner'}],
                        'tasked_beneficiary_employees': [{'email': 'steve@delvest.com',
-                                                         'employer_id': 2,
-                                                         'id': 2,
+                                                         'employer': Business.objects.get(name="Delvest").to_dict(),
+                                                         'id': BusinessEmployee.objects.get(name="Steve",
+                                                                                            employer=Business.objects.get(
+                                                                                                    name="Delvest")).id,
                                                          'name': 'Steve',
-                                                         'title': 'Owner'}],
+                                                         'title': 'Owner',
+                                                         'authorized_banks': []}],
                        'tasked_client_employees': [{'email': 'steve@ii.com',
-                                                    'employer_id': 1,
-                                                    'id': 1,
+                                                    'employer': Business.objects.get(name="Iona Imports").to_dict(),
+                                                    'id': BusinessEmployee.objects.get(name="Steve",
+                                                                                       employer=Business.objects.get(
+                                                                                               name="Iona Imports")).id,
                                                     'name': 'Steve',
-                                                    'title': 'Owner'}],
-                       'tasked_issuer_employees': [{'bank_id': 1,
-                                                    'email': 'steve@bb.com',
-                                                    'id': 1,
-                                                    'name': 'Steve',
-                                                    'title': 'Owner'}],
+                                                    'title': 'Owner',
+                                                    'authorized_banks': list(map(lambda b: b.to_dict(),
+                                                                                 BusinessEmployee.objects.get(
+                                                                                         name="Steve",
+                                                                                         employer=Business.objects.get(
+                                                                                                 name="Iona "
+                                                                                                      "Imports")).authorized_banks.all()))}],
+                       'tasked_issuer_employees': [
+                           {'bank_id': Bank.objects.get(name="Best Bank").id,
+                            'email': 'steve@bb.com',
+                            'id': BankEmployee.objects.get(name="Steve",
+                                                           bank=Bank.objects.get(
+                                                                   name="Best Bank")).id,
+                            'name': 'Steve',
+                            'title': 'Owner'}],
                        'terms_satisfied': False,
                        'transferable_to_applicant': False,
                        'transferable_to_beneficiary': False,
@@ -505,4 +536,5 @@ class TestModels(TestCase):
                        'units_purchased': 600}
         self.assertEquals(self.lc.to_dict(), expected_lc)
 
-        self.assertTrue(isinstance(self.lc._meta.get_field("type"), models.CharField))
+        self.assertTrue(
+                isinstance(self.lc._meta.get_field("type"), models.CharField))
