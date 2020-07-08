@@ -54,12 +54,22 @@ def index(request):
     else:
         return HttpResponseBadRequest("This endpoint only supports GET, POST")
 
+
+def add_default_questions():
+    for default_question in default_questions:
+        if LCAppQuestion.objects.filter(key=default_question['key']).exists():
+            LCAppQuestion.objects.get(key=default_question['key']).delete()
+        LCAppQuestion.objects.create(**default_question)
+
+
 def populate_application(bank):
-    # 1. try to get the default questions and save them onto the bank
+    # try to get the default questions and save them onto the bank
     for default_question in default_questions:
         if not LCAppQuestion.objects.filter(key=default_question['key']).exists():
             LCAppQuestion.objects.create(**default_question)
-        bank.digital_application.add(LCAppQuestion.objects.get(key=default_question['key']))
+        if not bank.digital_application.filter(key=default_question['key']):
+            bank.digital_application.add(LCAppQuestion.objects.get(key=default_question['key']))
+    bank.save()
 
 # TODO more specifically authenticate this - who within a bank is allowed to R, and to UD?
 @csrf_exempt

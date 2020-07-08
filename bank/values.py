@@ -16,14 +16,15 @@ default_questions = [
         'options': '',
         'section': 'Parties'
     },
-    {'question_text': 'What is your business\'s country?',
-     'key': 'applicant_country',
-     'type': 'text',
-     'required': True,
-     'options': '',
-     'section': 'Parties'
+    {
+        'question_text': 'What is your business\'s country?',
+        'key': 'applicant_country',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties'
 
-     },
+    },
     {
         'question_text': 'What is the beneficiary (IE, the other party to this transaction)\'s name?',
         'key': 'beneficiary_name',
@@ -40,14 +41,15 @@ default_questions = [
         'options': '',
         'section': 'Parties'
     },
-    {'question_text': 'What is the beneficiary\'s country?',
-     'key': 'beneficiary_country',
-     'type': 'text',
-     'required': True,
-     'options': '',
-     'section': 'Parties'
+    {
+        'question_text': 'What is the beneficiary\'s country?',
+        'key': 'beneficiary_country',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties'
 
-     },
+    },
     {
         'question_text': 'Through what means will you forward the credit for this transaction, to either the '
                          'beneficiary, your issuing bank, or a bank selected by your issuing bank? Standard options,'
@@ -170,8 +172,7 @@ default_questions = [
         'section': 'Goods Details'
     },
     {
-        'question_text': 'What is the unit of measure of your purchase? IE - barrels, pounds, logs, or service '
-                         'contract',
+        'question_text': 'What is the unit of measure of your purchase?',
         'key': 'unit_of_measure',
         'type': 'dropdown',
         'required': True,
