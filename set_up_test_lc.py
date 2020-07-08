@@ -287,7 +287,7 @@ def create_perfect_lc():
         print("Running sanction checks for countries of LC")
         lc.sanction_auto_message = sanction_approval(beneficiary.country, client.country)
         print("Running licensing check for LC")
-        lc.import_license_message = import_license(lc.hts_code, lc)
+        lc.import_license_message = import_license(lc)
         if GoodsInfo.objects.filter(hts_code=lc.hts_code.replace(".", "")[:6]).exists():
             print(
                 f"There is already goods information for HTS code {lc.hts_code} through code {lc.hts_code.replace('.', '')[:6]}")
