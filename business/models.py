@@ -1,5 +1,6 @@
-from django.db import models
 from enum import Enum
+
+from django.db import models
 
 # A business working with LCs
 # - could be an LC-seeking-business
@@ -12,6 +13,7 @@ class AuthStatus(str, Enum):
     ACC: str = "accepted"
     REJ: str = "rejected"
     REQ: str = "requested"
+
 
 class Business(models.Model):
     name = models.CharField(max_length=250)
@@ -39,17 +41,19 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
+
 class AuthorizedBanks(models.Model):
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, default=AuthStatus.REJ,
-                                               choices=[(tag, tag.value) for tag in AuthStatus])
+                              choices=[(tag, tag.value) for tag in AuthStatus])
 
-    def  to_dict(self):
+    def to_dict(self):
         return {
-            'id' : self.id,
+            'id': self.id,
             'bank': {'id': self.bank.id, 'name': self.bank.name},
-            'status' : self.status
+            'status': self.status
         }
+
 
 class BusinessEmployee(models.Model):
     name = models.CharField(max_length=250, null=True, blank=True)
@@ -63,11 +67,11 @@ class BusinessEmployee(models.Model):
 
     def to_dict(self):
         return {
-        'name' : self.name,
-        'title' : self.title,
-        'email' : self.email,
-        'employer' : self.employer.to_dict(),
-        'authorized_banks' : list(map(lambda x: x.to_dict(), self.authorized_banks.all())),
+            'name': self.name,
+            'title': self.title,
+            'email': self.email,
+            'employer': self.employer.to_dict(),
+            'authorized_banks': list(map(lambda x: x.to_dict(), self.authorized_banks.all())),
         }
 
 

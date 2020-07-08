@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 
 from bank.views import populate_application, add_default_questions
+from business.models import AuthorizedBanks, AuthStatus
 from lc.models import *
 from lc.views import ofac, sanction_approval, import_license, believable_price_of_goods
 from util import update_ofac
@@ -71,6 +72,15 @@ def create_perfect_lc():
         print(f"Creating bank '{issuer_name}'")
         issuer = Bank(name=issuer_name)
         issuer.save()
+
+    if client_emp.authorized_banks.filter(bank=issuer).exists():
+        print(f"Client {client_employee_name} already has authorization with bank {issuer_name}")
+    else:
+        print(f"Adding authorization for client {client_employee_name} with bank {issuer_name}")
+        bank_auth = AuthorizedBanks(bank=issuer, status=AuthStatus.REJ)
+        bank_auth.save()
+        client_emp.authorized_banks.add(bank_auth)
+        client_emp.save()
 
     populate_application(issuer)
 

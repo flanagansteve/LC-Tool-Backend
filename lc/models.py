@@ -172,10 +172,10 @@ class LC(models.Model):
         to_return = {
             'id': self.id,
             'issuer': self.issuer.to_dict(),
-            'tasked_client_employees': list(self.tasked_client_employees.values()),
-            'tasked_beneficiary_employees': list(self.tasked_beneficiary_employees.values()),
+            'tasked_client_employees': list(map(lambda emp: emp.to_dict(), self.tasked_client_employees.all())),
+            'tasked_beneficiary_employees': list(map(lambda emp: emp.to_dict(), self.tasked_beneficiary_employees.all())),
             'tasked_issuer_employees': list(self.tasked_issuer_employees.values()),
-            'tasked_account_party_employees': list(self.tasked_account_party_employees.values()),
+            'tasked_account_party_employees': list(map(lambda emp: emp.to_dict(), self.tasked_account_party_employees.all())),
             'tasked_advising_bank_employees': list(self.tasked_advising_bank_employees.values()),
             'client_approved': self.client_approved,
             'beneficiary_approved': self.beneficiary_approved,

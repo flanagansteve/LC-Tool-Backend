@@ -102,10 +102,10 @@ def cr_lcs(request, bank_id):
             #   b. do something with it
             #   c. remove it from the list
 
-            if not employee_applying.authorized_banks.filter(id = bank.id).exists():
-                bankAuth = AuthorizedBanks(bank = bank, status = AuthStatus.REJ)
-                bankAuth.save()
-                employee_applying.authorized_banks.add(bankAuth)
+            if not employee_applying.authorized_banks.filter(bank=bank).exists():
+                bank_auth = AuthorizedBanks(bank=bank, status=AuthStatus.REJ)
+                bank_auth.save()
+                employee_applying.authorized_banks.add(bank_auth)
                 employee_applying.save()
             # Questions 1 and 2
             applicant_name = json_data.pop('applicant_name', None)
