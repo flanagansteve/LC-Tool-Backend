@@ -271,7 +271,7 @@ class DigitalLC(LC):
     expiration_date = models.DateField(null=True, blank=True)
     draft_presentation_date = models.DateField(null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
-    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, default=decimal.Decimal('100.00000'))
+    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, blank=True, null=True, default=decimal.Decimal('100.00000'))
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE,
                                                                related_name='%(app_label)s_%('
@@ -303,7 +303,7 @@ class DigitalLC(LC):
 
     # -- any other data this bank set up to ask for -- $
     # TODO saving as json obj string for now
-    other_data = models.CharField(max_length=1000)
+    other_data = models.CharField(max_length=1000, default="")
 
     # TODO someday: def to_pdf()
 
@@ -331,7 +331,7 @@ class DigitalLC(LC):
             'drafts_invoice_value': self.drafts_invoice_value,
             'credit_availability': self.credit_availability,
             'deferred_payment_date': self.deferred_payment_date,
-            'delegated_negotiating_banks': self.get_delegated_negotiating_banks(),
+            'delegated_negotiating_banks': list(map(lambda bank: bank.to_dict(), self.delegated_negotiating_banks.all())),
             'partial_shipment_allowed': self.partial_shipment_allowed,
             'transshipment_allowed': self.transshipment_allowed,
             'merch_charge_location': self.merch_charge_location,
@@ -360,16 +360,7 @@ class DigitalLC(LC):
         return to_return
 
     def get_doc_reqs(self):
-        to_return = []
-        for doc_req in self.documentaryrequirement_set.all():
-            to_return.append(doc_req.to_dict())
-        return to_return
-
-    def get_delegated_negotiating_banks(self):
-        to_return = []
-        for bank in self.delegated_negotiating_banks.all():
-            to_return.append(bank.to_dict())
-        return to_return
+        return list(map(lambda doc: doc.to_dict(), self.documentaryrequirement_set.all()))
 
 
 class DigitalLCTemplate(models.Model):
