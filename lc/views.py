@@ -117,7 +117,7 @@ def cr_lcs(request, bank_id):
                         "You may only apply for an LC on behalf of your own business. Check the submitted "
                         "applicant_name and applicant_address for correctness - one or both differed from the "
                         "business name and address associated with this user\'s employer")
-            lc = DigitalLC(issuer=bank, client=employee_applying.employer, application_date=datetime.datetime.now())
+            lc = DigitalLC(issuer=bank, client=employee_applying.employer, application_date=datetime.datetime.now().date())
             lc.save()
             lc.tasked_client_employees.add(employee_applying)
 
@@ -168,7 +168,7 @@ def rud_lc(request, lc_id):
         employee_applying = lc.client.businessemployee_set.get(email=request.user.username)
         if lc.issuer is None:
             return HttpResponseBadRequest("there is no issuer for this LC")
-        lc.application_date = datetime.datetime.now()
+        lc.application_date = datetime.datetime.now().date()
         set_lc_specifications(lc, json_data, employee_applying)
         return JsonResponse({
             'success': True
@@ -1257,7 +1257,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
     # Question 5-8
     lc.credit_delivery_means = json_data.pop('credit_delivery_means', None)
     lc.credit_amt_verbal = json_data.pop('credit_amt_verbal', None)
-    lc.credit_amt = json_data.pop('credit_amt', None)
+    credit_amt = json_data.pop('credit_amt', None)
+    lc.credit_amt = credit_amt if credit_amt is None else decimal.Decimal(credit_amt)
     lc.currency_denomination = json_data.pop('currency_denomination', None)
 
     # Question 9
@@ -1306,11 +1307,14 @@ def set_lc_specifications(lc, json_data, employee_applying):
     lc.forex_contract_num = json_data.pop('forex_contract_num', None)
 
     # Question 15-20
-    lc.exchange_rate_tolerance = json_data.pop('exchange_rate_tolerance', None)
+    exchange_rate_tolerance = json_data.pop('exchange_rate_tolerance', None)
+    lc.exchange_rate_tolerance = exchange_rate_tolerance if exchange_rate_tolerance is None else decimal.Decimal(exchange_rate_tolerance)
     lc.purchased_item = json_data.pop('purchased_item', None)
     lc.unit_of_measure = json_data.pop('unit_of_measure', None)
-    lc.units_purchased = json_data.pop('units_purchased', None)
-    lc.unit_error_tolerance = json_data.pop('unit_error_tolerance', None)
+    units_purchased = json_data.pop('units_purchased', None)
+    lc.units_purchased = units_purchased if units_purchased is None else decimal.Decimal(units_purchased)
+    unit_error_tolerance = json_data.pop('unit_error_tolerance', None)
+    lc.unit_error_tolerance = unit_error_tolerance if unit_error_tolerance is None else decimal.Decimal(unit_error_tolerance)
     lc.confirmation_means = json_data.pop('confirmation_means', None)
     lc.hts_code = json_data.pop('hts_code', None)
     import_license(lc)
@@ -1344,7 +1348,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
         lc.draft_presentation_date = lc.expiration_date
 
     # Question 25
-    lc.drafts_invoice_value = json_data.pop('drafts_invoice_value', None)
+    drafts_invoice_value = json_data.pop('drafts_invoice_value', None)
+    lc.drafts_invoice_value = drafts_invoice_value if drafts_invoice_value is None else decimal.Decimal(drafts_invoice_value)
 
     # Question 26
     lc.credit_availability = json_data.pop('credit_availability', None)
@@ -1382,7 +1387,7 @@ def set_lc_specifications(lc, json_data, employee_applying):
     lc.charge_transportation_location = json_data.pop('charge_transportation_location', None)
 
     # Question 35
-    lc.incoterms_to_show = json.dumps(json_data.pop('incoterms_to_show'))
+    lc.incoterms_to_show = json.dumps(json_data.pop('incoterms_to_show', []))
 
     # Question 36
     lc.named_place_of_destination = json_data.pop('named_place_of_destination', None)
@@ -1517,11 +1522,12 @@ def set_lc_specifications(lc, json_data, employee_applying):
         lc.transferable_to_beneficiary = True
 
     # Cash Secure Question
-    lc.cash_secure = json_data.pop("cash_secure", None)
+    cash_secure = json_data.pop("cash_secure", None)
+    lc.cash_secure = cash_secure if cash_secure is None else decimal.Decimal(cash_secure)
 
     # 2. for any other fields left in json_data, save them as a tuple
     #    in other_data
-    lc.other_data = json_data
+    lc.other_data = json.dumps(json_data)
 
     # 3. save and return back!
     lc.save()
