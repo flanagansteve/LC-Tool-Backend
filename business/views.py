@@ -10,8 +10,11 @@ from django.http import JsonResponse, HttpResponseBadRequest, \
 from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 
+
 from util import update_django_instance_with_subset_json
 from .models import Business, BusinessEmployee
+from bank.models import Bank
+from .models import AuthStatus, AuthorizedBanks
 
 
 # 1. GET all the businesses
@@ -96,6 +99,7 @@ def rud_business(request, business_id):
 
 @csrf_exempt
 def invite_teammate(request, business_id):
+    print("here")
     if request.method == "POST":
         if request.user.is_authenticated:
             try:
@@ -122,7 +126,7 @@ def invite_teammate(request, business_id):
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
                     # TODO confirm with ryan that this is the registration link / that we don't need to embed url
                     #  params:
-                    link = "https://app.bountium.org/business/register"
+                    link = "https://app.bountium.org/business/register/" + str(business_id)
                     send_mail(
                           business.businessemployee_set.get(
                                 email=request.user.username).name + " has re-invited you to join their team on "
@@ -138,7 +142,7 @@ def invite_teammate(request, business_id):
             except BusinessEmployee.DoesNotExist:
                 # 2. create the user and mail an invite
                 # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
-                link = "https://app.bountium.org/business/register"
+                link = "https://app.bountium.org/business/register/" + str(business_id)
                 send_mail(
                       business.businessemployee_set.get(
                             email=request.user.username).name + " has invited you to join their team on Bountium!",
@@ -273,5 +277,75 @@ def autocomplete(request):
         where = request.GET['string']
     except MultiValueDictKeyError:
         return HttpResponseBadRequest("Missing parameter 'string'")
-    businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address')[:10]
+    businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address', 'country')[:10]
     return JsonResponse(list(businesses), safe=False)
+
+@csrf_exempt
+def authorized_employees(request, business_id, bank_id):
+    try:
+        bank = Bank.objects.get(id = bank_id)
+    except:
+        return HttpResponseBadRequest("no Bank with this ID")
+    try:
+        business = Business.objects.get(id = business_id)
+    except:
+        return HttpResponseBadRequest("no Business with that ID")
+    business_employees = BusinessEmployee.objects.filter(employer_id = business_id)
+    bank = Bank.objects.get(id = bank_id)
+    to_return = []
+    for employee in business_employees:
+        dict = {}
+        dict['employee'] = employee.to_dict()
+        for item in employee.authorized_banks.all():
+            itemBank = getattr(item, 'bank')
+            if itemBank.id == bank.id:
+                dict['authorized'] = item.status
+        # check if it didn't find the bank affiliation w employee? even though it should
+        dict['authorized'] = ''
+        to_return.append(dict)
+    return JsonResponse(to_return, safe=False)        
+
+@csrf_exempt
+def changeAuthorization(request, employee_id, bank_id, authorization):
+    if not request.method == "PUT":
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+    try:
+        bank = Bank.objects.get(id = bank_id)
+    except:
+        return HttpResponseBadRequest("no Bank with this ID") 
+    try:
+        employee = BusinessEmployee.objects.get(id = employee_id)
+    
+    except:
+        return HttpResponseBadRequest("no Employee with this ID") 
+    
+    employee = BusinessEmployee.objects.get(id = employee_id)
+    auth_banks = employee.authorized_banks.all()
+    bank_id = int(bank_id)
+    # if the employee already has auth for that bank
+    for item in auth_banks:
+        itemBank = getattr(item, 'bank')
+        if itemBank.id == bank_id:
+            setattr(item, 'status', authorization)
+            item.save()
+            return JsonResponse({'authStatus' : authorization}) 
+
+    # if the employee does not have auth for that bank
+    bank = Bank.objects.get(id = bank_id)
+    bankAuth = AuthorizedBanks(bank = bank, status = authorization)
+    bankAuth.save()
+    employee.authorized_banks.add(bankAuth)
+    employee.save()
+    return JsonResponse({'authStatus' : authorization})
+        
+    
+
+        
+
+    
+
+
+
+
+
+

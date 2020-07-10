@@ -9,9 +9,8 @@ from bank.models import Bank
 
 
 class AuthStatus(str, Enum):
-    ACC: str = "accepted"
-    REJ: str = "rejected"
-    REQ: str = "requested"
+    AUTH: str = "Authorized"
+    UNAUTH: str = "Unauthorized"
 
 class Business(models.Model):
     name = models.CharField(max_length=250)
@@ -41,7 +40,7 @@ class Business(models.Model):
 
 class AuthorizedBanks(models.Model):
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, default=AuthStatus.REJ,
+    status = models.CharField(max_length=20, default=AuthStatus.UNAUTH,
                                                choices=[(tag, tag.value) for tag in AuthStatus])
 
     def  to_dict(self):
@@ -63,6 +62,7 @@ class BusinessEmployee(models.Model):
 
     def to_dict(self):
         return {
+        'id': self.id,
         'name' : self.name,
         'title' : self.title,
         'email' : self.email,

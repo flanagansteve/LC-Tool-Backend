@@ -106,10 +106,11 @@ def cr_lcs(request, bank_id):
 
                 # Questions 1 and 2
                 if (employee_applying.authorized_banks.filter(id = bank.id).exists()):
-                    print("hello")   
+                    print(employee_applying.authorized_banks)
+                    # TODO handle what should happen here
                 else:
                     print(employee_applying.authorized_banks)
-                    bankAuth = AuthorizedBanks(bank = bank, status = AuthStatus.REJ)
+                    bankAuth = AuthorizedBanks(bank = bank)
                     bankAuth.save()
                     employee_applying.authorized_banks.add(bankAuth)
                     employee_applying.save()
@@ -239,7 +240,6 @@ def rud_lc(request, lc_id):
     elif request.method == "PUT":
         if request.user.is_authenticated:
             json_data = json.loads(request.body)
-            print(json_data)
             if lc.issuer_approved and lc.beneficiary_approved and lc.client_approved:
                 return JsonResponse({
                     'success': False,
@@ -1000,6 +1000,20 @@ def check_file_for_boycott(request):
     text = textract.process("/tmp/" + file_name)
     print(text)
     return JsonResponse(list(map(lambda bytes: str(bytes), boycott_language(str(text)))), safe=False)
+
+@csrf_exempt
+def clients_by_bank(request, bank_id):
+    try:
+        Bank.objects.get(id = bank_id)
+    except Bank.DoesNotExist:
+        raise Http404("No bank with that ID")
+    to_return = []
+    for lc in DigitalLC.objects.filter(issuer_id=bank_id):
+        if lc.client.to_dict() not in to_return:
+            to_return.append(lc.client.to_dict())
+    return JsonResponse(to_return, safe=False)
+
+
 
 @csrf_exempt
 def check_text_for_boycott(request):
