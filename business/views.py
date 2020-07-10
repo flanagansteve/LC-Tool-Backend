@@ -99,7 +99,6 @@ def rud_business(request, business_id):
 
 @csrf_exempt
 def invite_teammate(request, business_id):
-    print("here")
     if request.method == "POST":
         if request.user.is_authenticated:
             try:
