@@ -172,11 +172,11 @@ class LC(models.Model):
         to_return = {
             'id': self.id,
             'issuer': self.issuer.to_dict(),
-            'tasked_client_employees': self.get_tasked_client_employees(),
-            'tasked_beneficiary_employees': self.get_tasked_beneficiary_employees(),
-            'tasked_issuer_employees': self.get_tasked_issuer_employees(),
-            'tasked_account_party_employees': self.get_tasked_account_party_employees(),
-            'tasked_advising_bank_employees': self.get_tasked_advising_bank_employees(),
+            'tasked_client_employees': list(map(lambda emp: emp.to_dict(), self.tasked_client_employees.all())),
+            'tasked_beneficiary_employees': list(map(lambda emp: emp.to_dict(), self.tasked_beneficiary_employees.all())),
+            'tasked_issuer_employees': list(self.tasked_issuer_employees.values()),
+            'tasked_account_party_employees': list(map(lambda emp: emp.to_dict(), self.tasked_account_party_employees.all())),
+            'tasked_advising_bank_employees': list(self.tasked_advising_bank_employees.values()),
             'client_approved': self.client_approved,
             'beneficiary_approved': self.beneficiary_approved,
             'import_license_message': self.import_license_message,
@@ -195,8 +195,7 @@ class LC(models.Model):
             'boycott_language_status': self.boycott_language_status,
             'boycott_language': boycott_to_dict(),
             'believable_price_of_goods_status': self.believable_price_of_goods_status,
-            'paid_out': self.paid_out,
-            'documentaryrequirement_set': self.get_doc_reqs()
+            'paid_out': self.paid_out
         }
         if self.client:
             to_return['client'] = self.client.to_dict()
@@ -206,45 +205,6 @@ class LC(models.Model):
             to_return['account_party'] = self.account_party.to_dict()
         if self.advising_bank:
             to_return['advising_bank'] = self.advising_bank.to_dict()
-        return to_return
-
-    # TODO TODO TODO
-    # the following 5 methods can almost certainly be consolidated into 1
-    # which received tasked_X_employees as a parameter, but im speed-running rn
-    def get_tasked_client_employees(self):
-        to_return = []
-        for employee in self.tasked_client_employees.all():
-            to_return.append(employee.to_dict())
-        return to_return
-
-    def get_tasked_beneficiary_employees(self):
-        to_return = []
-        for employee in self.tasked_beneficiary_employees.all():
-            to_return.append(employee.to_dict())
-        return to_return
-
-    def get_tasked_issuer_employees(self):
-        to_return = []
-        for employee in self.tasked_issuer_employees.all():
-            to_return.append(model_to_dict(employee))
-        return to_return
-
-    def get_tasked_account_party_employees(self):
-        to_return = []
-        for employee in self.tasked_account_party_employees.all():
-            to_return.append(model_to_dict(employee))
-        return to_return
-
-    def get_tasked_advising_bank_employees(self):
-        to_return = []
-        for employee in self.tasked_advising_bank_employees.all():
-            to_return.append(model_to_dict(employee))
-        return to_return
-
-    def get_doc_reqs(self):
-        to_return = []
-        for doc_req in self.documentaryrequirement_set.all():
-            to_return.append(doc_req.to_dict())
         return to_return
 
 
@@ -281,7 +241,7 @@ class DigitalLC(LC):
     # Goes up to 999B,999M,999K,999.99
     credit_amt = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True)
     # How much client will cash secure
-    cash_secure = models.DecimalField(max_digits=17, decimal_places=2, blank=True, default=0)
+    cash_secure = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True, default=decimal.Decimal('0.00'))
     # TODO this should technically be an enum
     currency_denomination = models.CharField(max_length=5, default='USD')
     applicant_and_ap_j_and_s_obligated = models.BooleanField(default=False)
@@ -311,7 +271,7 @@ class DigitalLC(LC):
     expiration_date = models.DateField(null=True, blank=True)
     draft_presentation_date = models.DateField(null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
-    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, default=decimal.Decimal('100.00000'))
+    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, blank=True, null=True, default=decimal.Decimal('100.00000'))
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE,
                                                                related_name='%(app_label)s_%('
@@ -343,7 +303,7 @@ class DigitalLC(LC):
 
     # -- any other data this bank set up to ask for -- $
     # TODO saving as json obj string for now
-    other_data = models.CharField(max_length=1000)
+    other_data = models.CharField(max_length=1000, default="")
 
     # TODO someday: def to_pdf()
 
@@ -371,7 +331,7 @@ class DigitalLC(LC):
             'drafts_invoice_value': self.drafts_invoice_value,
             'credit_availability': self.credit_availability,
             'deferred_payment_date': self.deferred_payment_date,
-            'delegated_negotiating_banks': self.get_delegated_negotiating_banks(),
+            'delegated_negotiating_banks': list(map(lambda bank: bank.to_dict(), self.delegated_negotiating_banks.all())),
             'partial_shipment_allowed': self.partial_shipment_allowed,
             'transshipment_allowed': self.transshipment_allowed,
             'merch_charge_location': self.merch_charge_location,
@@ -385,6 +345,7 @@ class DigitalLC(LC):
             'merch_description': self.merch_description,
             'transferable_to_applicant': self.transferable_to_applicant,
             'transferable_to_beneficiary': self.transferable_to_beneficiary,
+            'documentaryrequirement_set': self.get_doc_reqs(),
             'other_data': self.other_data
         })
         if self.paying_other_banks_fees:
@@ -398,11 +359,8 @@ class DigitalLC(LC):
             to_return['goods_info'] = model_to_dict(GoodsInfo.objects.get(hts_code=hts_code))
         return to_return
 
-    def get_delegated_negotiating_banks(self):
-        to_return = []
-        for bank in self.delegated_negotiating_banks.all():
-            to_return.append(bank.to_dict())
-        return to_return
+    def get_doc_reqs(self):
+        return list(map(lambda doc: doc.to_dict(), self.documentaryrequirement_set.all()))
 
 
 class DigitalLCTemplate(models.Model):

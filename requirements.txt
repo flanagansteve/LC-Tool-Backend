@@ -1,3 +1,4 @@
+textract
 celery
 asgiref==3.2.3
 boto3==1.12.36

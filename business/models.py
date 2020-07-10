@@ -12,6 +12,7 @@ class AuthStatus(str, Enum):
     AUTH: str = "Authorized"
     UNAUTH: str = "Unauthorized"
 
+
 class Business(models.Model):
     name = models.CharField(max_length=250)
     address = models.CharField(max_length=250)
@@ -38,17 +39,19 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
+
 class AuthorizedBanks(models.Model):
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, default=AuthStatus.UNAUTH,
                                                choices=[(tag, tag.value) for tag in AuthStatus])
 
-    def  to_dict(self):
+    def to_dict(self):
         return {
-            'id' : self.id,
+            'id': self.id,
             'bank': {'id': self.bank.id, 'name': self.bank.name},
-            'status' : self.status
+            'status': self.status
         }
+
 
 class BusinessEmployee(models.Model):
     name = models.CharField(max_length=250, null=True, blank=True)
@@ -62,12 +65,12 @@ class BusinessEmployee(models.Model):
 
     def to_dict(self):
         return {
-        'id': self.id,
-        'name' : self.name,
-        'title' : self.title,
-        'email' : self.email,
-        'employer' : self.employer.to_dict(),
-        'authorized_banks' : list(map(lambda x: x.to_dict(), self.authorized_banks.all())),
+            'id': self.id,
+            'name': self.name,
+            'title': self.title,
+            'email': self.email,
+            'employer': self.employer.to_dict(),
+            'authorized_banks': list(map(lambda x: x.to_dict(), self.authorized_banks.all())),
         }
 
 
