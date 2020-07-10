@@ -103,7 +103,7 @@ def cr_lcs(request, bank_id):
             #   c. remove it from the list
 
             if not employee_applying.authorized_banks.filter(bank=bank).exists():
-                bank_auth = AuthorizedBanks(bank=bank, status=AuthStatus.REJ)
+                bank_auth = AuthorizedBanks(bank=bank)
                 bank_auth.save()
                 employee_applying.authorized_banks.add(bank_auth)
                 employee_applying.save()
@@ -896,6 +896,19 @@ def check_file_for_boycott(request):
     text = textract.process("/tmp/" + file_name)
     print(text)
     return JsonResponse(list(map(lambda bytes: str(bytes), boycott_language(str(text)))), safe=False)
+
+@csrf_exempt
+def clients_by_bank(request, bank_id):
+    try:
+        Bank.objects.get(id = bank_id)
+    except Bank.DoesNotExist:
+        raise Http404("No bank with that ID")
+    to_return = []
+    for lc in DigitalLC.objects.filter(issuer_id=bank_id):
+        if lc.client.to_dict() not in to_return:
+            to_return.append(lc.client.to_dict())
+    return JsonResponse(to_return, safe=False)
+
 
 
 @csrf_exempt
