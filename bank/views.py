@@ -1,9 +1,12 @@
+from json import JSONDecodeError
+
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.core import serializers
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
 
@@ -343,3 +346,24 @@ def approved_credit(request, bank_id, business_id):
         return HttpResponseBadRequest("There is no approved credit between the bank and the business")
     except json.decoder.JSONDecodeError:
         return HttpResponseBadRequest("The request body is malformed")
+
+
+@csrf_exempt
+def autocomplete(request):
+    if not request.method == "GET":
+        return HttpResponseBadRequest("This endpoint only supports GET")
+    # if not request.user.is_authenticated:
+    #     return HttpResponseForbidden("Must be logged in to search through banks")
+    try:
+        where = request.GET['string']
+        exclude_ids = json.loads(request.GET.get('exclude_ids', '[]'))
+    except MultiValueDictKeyError:
+        return HttpResponseBadRequest("Missing parameter 'string'")
+    except JSONDecodeError:
+        return HttpResponseBadRequest("'exclude_ids' is malformed")
+    exclude = {'id__in': exclude_ids}
+    if BankEmployee.objects.filter(email=request.user.username).exists():
+        bank_employee = BankEmployee.objects.get(email=request.user.username)
+        exclude['name'] = bank_employee.bank.name
+    banks = Bank.objects.filter(name__icontains=where).exclude(**exclude).values('id', 'name')[:10]
+    return JsonResponse(list(banks), safe=False)

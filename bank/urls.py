@@ -124,6 +124,9 @@ urlpatterns = [
     url(r'^(?P<bank_id>[0-9]+)/digital_app/(?P<question_id>[0-9]+)/$', views.ud_digital_app, name='ud_digital_app'),
 
     # /bank/{bank_id}/business/{business_id}/approved_credit
-    url(r'^(?P<bank_id>[0-9]+)/business/(?P<business_id>[0-9]+)/approved_credit/$', views.approved_credit, name='bank_business_approved_credit')
+    url(r'^(?P<bank_id>[0-9]+)/business/(?P<business_id>[0-9]+)/approved_credit/$', views.approved_credit, name='bank_business_approved_credit'),
+
+    # /bank/autocomplete
+    url(r'^autocomplete/$', views.autocomplete, name='autocomplete')
 
 ]

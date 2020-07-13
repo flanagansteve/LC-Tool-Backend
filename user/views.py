@@ -31,7 +31,6 @@ def user_login(request):
                 })
             else:
                 user_employee = BusinessEmployee.objects.get(email=user.username)
-                print(user_employee.employer.to_dict())
                 return JsonResponse({
                     "session_expiry" : request.session.get_expiry_date(),
                     "user_employee" : user_employee.to_dict(),
