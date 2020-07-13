@@ -219,7 +219,7 @@ class TestModels(TestCase):
         client_emp = client.businessemployee_set.create(name="Steve", title="Owner", email="steve@ii.com")
         client_emp.save()
         self.lc.tasked_client_employees.add(client_emp)
-        bank_auth = AuthorizedBanks(bank=issuer, status=AuthStatus.REJ)
+        bank_auth = AuthorizedBanks(bank=issuer)
         bank_auth.save()
         client_emp.authorized_banks.add(bank_auth)
         client_emp.save()

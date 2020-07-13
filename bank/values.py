@@ -226,7 +226,7 @@ default_questions = [
         'section': 'Individual Party Responsibilities'
     },
     {
-        'question_text': 'What is the Expiration Date?',
+        'question_text': 'When should this credit expire?',
         'key': 'expiration_date',
         'type': 'date',
         'required': True,

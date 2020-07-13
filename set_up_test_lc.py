@@ -77,7 +77,7 @@ def create_perfect_lc():
         print(f"Client {client_employee_name} already has authorization with bank {issuer_name}")
     else:
         print(f"Adding authorization for client {client_employee_name} with bank {issuer_name}")
-        bank_auth = AuthorizedBanks(bank=issuer, status=AuthStatus.REJ)
+        bank_auth = AuthorizedBanks(bank=issuer)
         bank_auth.save()
         client_emp.authorized_banks.add(bank_auth)
         client_emp.save()
