@@ -65,12 +65,16 @@ def create_perfect_lc():
         User.objects.create_user(username=bene_employee_email, email=bene_employee_email, password="password")
 
     issuer_name = "Best Bank"
+    issuer_country = "United States"
+    mailing_address = "337 Huntington Avenue Boston, MA"
+    email_contact = "contact@bestbank.com"
+    website = "bountium.org"
     if Bank.objects.filter(name=issuer_name).exists():
         print(f"Bank '{issuer_name}' already exists in the database")
         issuer = Bank.objects.get(name=issuer_name)
     else:
         print(f"Creating bank '{issuer_name}'")
-        issuer = Bank(name=issuer_name)
+        issuer = Bank(name=issuer_name , website = website, country = issuer_country, mailingAddress = mailing_address, emailContact = email_contact)
         issuer.save()
 
     if client_emp.authorized_banks.filter(bank=issuer).exists():
@@ -126,12 +130,16 @@ def create_perfect_lc():
         User.objects.create_user(username=ap_employee_email, email=ap_employee_email, password="password")
 
     advising_bank_name = "Second Best Bank"
+    advisor_country = "United States"
+    advisor_address = "337 Huntington Avenue Boston, MA"
+    advisor_email = "contact@bestbank.com"
+    advisor_website = "bountium.org"
     if Bank.objects.filter(name=advising_bank_name).exists():
         print(f"Bank '{advising_bank_name}' already exists in the database")
         advising_bank = Bank.objects.get(name=advising_bank_name)
     else:
         print(f"Creating bank '{advising_bank_name}'")
-        advising_bank = Bank(name=advising_bank_name)
+        advising_bank = Bank(name=advising_bank_name , website = advisor_website, country = advisor_country, mailingAddress = advisor_address, emailContact = advisor_email)
         advising_bank.save()
 
     populate_application(advising_bank)

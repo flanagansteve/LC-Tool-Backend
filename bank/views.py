@@ -31,7 +31,8 @@ def index(request):
         json_data = json.loads(request.body)
         # 1. create the bank
         try:
-            bank = Bank(name = json_data['new_bank_name'])
+            print(json_data)
+            bank = Bank(name = json_data['new_bank_name'], country = json_data['new_bank_country'], mailingAddress = json_data['new_bank_address'], emailContact = json_data['new_bank_email'], website = json_data['new_bank_website'])
             bank.save()
         except KeyError:
             return HttpResponseBadRequest("Badly formatted json to create a bank. Need a \"new_bank_name\" field")
@@ -210,6 +211,9 @@ def register_upon_invitation(request, bank_id):
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
 
+
+
+
 @csrf_exempt
 # TODO don't let people update their email
 def rud_bank_employee(request, bank_id, employee_id):
@@ -350,6 +354,7 @@ def approved_credit(request, bank_id, business_id):
 
 @csrf_exempt
 def autocomplete(request):
+    print("here")
     if not request.method == "GET":
         return HttpResponseBadRequest("This endpoint only supports GET")
     # if not request.user.is_authenticated:
