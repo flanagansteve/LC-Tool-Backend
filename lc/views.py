@@ -108,14 +108,12 @@ def cr_lcs(request, bank_id):
                 employee_applying.authorized_banks.add(bank_auth)
                 employee_applying.save()
             # Questions 1 and 2
-            applicant_name = json_data.pop('applicant_name', None)
-            applicant_address = json_data.pop('applicant_address', None)
-            json_data.pop('applicant_country', None)
-            if (applicant_name != employee_applying.employer.name
-                    or applicant_address != employee_applying.employer.address):
+            applicant = json_data.pop('applicant')
+            if (applicant['name'] != employee_applying.employer.name
+                    or applicant['address'] != employee_applying.employer.address):
                 return HttpResponseForbidden(
                         "You may only apply for an LC on behalf of your own business. Check the submitted "
-                        "applicant_name and applicant_address for correctness - one or both differed from the "
+                        "applicant name and applicant address for correctness - one or both differed from the "
                         "business name and address associated with this user\'s employer")
             lc = DigitalLC(issuer=bank, client=employee_applying.employer, application_date=datetime.datetime.now().date())
             lc.save()
@@ -1240,9 +1238,10 @@ def sanction_approval(beneficiary_country, applicant_country):
 # we know thats what happened
 def set_lc_specifications(lc, json_data, employee_applying):
     # Questions 3 and 4
-    beneficiary_name = json_data.pop('beneficiary_name', None)
-    beneficiary_address = json_data.pop('beneficiary_address', None)
-    beneficiary_country = json_data.pop('beneficiary_country', None)
+    beneficiary = json_data.pop('beneficiary', None)
+    beneficiary_name = beneficiary.pop('name', None)
+    beneficiary_address = beneficiary.pop('address', None)
+    beneficiary_country = beneficiary.pop('country', None)
     if Business.objects.filter(name=beneficiary_name).exists():
         lc.beneficiary = Business.objects.get(name=beneficiary_name)
     else:

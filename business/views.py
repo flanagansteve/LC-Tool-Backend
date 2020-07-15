@@ -278,9 +278,9 @@ def autocomplete(request):
     if BusinessEmployee.objects.filter(email=request.user.username).exists():
         business_employee = BusinessEmployee.objects.get(email=request.user.username)
         businesses = Business.objects.filter(name__icontains=where).exclude(
-            name=business_employee.employer.name).values('id', 'name', 'address')[:10]
+            name=business_employee.employer.name).values('id', 'name', 'address', 'country')[:10]
     else:
-        businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address')[:10]
+        businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address', 'country')[:10]
     return JsonResponse(list(businesses), safe=False)
 
 @csrf_exempt

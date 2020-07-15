@@ -369,13 +369,10 @@ class DigitalLCTemplate(models.Model):
     # We are not storing foreign keys here as some of the businesses/banks
     # are not on Bountium
 
-    beneficiary_name = models.CharField(max_length=250, blank=True, default='')
+    beneficiary = models.CharField(max_length=1000, blank=True, default='{}')
     purchased_item = models.CharField(max_length=1000, blank=True, default='')
-    beneficiary_address = models.CharField(max_length=250, blank=True, default='')
-    beneficiary_country = models.CharField(max_length = 100, blank=True, default = '')
     advising_bank = models.CharField(max_length=250, blank=True, default='')
     forex_contract_num = models.CharField(max_length=250, blank=True, default='')
-    purchased_item = models.CharField(max_length = 1000, blank = True, default = '')
     hts_code = models.CharField(max_length=15, blank=True, default = '')
     exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     credit_delivery_means = models.CharField(max_length=250, blank=True, default='')

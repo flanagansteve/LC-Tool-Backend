@@ -59,13 +59,13 @@ def index(request):
 
 
 def add_default_questions():
+    LCAppQuestion.objects.all().delete()
     for default_question in default_questions:
-        if LCAppQuestion.objects.filter(key=default_question['key']).exists():
-            LCAppQuestion.objects.get(key=default_question['key']).delete()
         LCAppQuestion.objects.create(**default_question)
 
 
 def populate_application(bank):
+    bank.digital_application.all().delete()
     # try to get the default questions and save them onto the bank
     for default_question in default_questions:
         if not LCAppQuestion.objects.filter(key=default_question['key']).exists():

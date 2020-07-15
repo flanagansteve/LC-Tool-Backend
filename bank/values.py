@@ -1,24 +1,32 @@
 # TODO do we need to ask for shipment date? relevant for the default draft_presentation_date
 default_questions = [
     {
-        'question_text': 'What is your business\'s name?',
-        'key': 'applicant_name',
+        'question_text': 'Please fill out information about your business.',
+        'key': 'applicant',
+        'type': 'object',
+        'required': False,
+        'options': '',
+        'section': 'Parties'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'applicant.name',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is your business\'s street address? (P.O. Box not accepted)',
-        'key': 'applicant_address',
+        'question_text': 'Address',
+        'key': 'applicant.address',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is your business\'s country?',
-        'key': 'applicant_country',
+        'question_text': 'Country',
+        'key': 'applicant.country',
         'type': 'text',
         'required': True,
         'options': '',
@@ -26,24 +34,32 @@ default_questions = [
 
     },
     {
-        'question_text': 'What is the beneficiary (IE, the other party to this transaction)\'s name?',
-        'key': 'beneficiary_name',
+        'question_text': 'Please fill out information about the beneficiary (IE, the other party to this transaction).',
+        'key': 'beneficiary',
+        'type': 'object',
+        'required': False,
+        'options': '',
+        'section': 'Parties'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'beneficiary.name',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is the beneficiary\'s street address? (P.O. Box not accepted)',
-        'key': 'beneficiary_address',
+        'question_text': 'Address',
+        'key': 'beneficiary.address',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is the beneficiary\'s country?',
-        'key': 'beneficiary_country',
+        'question_text': 'Country',
+        'key': 'beneficiary.country',
         'type': 'text',
         'required': True,
         'options': '',
@@ -55,9 +71,9 @@ default_questions = [
                          'beneficiary, your issuing bank, or a bank selected by your issuing bank? Standard options,'
                          'include S.W.I.F.T or Courier but feel free to specify your own below.',
         'key': 'credit_delivery_means',
-        'type': 'text',
+        'type': 'radio',
         'required': True,
-        'options': '',
+        'options': '["Yes", "No"]',
         'section': 'Transaction Details'
     },
     {
