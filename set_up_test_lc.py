@@ -10,7 +10,7 @@ from util import update_ofac
 # You may not like it, but this is what peak trade finance looks like
 def create_perfect_lc():
     print("Updating OFAC SDN database")
-    update_ofac()
+    #update_ofac()
     print("Adding fresh set of default LC questions")
     add_default_questions()
 

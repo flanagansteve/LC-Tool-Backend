@@ -51,13 +51,11 @@ default_questions = [
 
     },
     {
-        'question_text': 'Through what means will you forward the credit for this transaction, to either the '
-                         'beneficiary, your issuing bank, or a bank selected by your issuing bank? Standard options,'
-                         'include S.W.I.F.T or Courier but feel free to specify your own below.',
+        'question_text': 'Through what means will you forward the credit for this transaction, to either the beneficiary, your issuing bank, or a bank selected by your issuing bank?',
         'key': 'credit_delivery_means',
-        'type': 'text',
+        'type': 'multiple_choice_with_other',
         'required': True,
-        'options': '',
+        'options': '["S.W.I.F.T", "Courier"]',
         'section': 'Transaction Details'
     },
     {
@@ -258,9 +256,9 @@ default_questions = [
                          'some number of days after the agreed draft date. Feel free to specify some other '
                          'alternative.',
         'key': 'credit_availability',
-        'type': 'text',
+        'type': 'multiple_choice_with_other',
         'required': True,
-        'options': '',
+        'options': '[]',
         'section': 'Individual Party Responsibilities'
     },
     {

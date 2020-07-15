@@ -1,5 +1,6 @@
 textract
 celery
+fpdf
 asgiref==3.2.3
 boto3==1.12.36
 botocore==1.15.36
