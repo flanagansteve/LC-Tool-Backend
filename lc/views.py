@@ -148,7 +148,19 @@ def rud_lc(request, lc_id):
         if not request.user.is_authenticated:
             return HttpResponseForbidden("Must be logged in to view an LC")
         elif employed_by_main_party_to_lc(lc, request.user.username):
-            return JsonResponse(lc.to_dict())
+            lc_return = lc.to_dict()
+            # filter if it is the client
+            if lc.client.businessemployee_set.filter(email=request.user.username).exists():
+                lc_return['beneficiary']['annual_cashflow'] = None
+                lc_return['beneficiary']['balance_available'] = None
+                lc_return['beneficiary']['approved_credit'] = None
+
+            # filter if it is the beneficiary or advisor
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(email = request.user.username).exists():
+                lc_return['client']['annual_cashflow'] = None
+                lc_return['client']['balance_available'] = None
+                lc_return['client']['approved_credit'] = None
+            return JsonResponse(lc_return)
         else:
             return HttpResponseForbidden(
                     'Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
@@ -549,7 +561,8 @@ def promote_to_child(doc_req):
 def employed_by_main_party_to_lc(lc, username):
     return (lc.issuer.bankemployee_set.filter(email=username).exists()
             or lc.client.businessemployee_set.filter(email=username).exists()
-            or lc.beneficiary.businessemployee_set.filter(email=username).exists())
+            or lc.beneficiary.businessemployee_set.filter(email=username).exists()
+            or lc.advising_bank.bankemployee_set.filter(email = username).exists())
 
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
@@ -1543,3 +1556,21 @@ def set_lc_specifications(lc, json_data, employee_applying):
 
     # 3. save and return back!
     lc.save()
+
+
+# get the LC's of which a bank is the advisor for
+def get_advising(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        raise Http404(f"No bank with id {bank_id} found")
+    if request.method != "GET":
+       return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to see your bank's issued LCs")
+    if not bank.bankemployee_set.filter(email=request.user.username).exists():
+        return HttpResponseForbidden("Must be an employee of the bank to see all the LCs this bank has issued")
+    to_return = []
+    for lc in DigitalLC.objects.filter(advising_bank_id = bank_id):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)

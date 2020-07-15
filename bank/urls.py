@@ -126,7 +126,7 @@ urlpatterns = [
     # /bank/{bank_id}/business/{business_id}/approved_credit
     url(r'^(?P<bank_id>[0-9]+)/business/(?P<business_id>[0-9]+)/approved_credit/$', views.approved_credit, name='bank_business_approved_credit'),
 
-    # /bank/autocomplete
+    # /bank/autocomplete/
     url(r'^autocomplete/$', views.autocomplete, name='autocomplete')
 
 ]
