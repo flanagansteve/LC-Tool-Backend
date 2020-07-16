@@ -177,36 +177,41 @@ def invite_teammate(request, bank_id):
 def register_upon_invitation(request, bank_id):
     if request.method == "POST":
         new_user_data = json.loads(request.body)
-        # 1. First, verify that this user has indeed been invited to the bank
+        # 1. First, verify that this user has indeed been invited to the business
         # they're trying to register into
-        # a. get the bank by bank_id. Check for error
+        # a. get the business by business_id. Check for error
         try:
             bank = Bank.objects.get(id=bank_id)
         except Bank.DoesNotExist:
             raise Http404("There is no bank with id " + bank_id)
         # b. check if there is a bankemployee with email=new_user_data['email'],
         #    and blanks for all other fields. Check for error on either.
-        new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
-        if new_employee is None:
-            raise Http404("There is no invitation for email " + new_user_data['email'])
+        if bank.bankemployee_set.filter(email=new_user_data['email']).exists():
+            new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
+        elif bank.bankemployee_set.count() == 0:
+            new_employee = BankEmployee(email=new_user_data['email'], bank=bank)
+            new_employee.save()
+        else:
+            return HttpResponseBadRequest("There is no invitation for email " + new_user_data['email'])
         if new_employee.name:
-            return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
+            return HttpResponseBadRequest(
+                    "Someone has already used this invitation. Ask whoever administers Bountium at your employer about "
+                    "this.")
         # 2. Register the user account
-        new_user = User.objects.create_user(username=new_user_data['email'],
+        User.objects.create_user(username=new_user_data['email'],
                                  email=new_user_data['email'],
                                  password=new_user_data['password'])
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
         login(request, new_user)
-        # 3. Update the bankemployee with full fields
+        # 3. Update the bankemployee_set with full fields
         bank.bankemployee_set.filter(id=new_employee.id).update(
-            name = new_user_data['name'],
-            title = new_user_data['title'])
+                name=new_user_data['name'],
+                title=new_user_data['title'])
         # 4. return user object w/token
-        now = str(datetime.datetime.now())
         return JsonResponse({
-            "session_expiry" : request.session.get_expiry_date(),
-            "user_employee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
-            "users_employer" : bank.to_dict()
+            "session_expiry": request.session.get_expiry_date(),
+            "user_employee": bank.bankemployee_set.get(email=new_user_data['email']).to_dict(),
+            "users_employer": bank.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
@@ -354,7 +359,6 @@ def approved_credit(request, bank_id, business_id):
 
 @csrf_exempt
 def autocomplete(request):
-    print("here")
     if not request.method == "GET":
         return HttpResponseBadRequest("This endpoint only supports GET")
     # if not request.user.is_authenticated:
@@ -370,5 +374,5 @@ def autocomplete(request):
     if BankEmployee.objects.filter(email=request.user.username).exists():
         bank_employee = BankEmployee.objects.get(email=request.user.username)
         exclude['name'] = bank_employee.bank.name
-    banks = Bank.objects.filter(name__icontains=where).exclude(**exclude).values('id', 'name')[:10]
-    return JsonResponse(list(banks), safe=False)
+    banks = Bank.objects.filter(name__icontains=where).exclude(**exclude)[:10]
+    return JsonResponse(list(map(lambda bank: bank.to_dict(), banks)), safe=False)

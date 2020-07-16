@@ -193,7 +193,7 @@ def register_upon_invitation(request, business_id):
                     "Someone has already used this invitation. Ask whoever administers Bountium at your employer about "
                     "this.")
         # 2. Register the user account
-        new_user = User.objects.create_user(username=new_user_data['email'],
+        User.objects.create_user(username=new_user_data['email'],
                                             email=new_user_data['email'],
                                             password=new_user_data['password'])
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])

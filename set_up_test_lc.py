@@ -27,7 +27,8 @@ def create_perfect_lc():
     client_employee_email = "steve@ii.com"
     if client.businessemployee_set.filter(email=client_employee_email).exists():
         print(
-            f"Business employee {client_employee_name} with email '{client_employee_email}' is already in the database")
+                f"Business employee {client_employee_name} with email '{client_employee_email}' is already in the "
+                f"database")
         client_emp = client.businessemployee_set.get(email=client_employee_email)
     else:
         print(f"Creating business employee {client_name} with email '{client_employee_email}'")
@@ -70,11 +71,17 @@ def create_perfect_lc():
     email_contact = "contact@bestbank.com"
     website = "bountium.org"
     if Bank.objects.filter(name=issuer_name).exists():
-        print(f"Bank '{issuer_name}' already exists in the database")
+        print(f"Bank '{issuer_name}' already exists in the database, updating fields")
         issuer = Bank.objects.get(name=issuer_name)
+        issuer.country = issuer_country
+        issuer.mailing_address = mailing_address
+        issuer.email_contact = email_contact
+        issuer.website = website
+        issuer.save()
     else:
         print(f"Creating bank '{issuer_name}'")
-        issuer = Bank(name=issuer_name , website = website, country = issuer_country, mailingAddress = mailing_address, emailContact = email_contact)
+        issuer = Bank(name=issuer_name, website=website, country=issuer_country, mailingAddress=mailing_address,
+                      emailContact=email_contact)
         issuer.save()
 
     if client_emp.authorized_banks.filter(bank=issuer).exists():
@@ -135,11 +142,17 @@ def create_perfect_lc():
     advisor_email = "contact@bestbank.com"
     advisor_website = "bountium.org"
     if Bank.objects.filter(name=advising_bank_name).exists():
-        print(f"Bank '{advising_bank_name}' already exists in the database")
+        print(f"Bank '{advising_bank_name}' already exists in the database, updating fields")
         advising_bank = Bank.objects.get(name=advising_bank_name)
+        advising_bank.country = advisor_country
+        advising_bank.mailing_address = advisor_address
+        advising_bank.email_contact = advisor_email
+        advising_bank.website = advisor_website
+        advising_bank.save()
     else:
         print(f"Creating bank '{advising_bank_name}'")
-        advising_bank = Bank(name=advising_bank_name , website = advisor_website, country = advisor_country, mailingAddress = advisor_address, emailContact = advisor_email)
+        advising_bank = Bank(name=advising_bank_name, website=advisor_website, country=advisor_country,
+                             mailingAddress=advisor_address, emailContact=advisor_email)
         advising_bank.save()
 
     populate_application(advising_bank)
@@ -202,52 +215,54 @@ def create_perfect_lc():
 
     if DigitalLC.objects.filter(**lc_dict).exists():
         print(
-            f"LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} with "
-            f"{lc_dict['units_purchased']} {lc_dict['unit_of_measure']} of {lc_dict['purchased_item']} is already in "
-            f"the database; no new changes were made to it")
+                f"LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} with "
+                f"{lc_dict['units_purchased']} {lc_dict['unit_of_measure']} of {lc_dict['purchased_item']} is already "
+                f"in "
+                f"the database; no new changes were made to it")
     else:
         print(
-            f"Creating new LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} "
-            f"with {lc_dict['units_purchased']} {lc_dict['unit_of_measure']} of {lc_dict['purchased_item']}")
+                f"Creating new LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} "
+                f"with {lc_dict['units_purchased']} {lc_dict['unit_of_measure']} of {lc_dict['purchased_item']}")
         lc = DigitalLC(**lc_dict)
         lc.save()
 
         if lc.tasked_client_employees.filter(id=client_emp.id).exists():
             print(
-                f"Client employee {client_employee_name} with email '{client_employee_email}' is already tasked to "
-                f"this LC")
+                    f"Client employee {client_employee_name} with email '{client_employee_email}' is already tasked to "
+                    f"this LC")
         else:
             print(f"Tasking client employee {client_employee_name} with email '{client_employee_email}' to this LC")
             lc.tasked_client_employees.add(client_emp)
 
         if lc.tasked_beneficiary_employees.filter(id=bene_emp.id).exists():
             print(
-                f"Beneficiary employee {bene_employee_name} with email '{bene_employee_email}' is already tasked to "
-                f"this LC")
+                    f"Beneficiary employee {bene_employee_name} with email '{bene_employee_email}' is already tasked "
+                    f"to "
+                    f"this LC")
         else:
             print(f"Tasking beneficiary employee {bene_employee_name} with email '{bene_employee_email}' to this LC")
             lc.tasked_beneficiary_employees.add(bene_emp)
 
         if lc.tasked_issuer_employees.filter(id=issuer_emp.id).exists():
             print(
-                f"Issuer employee {issuer_employee_name} with email '{issuer_employee_email}' is already tasked to "
-                f"this LC")
+                    f"Issuer employee {issuer_employee_name} with email '{issuer_employee_email}' is already tasked to "
+                    f"this LC")
         else:
             print(f"Tasking issuer employee {issuer_employee_name} with email '{issuer_employee_email}' to this LC")
             lc.tasked_issuer_employees.add(issuer_emp)
 
         if lc.tasked_account_party_employees.filter(id=ap_emp.id).exists():
             print(
-                f"Account party employee {ap_employee_name} with email '{ap_employee_email}' is already tasked to "
-                f"this LC")
+                    f"Account party employee {ap_employee_name} with email '{ap_employee_email}' is already tasked to "
+                    f"this LC")
         else:
             print(f"Tasking account party employee {ap_employee_name} with email '{ap_employee_email}' to this LC")
             lc.tasked_account_party_employees.add(ap_emp)
 
         if lc.tasked_advising_bank_employees.filter(id=ad_emp.id).exists():
             print(
-                f"Advising bank employee {ad_employee_name} with email '{ad_employee_email}' is already tasked to "
-                f"this LC")
+                    f"Advising bank employee {ad_employee_name} with email '{ad_employee_email}' is already tasked to "
+                    f"this LC")
         else:
             print(f"Tasking advising bank employee {ad_employee_name} with email '{ad_employee_email}' to this LC")
             lc.tasked_advising_bank_employees.add(ad_emp)
@@ -259,9 +274,9 @@ def create_perfect_lc():
             lc.delegated_negotiating_banks.add(issuer)
 
         required_values = (
-              "Version required: Original"
-              + "\nIncoterms to show: " + lc.incoterms_to_show
-              + "\nNamed place of destination: " + lc.named_place_of_destination
+                "Version required: Original"
+                + "\nIncoterms to show: " + lc.incoterms_to_show
+                + "\nNamed place of destination: " + lc.named_place_of_destination
         )
 
         if lc.documentaryrequirement_set.filter(type="commercial_invoice").exists():
@@ -269,11 +284,11 @@ def create_perfect_lc():
         else:
             print("Creating Commercial Invoice for LC")
             test_ci = CommercialInvoiceRequirement(
-                  for_lc=lc,
-                  doc_name="Commercial Invoice",
-                  type="commercial_invoice",
-                  required_values=required_values,
-                  due_date=lc.draft_presentation_date
+                    for_lc=lc,
+                    doc_name="Commercial Invoice",
+                    type="commercial_invoice",
+                    required_values=required_values,
+                    due_date=lc.draft_presentation_date
             )
             test_ci.save()
 
@@ -282,11 +297,11 @@ def create_perfect_lc():
         else:
             print("Creating Multimodal Bill of Lading for LC")
             test_multiomodal_bl = MultimodalTransportDocumentRequirement(
-                  for_lc=lc,
-                  doc_name="Multimodal Bill of Lading",
-                  type="multimodal_bl",
-                  due_date=lc.draft_presentation_date,
-                  required_values="Marked EXW, CPT"
+                    for_lc=lc,
+                    doc_name="Multimodal Bill of Lading",
+                    type="multimodal_bl",
+                    due_date=lc.draft_presentation_date,
+                    required_values="Marked EXW, CPT"
             )
             test_multiomodal_bl.save()
 
@@ -295,9 +310,9 @@ def create_perfect_lc():
         else:
             print("Creating Packing List for LC")
             lc.documentaryrequirement_set.create(
-                  doc_name="Packing List",
-                  required_values="600 Bottles packed, Incoterms are correct, named place is correct.",
-                  due_date="2020-04-21"
+                    doc_name="Packing List",
+                    required_values="600 Bottles packed, Incoterms are correct, named place is correct.",
+                    due_date="2020-04-21"
             )
         lc.save()
         print("Running OFAC check for LC")
@@ -308,7 +323,8 @@ def create_perfect_lc():
         lc.import_license_message = import_license(lc)
         if GoodsInfo.objects.filter(hts_code=lc.hts_code.replace(".", "")[:6]).exists():
             print(
-                f"There is already goods information for HTS code {lc.hts_code} through code {lc.hts_code.replace('.', '')[:6]}")
+                    f"There is already goods information for HTS code {lc.hts_code} through code "
+                    f"{lc.hts_code.replace('.', '')[:6]}")
         else:
             print(f"Running believable price of goods check for HTS code {lc.hts_code}")
             believable_price_of_goods(lc.hts_code, lc.unit_of_measure)

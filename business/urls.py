@@ -71,8 +71,8 @@ urlpatterns = [
     url(r'^autocomplete/$', views.autocomplete, name='autocomplete'),
 
     # /business/{business_id}/{bank_id}/authorized/
-        url(r'^(?P<business_id>[0-9]+)/(?P<bank_id>[0-9]+)/authorized_employees/$', views.authorized_employees, name='authorized_employees'),
+    url(r'^(?P<business_id>[0-9]+)/(?P<bank_id>[0-9]+)/authorized_employees/$', views.authorized_employees, name='authorized_employees'),
 
     # /business/{employee_id}/{bank_id}/{authorization}/
-    url(r'^(?P<employee_id>[0-9]+)/(?P<bank_id>[0-9]+)/(?P<authorization>[\w\-]+)/$', views.changeAuthorization, name = 'changeAuthorization')
+    url(r'^(?P<employee_id>[0-9]+)/(?P<bank_id>[0-9]+)/(?P<authorization>[\w\-]+)/$', views.changeAuthorization, name='changeAuthorization')
 ]
