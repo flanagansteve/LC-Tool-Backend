@@ -1,9 +1,12 @@
+from json import JSONDecodeError
+
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404, HttpResponseForbidden
 from django.core import serializers
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
 
@@ -28,7 +31,8 @@ def index(request):
         json_data = json.loads(request.body)
         # 1. create the bank
         try:
-            bank = Bank(name = json_data['new_bank_name'])
+            print(json_data)
+            bank = Bank(name = json_data['new_bank_name'], country = json_data['new_bank_country'], mailingAddress = json_data['new_bank_address'], emailContact = json_data['new_bank_email'], website = json_data['new_bank_website'])
             bank.save()
         except KeyError:
             return HttpResponseBadRequest("Badly formatted json to create a bank. Need a \"new_bank_name\" field")
@@ -56,13 +60,13 @@ def index(request):
 
 
 def add_default_questions():
+    LCAppQuestion.objects.all().delete()
     for default_question in default_questions:
-        if LCAppQuestion.objects.filter(key=default_question['key']).exists():
-            LCAppQuestion.objects.get(key=default_question['key']).delete()
         LCAppQuestion.objects.create(**default_question)
 
 
 def populate_application(bank):
+    bank.digital_application.all().delete()
     # try to get the default questions and save them onto the bank
     for default_question in default_questions:
         if not LCAppQuestion.objects.filter(key=default_question['key']).exists():
@@ -173,39 +177,47 @@ def invite_teammate(request, bank_id):
 def register_upon_invitation(request, bank_id):
     if request.method == "POST":
         new_user_data = json.loads(request.body)
-        # 1. First, verify that this user has indeed been invited to the bank
+        # 1. First, verify that this user has indeed been invited to the business
         # they're trying to register into
-        # a. get the bank by bank_id. Check for error
+        # a. get the business by business_id. Check for error
         try:
             bank = Bank.objects.get(id=bank_id)
         except Bank.DoesNotExist:
             raise Http404("There is no bank with id " + bank_id)
         # b. check if there is a bankemployee with email=new_user_data['email'],
         #    and blanks for all other fields. Check for error on either.
-        new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
-        if new_employee is None:
-            raise Http404("There is no invitation for email " + new_user_data['email'])
+        if bank.bankemployee_set.filter(email=new_user_data['email']).exists():
+            new_employee = bank.bankemployee_set.get(email=new_user_data['email'])
+        elif bank.bankemployee_set.count() == 0:
+            new_employee = BankEmployee(email=new_user_data['email'], bank=bank)
+            new_employee.save()
+        else:
+            return HttpResponseBadRequest("There is no invitation for email " + new_user_data['email'])
         if new_employee.name:
-            return HttpResponse("Someone has already used this invitation. Ask whoever administers Bountium at your employer about this.", status=401)
+            return HttpResponseBadRequest(
+                    "Someone has already used this invitation. Ask whoever administers Bountium at your employer about "
+                    "this.")
         # 2. Register the user account
-        new_user = User.objects.create_user(username=new_user_data['email'],
+        User.objects.create_user(username=new_user_data['email'],
                                  email=new_user_data['email'],
                                  password=new_user_data['password'])
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
         login(request, new_user)
-        # 3. Update the bankemployee with full fields
+        # 3. Update the bankemployee_set with full fields
         bank.bankemployee_set.filter(id=new_employee.id).update(
-            name = new_user_data['name'],
-            title = new_user_data['title'])
+                name=new_user_data['name'],
+                title=new_user_data['title'])
         # 4. return user object w/token
-        now = str(datetime.datetime.now())
         return JsonResponse({
-            "session_expiry" : request.session.get_expiry_date(),
-            "user_employee" : model_to_dict(bank.bankemployee_set.get(email=new_user_data['email'])),
-            "users_employer" : bank.to_dict()
+            "session_expiry": request.session.get_expiry_date(),
+            "user_employee": bank.bankemployee_set.get(email=new_user_data['email']).to_dict(),
+            "users_employer": bank.to_dict()
         })
     else:
         return HttpResponseBadRequest("This endpoint only accepts POST requests")
+
+
+
 
 @csrf_exempt
 # TODO don't let people update their email
@@ -343,3 +355,24 @@ def approved_credit(request, bank_id, business_id):
         return HttpResponseBadRequest("There is no approved credit between the bank and the business")
     except json.decoder.JSONDecodeError:
         return HttpResponseBadRequest("The request body is malformed")
+
+
+@csrf_exempt
+def autocomplete(request):
+    if not request.method == "GET":
+        return HttpResponseBadRequest("This endpoint only supports GET")
+    # if not request.user.is_authenticated:
+    #     return HttpResponseForbidden("Must be logged in to search through banks")
+    try:
+        where = request.GET['string']
+        exclude_ids = json.loads(request.GET.get('exclude_ids', '[]'))
+    except MultiValueDictKeyError:
+        return HttpResponseBadRequest("Missing parameter 'string'")
+    except JSONDecodeError:
+        return HttpResponseBadRequest("'exclude_ids' is malformed")
+    exclude = {'id__in': exclude_ids}
+    if BankEmployee.objects.filter(email=request.user.username).exists():
+        bank_employee = BankEmployee.objects.get(email=request.user.username)
+        exclude['name'] = bank_employee.bank.name
+    banks = Bank.objects.filter(name__icontains=where).exclude(**exclude)[:10]
+    return JsonResponse(list(map(lambda bank: bank.to_dict(), banks)), safe=False)
