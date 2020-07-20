@@ -16,8 +16,8 @@ from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
+from business.models import ApprovedCredit, AuthorizedBanks
 from lc.forms import BankInitiatedLC
-from business.models import ApprovedCredit, AuthorizedBanks, AuthStatus
 from util import update_django_instance_with_subset_json
 from .models import *
 from .values import commercial_invoice_form, multimodal_bl_form, import_permits
@@ -103,21 +103,20 @@ def cr_lcs(request, bank_id):
             #   c. remove it from the list
 
             if not employee_applying.authorized_banks.filter(bank=bank).exists():
-                bank_auth = AuthorizedBanks(bank=bank, status=AuthStatus.REJ)
+                bank_auth = AuthorizedBanks(bank=bank)
                 bank_auth.save()
                 employee_applying.authorized_banks.add(bank_auth)
                 employee_applying.save()
             # Questions 1 and 2
-            applicant_name = json_data.pop('applicant_name', None)
-            applicant_address = json_data.pop('applicant_address', None)
-            json_data.pop('applicant_country', None)
-            if (applicant_name != employee_applying.employer.name
-                    or applicant_address != employee_applying.employer.address):
+            applicant = json_data.pop('applicant')
+            if (applicant['name'] != employee_applying.employer.name
+                    or applicant['address'] != employee_applying.employer.address):
                 return HttpResponseForbidden(
                         "You may only apply for an LC on behalf of your own business. Check the submitted "
-                        "applicant_name and applicant_address for correctness - one or both differed from the "
+                        "applicant name and applicant address for correctness - one or both differed from the "
                         "business name and address associated with this user\'s employer")
-            lc = DigitalLC(issuer=bank, client=employee_applying.employer, application_date=datetime.datetime.now().date())
+            lc = DigitalLC(issuer=bank, client=employee_applying.employer,
+                           application_date=datetime.datetime.now().date())
             lc.save()
             lc.tasked_client_employees.add(employee_applying)
 
@@ -150,7 +149,21 @@ def rud_lc(request, lc_id):
         if not request.user.is_authenticated:
             return HttpResponseForbidden("Must be logged in to view an LC")
         elif employed_by_main_party_to_lc(lc, request.user.username):
-            return JsonResponse(lc.to_dict())
+            lc_return = lc.to_dict()
+            # filter if it is the client
+            if lc.client.businessemployee_set.filter(email=request.user.username).exists():
+                lc_return['beneficiary']['annual_cashflow'] = None
+                lc_return['beneficiary']['balance_available'] = None
+                lc_return['beneficiary']['approved_credit'] = None
+
+            # filter if it is the beneficiary or advisor
+            elif lc.beneficiary.businessemployee_set.filter(
+                    email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(
+                    email=request.user.username).exists():
+                lc_return['client']['annual_cashflow'] = None
+                lc_return['client']['balance_available'] = None
+                lc_return['client']['approved_credit'] = None
+            return JsonResponse(lc_return)
         else:
             return HttpResponseForbidden(
                     'Only an employee of the issuer, the applicant, or the beneficiary to the LC may view it')
@@ -298,7 +311,7 @@ def get_lcs_by(business_id, filter_type):
         raise Http404("No business with that id")
     to_return = []
     filtered_lcs = DigitalLC.objects.filter(
-        beneficiary=business) if filter_type == "beneficiary" else DigitalLC.objects.filter(client=business)
+            beneficiary=business) if filter_type == "beneficiary" else DigitalLC.objects.filter(client=business)
     for lc in filtered_lcs:
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
@@ -551,7 +564,8 @@ def promote_to_child(doc_req):
 def employed_by_main_party_to_lc(lc, username):
     return (lc.issuer.bankemployee_set.filter(email=username).exists()
             or lc.client.businessemployee_set.filter(email=username).exists()
-            or lc.beneficiary.businessemployee_set.filter(email=username).exists())
+            or lc.beneficiary.businessemployee_set.filter(email=username).exists()
+            or lc.advising_bank.bankemployee_set.filter(email=username).exists())
 
 
 # TODO should we let clients evaluate doc reqs to or just the issuer?
@@ -772,6 +786,8 @@ def digital_app_templates(request):
                 user = BusinessEmployee.objects.get(email=request.user.username)
                 where = {k: v for k, v in request.GET.items()}
                 where['user'] = user
+                if 'beneficiary_name' in where:
+                    where['beneficiary__contains'] = where.pop('beneficiary_name')
                 templates = DigitalLCTemplate.objects.filter(**where).values('id', 'template_name')
                 return JsonResponse(list(templates), safe=False)
             except BusinessEmployee.DoesNotExist:
@@ -896,6 +912,19 @@ def check_file_for_boycott(request):
     text = textract.process("/tmp/" + file_name)
     print(text)
     return JsonResponse(list(map(lambda bytes: str(bytes), boycott_language(str(text)))), safe=False)
+
+
+@csrf_exempt
+def clients_by_bank(request, bank_id):
+    try:
+        Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        raise Http404("No bank with that ID")
+    to_return = []
+    for lc in DigitalLC.objects.filter(issuer_id=bank_id):
+        if lc.client.to_dict() not in to_return:
+            to_return.append(lc.client.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 
 @csrf_exempt
@@ -1227,9 +1256,10 @@ def sanction_approval(beneficiary_country, applicant_country):
 # we know thats what happened
 def set_lc_specifications(lc, json_data, employee_applying):
     # Questions 3 and 4
-    beneficiary_name = json_data.pop('beneficiary_name', None)
-    beneficiary_address = json_data.pop('beneficiary_address', None)
-    beneficiary_country = json_data.pop('beneficiary_country', None)
+    beneficiary = json_data.pop('beneficiary', None)
+    beneficiary_name = beneficiary.pop('name', None)
+    beneficiary_address = beneficiary.pop('address', None)
+    beneficiary_country = beneficiary.pop('country', None)
     if Business.objects.filter(name=beneficiary_name).exists():
         lc.beneficiary = Business.objects.get(name=beneficiary_name)
     else:
@@ -1244,7 +1274,7 @@ def set_lc_specifications(lc, json_data, employee_applying):
                                                   "requirements and request payment on Bountium. "
                                                   "\nInstructions for beneficiary: 1. Set your business up "
                                                   "at https://bountium.org/business/register/" +
-                str(lc.beneficiary.id) + ". 2. Navigate to you home page to see the newly created LC.",
+                str(lc.beneficiary.id) + ". 2. Navigate to your home page to see the newly created LC.",
                 "steve@bountium.org",
                 [employee_applying.email],
                 fail_silently=False,
@@ -1282,39 +1312,40 @@ def set_lc_specifications(lc, json_data, employee_applying):
                     [list(lc.tasked_client_employees.all())[0].email],
                     fail_silently=False,
             )
-            pass
 
     # Question 13
-    if 'advising_bank' in json_data:
-        bank_name = json_data.pop('advising_bank', None)
-        if Bank.objects.filter(name=bank_name).exists():
-            lc.advising_bank = Bank.objects.get(name=bank_name)
+    advising_bank = json_data.pop('advising_bank', None)
+    if advising_bank is not None and advising_bank.get('name', None) is not None and len(advising_bank['name']) > 0:
+        if Bank.objects.filter(name=advising_bank['name']).exists():
+            lc.advising_bank = Bank.objects.get(name=advising_bank['name'])
         else:
-            # TODO this breaks for lcs where issuer empl has not yet been assigned
-            """send_mail(
-                lc.issuer.name + " has created an LC to work with you on Bountium",
-                lc.issuer.name + ": Forward these instructions to a contact at the advising bank, so that they can
-                view the LC on Bountium. \nInstructions for advising bank: 1. Set your bank up at
-                https://app.bountium.org/bank/register, 2. Claim your advising bank status at
-                https://app.bountium.org/bank/claimAdvising/" + str(lc.id) + "/",
-                "steve@bountium.org",
-                [list(lc.tasked_issuer_employees.all())[0]],
-                fail_silently=False,
-            )"""
-            pass
+            lc.advising_bank = Bank(name=advising_bank['name'], mailing_address=advising_bank['address'],
+                                    country=advising_bank['country'], email_contact=advising_bank['email'])
+            lc.advising_bank.save()
+            send_mail(
+                    lc.issuer.name + " has created an LC to work with you on Bountium",
+                    f"Instructions for advising bank: 1. Set your bank "
+                    f"up at https://app.bountium.org/bank/register/{lc.advising_bank.id}/\n2. Navigate to your home "
+                    f"page to view the newly created LC.",
+                    "steve@bountium.org",
+                    [advising_bank['email']],
+                    fail_silently=False,
+            )
 
     # Question 14
     lc.forex_contract_num = json_data.pop('forex_contract_num', None)
 
     # Question 15-20
     exchange_rate_tolerance = json_data.pop('exchange_rate_tolerance', None)
-    lc.exchange_rate_tolerance = exchange_rate_tolerance if exchange_rate_tolerance is None else decimal.Decimal(exchange_rate_tolerance)
+    lc.exchange_rate_tolerance = exchange_rate_tolerance if exchange_rate_tolerance is None else decimal.Decimal(
+            exchange_rate_tolerance)
     lc.purchased_item = json_data.pop('purchased_item', None)
     lc.unit_of_measure = json_data.pop('unit_of_measure', None)
     units_purchased = json_data.pop('units_purchased', None)
     lc.units_purchased = units_purchased if units_purchased is None else decimal.Decimal(units_purchased)
     unit_error_tolerance = json_data.pop('unit_error_tolerance', None)
-    lc.unit_error_tolerance = unit_error_tolerance if unit_error_tolerance is None else decimal.Decimal(unit_error_tolerance)
+    lc.unit_error_tolerance = unit_error_tolerance if unit_error_tolerance is None else decimal.Decimal(
+            unit_error_tolerance)
     lc.confirmation_means = json_data.pop('confirmation_means', None)
     lc.hts_code = json_data.pop('hts_code', None)
     import_license(lc)
@@ -1349,7 +1380,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
 
     # Question 25
     drafts_invoice_value = json_data.pop('drafts_invoice_value', None)
-    lc.drafts_invoice_value = drafts_invoice_value if drafts_invoice_value is None else decimal.Decimal(drafts_invoice_value)
+    lc.drafts_invoice_value = drafts_invoice_value if drafts_invoice_value is None else decimal.Decimal(
+            drafts_invoice_value)
 
     # Question 26
     lc.credit_availability = json_data.pop('credit_availability', None)
@@ -1531,3 +1563,21 @@ def set_lc_specifications(lc, json_data, employee_applying):
 
     # 3. save and return back!
     lc.save()
+
+
+# get the LC's of which a bank is the advisor for
+def get_advising(request, bank_id):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        raise Http404(f"No bank with id {bank_id} found")
+    if request.method != "GET":
+        return HttpResponseBadRequest("This endpoint only supports GET, POST, PUT, DELETE")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to see your bank's issued LCs")
+    if not bank.bankemployee_set.filter(email=request.user.username).exists():
+        return HttpResponseForbidden("Must be an employee of the bank to see all the LCs this bank has issued")
+    to_return = []
+    for lc in DigitalLC.objects.filter(advising_bank_id=bank_id):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)

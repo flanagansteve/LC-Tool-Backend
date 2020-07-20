@@ -1,6 +1,5 @@
-from enum import Enum
-
 from django.db import models
+from enum import Enum
 
 # A business working with LCs
 # - could be an LC-seeking-business
@@ -10,9 +9,8 @@ from bank.models import Bank
 
 
 class AuthStatus(str, Enum):
-    ACC: str = "accepted"
-    REJ: str = "rejected"
-    REQ: str = "requested"
+    AUTH: str = "Authorized"
+    UNAUTH: str = "Unauthorized"
 
 
 class Business(models.Model):
@@ -44,8 +42,8 @@ class Business(models.Model):
 
 class AuthorizedBanks(models.Model):
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, default=AuthStatus.REJ,
-                              choices=[(tag, tag.value) for tag in AuthStatus])
+    status = models.CharField(max_length=20, default=AuthStatus.UNAUTH,
+                                               choices=[(tag, tag.value) for tag in AuthStatus])
 
     def to_dict(self):
         return {

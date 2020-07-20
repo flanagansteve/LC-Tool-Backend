@@ -1,24 +1,32 @@
 # TODO do we need to ask for shipment date? relevant for the default draft_presentation_date
 default_questions = [
     {
-        'question_text': 'What is your business\'s name?',
-        'key': 'applicant_name',
+        'question_text': 'Please fill out information about your business.',
+        'key': 'applicant',
+        'type': 'object',
+        'required': False,
+        'options': '',
+        'section': 'Parties'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'applicant.name',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is your business\'s street address? (P.O. Box not accepted)',
-        'key': 'applicant_address',
+        'question_text': 'Address',
+        'key': 'applicant.address',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is your business\'s country?',
-        'key': 'applicant_country',
+        'question_text': 'Country',
+        'key': 'applicant.country',
         'type': 'text',
         'required': True,
         'options': '',
@@ -26,24 +34,32 @@ default_questions = [
 
     },
     {
-        'question_text': 'What is the beneficiary (IE, the other party to this transaction)\'s name?',
-        'key': 'beneficiary_name',
+        'question_text': 'Please fill out information about the beneficiary (IE, the other party to this transaction).',
+        'key': 'beneficiary',
+        'type': 'object',
+        'required': False,
+        'options': '',
+        'section': 'Parties'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'beneficiary.name',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is the beneficiary\'s street address? (P.O. Box not accepted)',
-        'key': 'beneficiary_address',
+        'question_text': 'Address',
+        'key': 'beneficiary.address',
         'type': 'text',
         'required': True,
         'options': '',
         'section': 'Parties'
     },
     {
-        'question_text': 'What is the beneficiary\'s country?',
-        'key': 'beneficiary_country',
+        'question_text': 'Country',
+        'key': 'beneficiary.country',
         'type': 'text',
         'required': True,
         'options': '',
@@ -126,14 +142,47 @@ default_questions = [
         'disabled': '{"key": "account_party", "answer": [null, false]}'
     },
     {
-        'question_text': 'If the beneficiary specified an Advising Bank, who is the Advising Bank? If not, '
-                         'the bank issuing this LC will serve as one or select one. You may also specify None to '
-                         'indicate a specific desire against having one.',
+        'question_text': 'Please fill out information about the Advising Bank (optional).',
         'key': 'advising_bank',
+        'type': 'object',
+        'required': False,
+        'options': '',
+        'section': 'Parties'
+    },
+    {
+        'question_text': 'Name',
+        'key': 'advising_bank.name',
         'type': 'text',
         'required': False,
         'options': '',
         'section': 'Parties'
+    },
+    {
+        'question_text': 'Address',
+        'key': 'advising_bank.address',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties',
+        'disabled': '{"key": "name", "answer": [null, ""]}'
+    },
+    {
+        'question_text': 'Country',
+        'key': 'advising_bank.country',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties',
+        'disabled': '{"key": "name", "answer": [null, ""]}'
+    },
+    {
+        'question_text': 'Email Contact',
+        'key': 'advising_bank.email',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Parties',
+        'disabled': '{"key": "name", "answer": [null, ""]}'
     },
     {
         'question_text': 'If you and your beneficiary established a Foreign Exchange Contract, what is the Foreign '

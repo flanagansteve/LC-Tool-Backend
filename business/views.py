@@ -4,14 +4,16 @@ import json
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
-from django.forms.models import model_to_dict
 from django.http import JsonResponse, HttpResponseBadRequest, \
     Http404, HttpResponseForbidden
 from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 
+
 from util import update_django_instance_with_subset_json
 from .models import Business, BusinessEmployee
+from bank.models import Bank
+from .models import AuthStatus, AuthorizedBanks
 
 
 # 1. GET all the businesses
@@ -32,15 +34,15 @@ def index(request):
             business.save()
         except KeyError:
             return HttpResponseBadRequest(
-                  "Badly formatted json to create a business. Need a \"new_business_name\" field")
+                    "Badly formatted json to create a business. Need a \"new_business_name\" field")
         # 2. create the first employee (must be sent as well)
         try:
             business.businessemployee_set.create(name=json_data['name'], title=json_data['title'],
                                                  email=json_data['email'])
         except KeyError:
             return HttpResponseBadRequest(
-                  "Badly formatted json to create a business. Need the parameters of the business's first employee - "
-                  "\"email\", \"name\", and \"title\" fields")
+                    "Badly formatted json to create a business. Need the parameters of the business's first employee - "
+                    "\"email\", \"name\", and \"title\" fields")
         # 3. create a User for this first employee, and log them in
         first_user = User.objects.create_user(username=json_data['email'],
                                               email=json_data['email'],
@@ -111,7 +113,7 @@ def invite_teammate(request, business_id):
                 invitee_email = json_data['invitee_email']
             except KeyError:
                 return HttpResponseBadRequest(
-                      "You must send a request with a JSON object body, with an \"invitee_email\" field")
+                        "You must send a request with a JSON object body, with an \"invitee_email\" field")
             try:
                 invitee = business.businessemployee_set.get(email=invitee_email)
                 # 2. if so - have they registered?
@@ -122,15 +124,15 @@ def invite_teammate(request, business_id):
                     # 2c. if they have not - re-invite, then return status:reinvited [now]
                     # TODO confirm with ryan that this is the registration link / that we don't need to embed url
                     #  params:
-                    link = "https://app.bountium.org/business/register"
+                    link = "https://app.bountium.org/business/register/" + str(business_id)
                     send_mail(
-                          business.businessemployee_set.get(
-                                email=request.user.username).name + " has re-invited you to join their team on "
-                                                                    "Bountium",
-                          "Register at " + link,
-                          'steve@bountium.org',
-                          [invitee_email],
-                          fail_silently=False,
+                            business.businessemployee_set.get(
+                                    email=request.user.username).name + " has re-invited you to join their team on "
+                                                                        "Bountium",
+                            "Register at " + link,
+                            'steve@bountium.org',
+                            [invitee_email],
+                            fail_silently=False,
                     )
                     now = str(datetime.datetime.now())
                     response["status"] = "re-invited on " + now
@@ -138,14 +140,14 @@ def invite_teammate(request, business_id):
             except BusinessEmployee.DoesNotExist:
                 # 2. create the user and mail an invite
                 # TODO confirm with ryan that this is the registration link / that we don't need to embed url params:
-                link = "https://app.bountium.org/business/register"
+                link = "https://app.bountium.org/business/register/" + str(business_id)
                 send_mail(
-                      business.businessemployee_set.get(
-                            email=request.user.username).name + " has invited you to join their team on Bountium!",
-                      "Register at " + link,
-                      'steve@bountium.org',
-                      [invitee_email],
-                      fail_silently=False,
+                        business.businessemployee_set.get(
+                                email=request.user.username).name + " has invited you to join their team on Bountium!",
+                        "Register at " + link,
+                        'steve@bountium.org',
+                        [invitee_email],
+                        fail_silently=False,
                 )
                 # 3. save them and return status:invited [now]
                 business.businessemployee_set.create(email=invitee_email)
@@ -188,18 +190,18 @@ def register_upon_invitation(request, business_id):
             return HttpResponseBadRequest("There is no invitation for email " + new_user_data['email'])
         if new_employee.name:
             return HttpResponseBadRequest(
-                  "Someone has already used this invitation. Ask whoever administers Bountium at your employer about "
-                  "this.")
+                    "Someone has already used this invitation. Ask whoever administers Bountium at your employer about "
+                    "this.")
         # 2. Register the user account
-        new_user = User.objects.create_user(username=new_user_data['email'],
+        User.objects.create_user(username=new_user_data['email'],
                                             email=new_user_data['email'],
                                             password=new_user_data['password'])
         new_user = authenticate(username=new_user_data['email'], password=new_user_data['password'])
         login(request, new_user)
         # 3. Update the businessemployee_set with full fields
         business.businessemployee_set.filter(id=new_employee.id).update(
-              name=new_user_data['name'],
-              title=new_user_data['title'])
+                name=new_user_data['name'],
+                title=new_user_data['title'])
         # 4. return user object w/token
         return JsonResponse({
             "session_expiry": request.session.get_expiry_date(),
@@ -228,8 +230,8 @@ def rud_business_employee(request, business_id, employee_id):
                 business_employee = business.businessemployee_set.get(id=employee_id)
                 if request.user.username != business_employee.email:
                     return HttpResponseForbidden(
-                          "You may only delete your own account. Ask the user with email " + business_employee.email
-                          + " to delete their account if need be.")
+                            "You may only delete your own account. Ask the user with email " + business_employee.email
+                            + " to delete their account if need be.")
                 else:
                     business_employee.delete()
                     return JsonResponse({
@@ -247,8 +249,8 @@ def rud_business_employee(request, business_id, employee_id):
                 business_employee = business.businessemployee_set.get(id=employee_id)
                 if request.user.username != business_employee.email:
                     return HttpResponseForbidden(
-                          "You may only update your own account. Ask the user with email " + business_employee.email
-                          + " to update their account if need be.")
+                            "You may only update your own account. Ask the user with email " + business_employee.email
+                            + " to update their account if need be.")
                 update_django_instance_with_subset_json(json_data, business_employee)
                 business_employee.save()
             except BusinessEmployee.DoesNotExist:
@@ -273,5 +275,80 @@ def autocomplete(request):
         where = request.GET['string']
     except MultiValueDictKeyError:
         return HttpResponseBadRequest("Missing parameter 'string'")
-    businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address')[:10]
+    if BusinessEmployee.objects.filter(email=request.user.username).exists():
+        business_employee = BusinessEmployee.objects.get(email=request.user.username)
+        businesses = Business.objects.filter(name__icontains=where).exclude(
+            name=business_employee.employer.name).values('id', 'name', 'address', 'country')[:10]
+    else:
+        businesses = Business.objects.filter(name__icontains=where).values('id', 'name', 'address', 'country')[:10]
     return JsonResponse(list(businesses), safe=False)
+
+@csrf_exempt
+def authorized_employees(request, business_id, bank_id):
+    try:
+        bank = Bank.objects.get(id = bank_id)
+    except:
+        return HttpResponseBadRequest("no Bank with this ID")
+    try:
+        business = Business.objects.get(id = business_id)
+    except:
+        return HttpResponseBadRequest("no Business with that ID")
+    business_employees = BusinessEmployee.objects.filter(employer_id = business_id)
+    bank = Bank.objects.get(id = bank_id)
+    to_return = []
+    for employee in business_employees:
+        dict = {}
+        dict['employee'] = employee.to_dict()
+        for item in employee.authorized_banks.all():
+            itemBank = getattr(item, 'bank')
+            if itemBank.id == bank.id:
+                dict['authorized'] = item.status
+        # check if it didn't find the bank affiliation w employee? even though it should
+        dict['authorized'] = ''
+        to_return.append(dict)
+    return JsonResponse(to_return, safe=False)
+
+@csrf_exempt
+def changeAuthorization(request, employee_id, bank_id, authorization):
+    if not request.method == "PUT":
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+    try:
+        bank = Bank.objects.get(id = bank_id)
+    except:
+        return HttpResponseBadRequest("no Bank with this ID")
+    try:
+        employee = BusinessEmployee.objects.get(id = employee_id)
+
+    except:
+        return HttpResponseBadRequest("no Employee with this ID")
+
+    employee = BusinessEmployee.objects.get(id = employee_id)
+    auth_banks = employee.authorized_banks.all()
+    bank_id = int(bank_id)
+    # if the employee already has auth for that bank
+    for item in auth_banks:
+        itemBank = getattr(item, 'bank')
+        if itemBank.id == bank_id:
+            setattr(item, 'status', authorization)
+            item.save()
+            return JsonResponse({'authStatus' : authorization})
+
+    # if the employee does not have auth for that bank
+    bank = Bank.objects.get(id = bank_id)
+    bankAuth = AuthorizedBanks(bank = bank, status = authorization)
+    bankAuth.save()
+    employee.authorized_banks.add(bankAuth)
+    employee.save()
+    return JsonResponse({'authStatus' : authorization})
+
+
+
+
+
+
+
+
+
+
+
+

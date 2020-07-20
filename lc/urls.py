@@ -243,6 +243,9 @@ urlpatterns = [
     # /lc/by_bank/{bank_id}/
     url(r'^by_bank/(?P<bank_id>[0-9]+)/$', views.cr_lcs, name='cr_lcs'),
 
+    # /lc/by_bank_advisor/{bank_id}/
+    url(r'^by_bank_advisor/(?P<bank_id>[0-9]+)/$', views.get_advising, name='get_advising'),
+
     # /lc/by_bank/{bank_id}/{filter}
     url(r'^by_bank/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs, name='get_filtered_lcs'),
 
@@ -293,6 +296,9 @@ urlpatterns = [
     url(r'^check_text_for_boycott/$', views.check_text_for_boycott, name='check_text_for_boycott'),
 
     # /lc/check_file_for_boycott
-    url(r'^check_file_for_boycott/$', views.check_file_for_boycott, name='check_file_for_boycott')
+    url(r'^check_file_for_boycott/$', views.check_file_for_boycott, name='check_file_for_boycott'),
+
+    # /lc/clients_by_bank/{bank_id}
+    url(r'^clients_by_bank/(?P<bank_id>[0-9]+)/$', views.clients_by_bank, name='clients_by_bank')
 
 ]

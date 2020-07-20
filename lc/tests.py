@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -39,6 +40,28 @@ def clean_lc_dict(value, key=None):
         for list_index, list_value in enumerate(value):
             value[list_index] = clean_lc_dict(value=list_value)
     return value
+
+
+def mocked_requests_get(*args, **kwargs):
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            self.json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self.json_data
+
+    if "https://comtrade.un.org/api/get?max=500&type=C&freq=A&px=HS&ps=now&r=all&p=0&rg=1%2C2&cc=" in args[0]:
+        response_arr = []
+        for x in range(50):
+            response_arr.append({
+                'qtCode': 7,
+                'TradeValue': 5,
+                'TradeQuantity': 10
+            })
+        return MockResponse({'dataset': response_arr}, 200)
+
+    return MockResponse(None, 404)
 
 
 class TestCrLcs(TestCase):
@@ -105,12 +128,16 @@ class TestCrLcs(TestCase):
     def test_post_business_minimum(self):
         self.client.login(username="emp@client.com", password='emp')
         lc_input = {
-            'applicant_name': "client",
-            'applicant_address': "10 Test Rd",
-            'applicant_country': "United States",
-            'beneficiary_name': "newBene",
-            'beneficiary_address': "newBeneAddress",
-            'beneficiary_country': "United States",
+            'applicant': {
+              'name': "client",
+              'address': "10 Test Rd",
+              'country': "United States"
+            },
+            'beneficiary': {
+                'name': "newBene",
+                'address': "newBeneAddress",
+                'country': "United States"
+            },
             'credit_delivery_means': "SWIFT",
             'credit_amt_verbal': "One Thousand",
             'credit_amt': 1000,
@@ -151,7 +178,8 @@ class TestCrLcs(TestCase):
 
 
 class TestModels(TestCase):
-    def setUp(self):
+    @mock.patch('lc.views.requests.get', side_effect=mocked_requests_get)
+    def setUp(self, mocked):
         self.maxDiff = None
         self.sdn = SpeciallyDesignatedNational(name="testSDN", cleansed_name="testSDN", type="individual")
         self.sdn.save()
@@ -219,7 +247,7 @@ class TestModels(TestCase):
         client_emp = client.businessemployee_set.create(name="Steve", title="Owner", email="steve@ii.com")
         client_emp.save()
         self.lc.tasked_client_employees.add(client_emp)
-        bank_auth = AuthorizedBanks(bank=issuer, status=AuthStatus.REJ)
+        bank_auth = AuthorizedBanks(bank=issuer)
         bank_auth.save()
         client_emp.authorized_banks.add(bank_auth)
         client_emp.save()
@@ -508,8 +536,8 @@ class TestModels(TestCase):
                        'goods_info': {'created_date': datetime.datetime.now().date(),
                                       'hts_code': '220410',
                                       'id': GoodsInfo.objects.get(hts_code='220410').id,
-                                      'mean': Decimal('1581.60'),
-                                      'standard_deviation': Decimal('14353.07')},
+                                      'mean': Decimal('2.00'),
+                                      'standard_deviation': Decimal('0.00')},
                        'hts_code': '2204.10.11',
                        'id': self.lc.id,
                        'import_license_approval': Status.INC,

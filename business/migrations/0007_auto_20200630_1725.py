@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('bank', models.CharField(blank=True, max_length=250, null=True)),
-                ('status', models.CharField(choices=[(business.models.AuthStatus['ACC'], 'accepted'), (business.models.AuthStatus['REJ'], 'rejected'), (business.models.AuthStatus['REQ'], 'requested')], default=business.models.AuthStatus['REJ'], max_length=10)),
+                ('status', models.CharField(choices=[(business.models.AuthStatus['AUTH'], 'Authorized'), (business.models.AuthStatus['UNAUTH'], 'Unauthorized')], default=business.models.AuthStatus['UNAUTH'], max_length=10)),
             ],
         ),
         migrations.AddField(

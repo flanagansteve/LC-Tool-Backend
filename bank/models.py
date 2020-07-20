@@ -1,5 +1,7 @@
 from django.db import models
 from django.forms.models import model_to_dict
+from enum import Enum
+
 
 # TODO should we reflect article 36, that a bank might interrupt business due
 #  to acts of god / war / etc and fail to honour credits that expire in the
@@ -29,9 +31,20 @@ def pdf_app_path(bank, filename):
     return 'bank_{0}/lc_application.pdf'.format(instance.bank.id)
 
 
+class BankStatus(str, Enum):
+    PEND: str = "Pending"
+    SET: str = "Setup"
+
+
 # TODO decide whether to store files on our back end, or as a link to a cloud
 class Bank(models.Model):
     name = models.CharField(max_length=250)
+    status = models.CharField(max_length=20, default=BankStatus.SET,
+    choices=[(tag, tag.value) for tag in BankStatus])
+    country = models.CharField(max_length = 250, default = '')
+    mailing_address = models.CharField(max_length = 250, default ='')
+    email_contact = models.CharField(max_length = 250, default ='')
+    website = models.CharField(max_length = 250, default = '')
     # TODO files aint json serialisable king, fix it
     #pdf_application = models.FileField(upload_to=pdf_app_path, blank=True)
     # The following are null-able to account for Advising Banks to an LC -
@@ -43,12 +56,17 @@ class Bank(models.Model):
     def __str__(self):
         return self.name
 
+
     # Using because django's JSON serialiser doesnt like nested
     # serialising into LCAppQuestion
     def to_dict(self):
         return {
             'name' : self.name,
             'id' : self.id,
+            'country' : self.country,
+            'address' : self.mailing_address,
+            'email' : self.email_contact,
+            'website' : self.website,
             'digital_application' : self.get_lc_app(),
             'using_digital_app' : self.using_digital_app
         }
@@ -83,6 +101,14 @@ class BankEmployee(models.Model):
     title = models.CharField(max_length=250, null=True, blank=True)
     email = models.CharField(max_length=50)
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'title': self.title,
+            'email': self.email,
+            'bank': {'id': self.bank.id, 'name': self.bank.name}
+        }
 
     def __str__(self):
         return self.name + ', ' + self.title + ' at ' + str(self.bank)
