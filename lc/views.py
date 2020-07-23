@@ -603,10 +603,25 @@ def evaluate_doc_req(request, lc_id, doc_req_id):
                     'success': True,
                     'doc_reqs': lc.get_doc_reqs()
                 })
+            # TODO to include status later
+            elif lc.advising_bank is not None and lc.advising_bank.bankemployee_set.filter(
+                    email=request.user.username).exists() and lc.confirmation_means == "Confirmation by a bank " \
+                                                                                       "selected by the beneficiary" \
+                    and lc.credit_expiry_location_id == lc.advising_bank_id:
+                doc_req.satisfied = json_data['approve']
+                doc_req.rejected = (not json_data['approve'])
+                if 'complaints' in json_data:
+                    doc_req.submitted_doc_complaints = json_data['complaints']
+                doc_req.save()
+                lc.save()
+                return JsonResponse({
+                    'success': True,
+                    'doc_reqs': lc.get_doc_reqs()
+                })
             else:
                 return HttpResponseForbidden(
-                        "Only an employee of the bank which issued this LC, or an employee to the beneficiary of this "
-                        "LC, may evaluate documentary requirements")
+                        "Only an employee of the bank which issued this LC, an employee to the beneficiary of this "
+                        "LC, or a special advisor may evaluate documentary requirements")
         else:
             return HttpResponseForbidden("You must be logged in to attempt a documentary requirement evaluation")
     else:
@@ -1274,7 +1289,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
                                                   "requirements and request payment on Bountium. "
                                                   "\nInstructions for beneficiary: 1. Set your business up "
                                                   "at https://bountium.org/business/register/" +
-                str(lc.beneficiary.id) + ". 2. Navigate to your home page to see the newly created LC.",
+                str(lc.beneficiary.id) + "/" + str(
+                        lc.id) + ". 2. Navigate to your home page to see the newly created LC.",
                 "steve@bountium.org",
                 [employee_applying.email],
                 fail_silently=False,
@@ -1325,8 +1341,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
             send_mail(
                     lc.issuer.name + " has created an LC to work with you on Bountium",
                     f"Instructions for advising bank: 1. Set your bank "
-                    f"up at https://app.bountium.org/bank/register/{lc.advising_bank.id}/\n2. Navigate to your home "
-                    f"page to view the newly created LC.",
+                    f"up at https://app.bountium.org/bank/register/{lc.advising_bank.id}/{lc.id}.\n2. Navigate to"
+                    f" your home page to view the newly created LC.",
                     "steve@bountium.org",
                     [advising_bank['email']],
                     fail_silently=False,
