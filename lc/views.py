@@ -17,7 +17,7 @@ from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, \
 from django.views.decorators.csrf import csrf_exempt
 
 from business.models import ApprovedCredit, AuthorizedBanks
-from lc.forms import BankInitiatedLC
+from lc.forms import BankInitiatedLC, IssuerSelectAdvisingBank
 from util import update_django_instance_with_subset_json
 from .models import *
 from .values import commercial_invoice_form, multimodal_bl_form, import_permits
@@ -277,6 +277,45 @@ def update_lc(lc, json_data, client_approved, beneficiary_approved, issuer_appro
 
 
 @csrf_exempt
+def issuer_select_advising_bank(request, lc_id):
+    if request.method is not "PUT":
+        return HttpResponseBadRequest("This endpoint only supports PUT")
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Must be logged in to select an advising bank")
+    if not LC.objects.filter(id=lc_id).exists():
+        return HttpResponseBadRequest(f"There is no LC with id {lc_id}")
+    lc = LC.objects.get(id=lc_id)
+    if not BankEmployee.objects.filter(email=request.user.username).exists():
+        return HttpResponseForbidden("Must be a bank employee to select an advising bank")
+    bank_emp = BankEmployee.objects.get(email=request.user.username)
+    if bank_emp.bank_id != lc.issuer_id:
+        return HttpResponseForbidden("Can only select an advising bank for the LC on which you are an issuer")
+    try:
+        advising_bank = json.loads(request.body)
+    except JSONDecodeError:
+        return HttpResponseBadRequest("missing or malformed request body")
+    validator = IssuerSelectAdvisingBank(advising_bank)
+    if not validator.is_valid():
+        return HttpResponseBadRequest(validator.errors.as_json())
+    if Bank.objects.filter(name=advising_bank['name']).exists():
+        lc.type_3_advising_bank = Bank.objects.get(name=advising_bank['name'])
+    else:
+        lc.type_3_advising_bank = Bank(name=advising_bank['name'], mailing_address=advising_bank['address'],
+                                       country=advising_bank['country'], email_contact=advising_bank['email'])
+        lc.type_3_advising_bank.save()
+        send_mail(
+                lc.issuer.name + " has created an LC to work with you on Bountium",
+                f"Instructions for advising bank: 1. Set your bank "
+                f"up at https://app.bountium.org/bank/register/{lc.type_3_advising_bank.id}/{lc.id}.\n2. Navigate to"
+                f" your home page to view the newly created LC.",
+                "steve@bountium.org",
+                [advising_bank['email']],
+                fail_silently=False,
+        )
+    return JsonResponse({"status": "success", "type_3_advising_bank": lc.type_3_advising_bank.to_dict()})
+
+
+@csrf_exempt
 def get_filtered_lcs(request, bank_id, filter):
     try:
         bank = Bank.objects.get(id=bank_id)
@@ -292,6 +331,7 @@ def get_filtered_lcs(request, bank_id, filter):
     for lc in DigitalLC.objects.filter(filter_vals[filter], issuer=bank, paid_out=False):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
+
 
 @csrf_exempt
 def get_filtered_lcs_advisor(request, bank_id, filter):
@@ -309,6 +349,7 @@ def get_filtered_lcs_advisor(request, bank_id, filter):
     for lc in DigitalLC.objects.filter(filter_vals[filter], advising_bank=bank, paid_out=False):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
+
 
 @csrf_exempt
 def get_lcs_by_client(request, business_id):
