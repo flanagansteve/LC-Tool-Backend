@@ -278,7 +278,7 @@ def update_lc(lc, json_data, client_approved, beneficiary_approved, issuer_appro
 
 @csrf_exempt
 def issuer_select_advising_bank(request, lc_id):
-    if request.method is not "PUT":
+    if request.method != "PUT":
         return HttpResponseBadRequest("This endpoint only supports PUT")
     if not request.user.is_authenticated:
         return HttpResponseForbidden("Must be logged in to select an advising bank")
