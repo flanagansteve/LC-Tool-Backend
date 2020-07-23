@@ -313,7 +313,7 @@ urlpatterns = [
     url(r'^clients_by_bank/(?P<bank_id>[0-9]+)/$', views.clients_by_bank, name='clients_by_bank'),
 
     # /lc/{lc_id}/issuer/select_advising_bank
-    url(r'^issuer/(?P<lc_id>[0-9]+)/select_advising_bank', views.issuer_select_advising_bank,
+    url(r'^(?P<lc_id>[0-9]+)/issuer/select_advising_bank/$', views.issuer_select_advising_bank,
         name='issuer_select_advising_bank')
 
 ]

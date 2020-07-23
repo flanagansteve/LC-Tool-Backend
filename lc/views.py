@@ -312,6 +312,7 @@ def issuer_select_advising_bank(request, lc_id):
                 [advising_bank['email']],
                 fail_silently=False,
         )
+    lc.save()
     return JsonResponse({"status": "success", "type_3_advising_bank": lc.type_3_advising_bank.to_dict()})
 
 

@@ -211,6 +211,8 @@ class LC(models.Model):
             to_return['account_party'] = self.account_party.to_dict()
         if self.advising_bank:
             to_return['advising_bank'] = self.advising_bank.to_dict()
+        if self.type_3_advising_bank:
+            to_return['type_3_advising_bank'] = self.type_3_advising_bank.to_dict()
         return to_return
 
 
