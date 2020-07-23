@@ -14,8 +14,8 @@ class IssuerSelectAdvisingBank(forms.Form):
     def __init__(self, data):
         super().__init__(data=data)
         self.fields['name'] = forms.CharField(max_length=250)
-        self.fields['address'] = forms.EmailField(max_length=250)
-        self.fields['country'] = forms.EmailField(max_length=250)
+        self.fields['address'] = forms.CharField(max_length=250)
+        self.fields['country'] = forms.CharField(max_length=250)
         self.fields['email'] = forms.EmailField(max_length=250)
 
 
