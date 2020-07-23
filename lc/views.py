@@ -290,6 +290,22 @@ def get_filtered_lcs(request, bank_id, filter):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
 
+@csrf_exempt
+def get_filtered_lcs_advisor(request, bank_id, filter):
+    try:
+        bank = Bank.objects.get(id=bank_id)
+    except Bank.DoesNotExist:
+        raise Http404("No bank with that id")
+    to_return = []
+    filter_vals = {
+        'live': Q(client_approved=True, issuer_approved=True, beneficiary_approved=True),
+        'awaiting_issuer_approval': Q(issuer_approved=False),
+        'awaiting_client_approval': Q(client_approved=False),
+        'awaiting_beneficiary_approval': Q(beneficiary_approved=False)
+    }
+    for lc in DigitalLC.objects.filter(filter_vals[filter], advising_bank=bank, paid_out=False):
+        to_return.append(lc.to_dict())
+    return JsonResponse(to_return, safe=False)
 
 @csrf_exempt
 def get_lcs_by_client(request, business_id):

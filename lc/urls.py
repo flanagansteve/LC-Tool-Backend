@@ -249,6 +249,9 @@ urlpatterns = [
     # /lc/by_bank/{bank_id}/{filter}
     url(r'^by_bank/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs, name='get_filtered_lcs'),
 
+    # /lc/by_bank_advisor/{bank_id}/{filter}
+    url(r'^by_bank_advisor/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs_advisor, name='get_filtered_lcs_advisor'),
+
     # /lc/by_client/{business_id}/
     url(r'^by_client/(?P<business_id>[0-9]+)/$', views.get_lcs_by_client, name='get_lcs_by_client'),
 
