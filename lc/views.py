@@ -205,6 +205,10 @@ def rud_lc(request, lc_id):
                 email=request.user.username).exists():
             update_lc(lc=lc, json_data=json_data, client_approved=False, beneficiary_approved=True,
                       issuer_approved=False, user_type="beneficiary")
+        elif lc.advising_bank is not None and lc.advising_bank.bankemployee_set.filter(
+                email=request.user.username).exists():
+            update_lc(lc=lc, json_data=json_data, client_approved=False, beneficiary_approved=True,
+                      issuer_approved=False, user_type="advisor")
         elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
             update_lc(lc=lc, json_data=json_data, client_approved=True, beneficiary_approved=False,
                       issuer_approved=False, user_type="client")
@@ -242,16 +246,16 @@ def update_lc(lc, json_data, client_approved, beneficiary_approved, issuer_appro
     # TODO would be good to somehow mark changes from the prev version...
     update_django_instance_with_subset_json(json_data['lc'], lc)
     if 'hold_status' not in json_data or not json_data['hold_status']:
-        lc.client_approved = client_approved,
+        lc.client_approved = client_approved
         lc.beneficiary_approved = beneficiary_approved
         lc.issuer_approved = issuer_approved
-        if 'other_instructions' in json_data and pycountry.countries.lookup(
+        if 'other_instructions' in json_data and (pycountry.countries.lookup(
                 lc.beneficiary.country).alpha_2 == 'US' or pycountry.countries.lookup(
-                lc.client.country).alpha_2 == 'US':
+                lc.client.country).alpha_2 == 'US'):
             BoycottLanguage.objects.filter(lc=lc).delete()
-        boycott_phrases = boycott_language(lc.other_instructions)
-        for phrase in boycott_phrases:
-            BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
+            boycott_phrases = boycott_language(lc.other_instructions)
+            for phrase in boycott_phrases:
+                BoycottLanguage(phrase=phrase, source='other_instructions', lc=lc).save()
     if 'latest_version_notes' in json_data:
         lc.latest_version_notes = \
             f'On {str(datetime.datetime.now())} the {user_type} said: {json_data["latest_version_notes"]}'
@@ -264,7 +268,7 @@ def update_lc(lc, json_data, client_approved, beneficiary_approved, issuer_appro
             respondable = "client"
         elif user_type == "client":
             respondable = "issuer"
-        elif user_type == "beneficiary":
+        elif user_type == "beneficiary" or user_type == "advisor":
             respondable = "issuer"
         else:
             raise ValueError("invalid user_type")
