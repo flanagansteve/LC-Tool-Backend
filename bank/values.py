@@ -1,4 +1,6 @@
 # TODO do we need to ask for shipment date? relevant for the default draft_presentation_date
+
+
 default_questions = [
     {
         'question_text': 'What is your business\'s name?',
@@ -247,6 +249,7 @@ default_questions = [
         'type': 'decimal',
         'required': False,
         'options': '',
+        'initial_value': 100,
         'section': 'Individual Party Responsibilities'
     },
     {
@@ -258,7 +261,7 @@ default_questions = [
         'key': 'credit_availability',
         'type': 'multiple_choice_with_other',
         'required': True,
-        'options': '[]',
+        'options': '["Payment at sight"]',
         'section': 'Individual Party Responsibilities'
     },
     {
