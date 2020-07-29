@@ -97,6 +97,7 @@ class LC(models.Model):
                                       related_name='%(app_label)s_%(class)s_account_party', null=True, blank=True)
     advising_bank = models.ForeignKey(Bank, on_delete=models.CASCADE,
                                       related_name='%(app_label)s_%(class)s_advising_bank', null=True, blank=True)
+    beneficiary_selected_doc_req = models.BooleanField(default = False)
 
     type_3_advising_bank = models.ForeignKey(Bank, on_delete=models.CASCADE,
                                              related_name='%(app_label)s_%(class)s_type_3_advising_bank', null=True,
@@ -201,7 +202,8 @@ class LC(models.Model):
             'boycott_language_status': self.boycott_language_status,
             'boycott_language': boycott_to_dict(),
             'believable_price_of_goods_status': self.believable_price_of_goods_status,
-            'paid_out': self.paid_out
+            'paid_out': self.paid_out,
+            'beneficiary_selected_doc_req': self.beneficiary_selected_doc_req
         }
         if self.client:
             to_return['client'] = self.client.to_dict()

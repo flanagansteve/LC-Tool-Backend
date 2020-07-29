@@ -278,6 +278,7 @@ def cr_digital_app(request, bank_id):
     except Bank.DoesNotExist:
         raise Http404("No bank with id " + bank_id)
     if request.method == 'GET':
+        print(bank.get_lc_app())
         return JsonResponse(bank.get_lc_app(), safe=False)
     elif request.method == 'POST':
         json_data = json.loads(request.body)

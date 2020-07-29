@@ -158,8 +158,8 @@ def rud_lc(request, lc_id):
 
             # filter if it is the beneficiary or advisor
             elif lc.beneficiary.businessemployee_set.filter(
-                    email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(
-                    email=request.user.username).exists():
+                    email=request.user.username).exists() or (lc.advising_bank and lc.advising_bank.bankemployee_set.filter(
+                    email=request.user.username).exists()):
                 lc_return['client']['annual_cashflow'] = None
                 lc_return['client']['balance_available'] = None
                 lc_return['client']['approved_credit'] = None
@@ -209,6 +209,7 @@ def rud_lc(request, lc_id):
                 email=request.user.username).exists():
             update_lc(lc=lc, json_data=json_data, client_approved=False, beneficiary_approved=True,
                       issuer_approved=False, user_type="advisor")
+       
         elif lc.client.businessemployee_set.filter(email=request.user.username).exists():
             update_lc(lc=lc, json_data=json_data, client_approved=True, beneficiary_approved=False,
                       issuer_approved=False, user_type="client")
@@ -294,6 +295,7 @@ def issuer_select_advising_bank(request, lc_id):
     bank_emp = BankEmployee.objects.get(email=request.user.username)
     if bank_emp.bank_id != lc.issuer_id:
         return HttpResponseForbidden("Can only select an advising bank for the LC on which you are an issuer")
+    
     try:
         advising_bank = json.loads(request.body)
     except JSONDecodeError:
@@ -301,6 +303,11 @@ def issuer_select_advising_bank(request, lc_id):
     validator = IssuerSelectAdvisingBank(advising_bank)
     if not validator.is_valid():
         return HttpResponseBadRequest(validator.errors.as_json())
+    if advising_bank['name'] == lc.issuer.name:
+        return HttpResponseBadRequest("Can't add yourself as the Forwarding bank")
+    # can this be the case that the forwarding bank is the same as the beneficary chosen bank
+    if advising_bank['name'] == lc.advising_bank.name:
+        return HttpResponseBadRequest("Forwarding Bank cannot be the same as the Beneficiary-Selected Advisor")
     if Bank.objects.filter(name=advising_bank['name']).exists():
         lc.type_3_advising_bank = Bank.objects.get(name=advising_bank['name'])
     else:
@@ -353,6 +360,9 @@ def get_filtered_lcs_advisor(request, bank_id, filter):
     }
     for lc in DigitalLC.objects.filter(filter_vals[filter], advising_bank=bank, paid_out=False):
         to_return.append(lc.to_dict())
+    for lc in DigitalLC.objects.filter(filter_vals[filter], type_3_advising_bank=bank, paid_out=False):
+        to_return.append(lc.to_dict())
+    print(DigitalLC.objects.filter(filter_vals[filter], type_3_advising_bank=bank, paid_out=False))
     return JsonResponse(to_return, safe=False)
 
 
@@ -565,7 +575,10 @@ def rud_doc_req(request, lc_id, doc_req_id):
                         'submitted_and_notified_on': str(datetime.datetime.now()),
                         'doc_req': doc_req.to_dict()
                     })
-            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                    # issuer filling out doc req form
+                else:
+                   return HttpResponseBadRequest('Issuers can only upload Doc Req PDFs')
+            elif lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(email=request.user.username).exists():
                 if request.content_type == 'application/pdf':
                     s3 = boto3.resource('s3')
                     submitted_doc_name = lc.beneficiary.name + "-submitted-on-" + str(datetime.datetime.now()) + ".pdf"
@@ -627,10 +640,10 @@ def employed_by_main_party_to_lc(lc, username):
     return (lc.issuer.bankemployee_set.filter(email=username).exists()
             or lc.client.businessemployee_set.filter(email=username).exists()
             or lc.beneficiary.businessemployee_set.filter(email=username).exists()
-            or lc.advising_bank.bankemployee_set.filter(email=username).exists())
+            or lc.advising_bank.bankemployee_set.filter(email=username).exists()
+            or lc.type_3_advising_bank.bankemployee_set.filter(email=username).exists())
 
 
-# TODO should we let clients evaluate doc reqs to or just the issuer?
 @csrf_exempt
 def evaluate_doc_req(request, lc_id, doc_req_id):
     try:
@@ -719,7 +732,7 @@ def mark_lc_something(request, lc_id, state_to_mark):
                 else:
                     return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
             elif state_to_mark == 'payout':
-                if lc.issuer.bankemployee_set.filter(email=request.user.username).exists():
+                if lc.issuer.bankemployee_set.filter(email=request.user.username).exists() or (lc.type_3_advising_bank and lc.type_3_advising_bank.bankemployee_set.filter(email=request.user.username).exists()):
                     lc.paid_out = True
                     lc.save()
                     return JsonResponse({
@@ -1424,7 +1437,8 @@ def set_lc_specifications(lc, json_data, employee_applying):
     unit_error_tolerance = json_data.pop('unit_error_tolerance', None)
     lc.unit_error_tolerance = unit_error_tolerance if unit_error_tolerance is None else decimal.Decimal(
             unit_error_tolerance)
-    lc.confirmation_means = json_data.pop('confirmation_means', None)
+    confirmation_means = json_data.pop('confirmation_means', None)
+    lc.confirmation_means = confirmation_means
     lc.hts_code = json_data.pop('hts_code', None)
     import_license(lc)
     believable_price_of_goods(lc.hts_code, lc.unit_of_measure)
@@ -1444,6 +1458,12 @@ def set_lc_specifications(lc, json_data, employee_applying):
         # TODO this assumes that the advising bank and confirming bank are one and the same.
         # See Justins email around March 20 or so... isnt always the case.
         lc.credit_expiry_location = lc.advising_bank
+
+
+    # if there is advising bank/ credit expiry and payout answers allow beneficiary-selected advisor to edit doc reqs
+    if confirmation_means == "Confirmation by a bank selected by the beneficiary" and credit_expiry_location == "Confirming bank\'s office" and lc.advising_bank is not None:
+        lc.beneficiary_selected_doc_req = True
+
 
     # Question 23-24
     # TODO what format does a model.DateField have to be in?
@@ -1657,5 +1677,7 @@ def get_advising(request, bank_id):
         return HttpResponseForbidden("Must be an employee of the bank to see all the LCs this bank has issued")
     to_return = []
     for lc in DigitalLC.objects.filter(advising_bank_id=bank_id):
+        to_return.append(lc.to_dict())
+    for lc in DigitalLC.objects.filter(type_3_advising_bank=bank_id):
         to_return.append(lc.to_dict())
     return JsonResponse(to_return, safe=False)
