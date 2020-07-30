@@ -80,8 +80,8 @@ def create_perfect_lc():
         issuer.save()
     else:
         print(f"Creating bank '{issuer_name}'")
-        issuer = Bank(name=issuer_name, website=website, country=issuer_country, mailingAddress=mailing_address,
-                      emailContact=email_contact)
+        issuer = Bank(name=issuer_name, website=website, country=issuer_country, mailing_address=mailing_address,
+                      email_contact=email_contact)
         issuer.save()
 
     if client_emp.authorized_banks.filter(bank=issuer).exists():
@@ -152,7 +152,7 @@ def create_perfect_lc():
     else:
         print(f"Creating bank '{advising_bank_name}'")
         advising_bank = Bank(name=advising_bank_name, website=advisor_website, country=advisor_country,
-                             mailingAddress=advisor_address, emailContact=advisor_email)
+                             mailing_address=advisor_address, email_contact=advisor_email)
         advising_bank.save()
 
     populate_application(advising_bank)
