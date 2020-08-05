@@ -110,6 +110,52 @@ def create_perfect_lc():
     else:
         print(f"Creating an authorized account for {issuer_employee_name} with email '{issuer_employee_email}'")
         User.objects.create_user(username=issuer_employee_email, email=issuer_employee_email, password="password")
+    
+    forwarding_name = "Third Bank"
+    forwarding_country = "United States"
+    forwarding_address = "337 Huntington Avenue Boston, MA"
+    email_contact = "contact@bestbank.com"
+    website = "bountium.org"
+    if Bank.objects.filter(name=forwarding_name).exists():
+        print(f"Bank '{forwarding_name}' already exists in the database, updating fields")
+        forwarding = Bank.objects.get(name=forwarding_name)
+        forwarding.country = forwarding_country
+        forwarding.mailing_address = forwarding_address
+        forwarding.email_contact = email_contact
+        forwarding.website = website
+        forwarding.save()
+    else:
+        print(f"Creating bank '{forwarding_name}'")
+        forwarding = Bank(name=forwarding_name, website=website, country=forwarding_country, mailing_address=forwarding_address,
+                      email_contact=email_contact)
+        forwarding.save()
+
+    if client_emp.authorized_banks.filter(bank=forwarding).exists():
+        print(f"Client {client_employee_name} already has authorization with bank {forwarding_name}")
+    else:
+        print(f"Adding authorization for client {client_employee_name} with bank {forwarding_name}")
+        bank_auth = AuthorizedBanks(bank=forwarding)
+        bank_auth.save()
+        client_emp.authorized_banks.add(bank_auth)
+        client_emp.save()
+
+    populate_application(forwarding)
+
+    forwarding_employee_name = "Steve"
+    forwarding_employee_email = "steve@3b.com"
+    if forwarding.bankemployee_set.filter(email=forwarding_employee_name).exists():
+        print(f"Bank employee {forwarding_employee_name} with email '{forwarding_employee_name}' is already in the database")
+        forwarding_emp = forwarding.bankemployee_set.get(email=forwarding_employee_name)
+    else:
+        print(f"Creating bank employee {forwarding_employee_email} with email '{forwarding_employee_email}'")
+        forwarding_emp = forwarding.bankemployee_set.create(name=forwarding_employee_name, title="Owner",
+                                                    email=forwarding_employee_email)
+
+    if User.objects.filter(username=forwarding_employee_email).exists():
+        print(f"Employee {forwarding_employee_name} with email '{forwarding_employee_email}' is already an authorized user")
+    else:
+        print(f"Creating an authorized account for {forwarding_employee_name} with email '{forwarding_employee_email}'")
+        User.objects.create_user(username=forwarding_employee_email, email=forwarding_employee_email, password="password")
 
     account_party_name = "AccountParty McAccountParty's Accounts"
     if Business.objects.filter(name=account_party_name).exists():
@@ -178,6 +224,7 @@ def create_perfect_lc():
         "beneficiary": beneficiary,
         "account_party": account_party,
         "advising_bank": advising_bank,
+        "type_3_advising_bank": forwarding,
         "application_date": datetime.datetime.now(),
         "credit_delivery_means": 'Courier',
         "credit_amt_verbal": 'Sixty Thousand Euros',
@@ -194,6 +241,7 @@ def create_perfect_lc():
         "confirmation_means": 'Confirmation by a bank selected by the beneficiary',
         "paying_other_banks_fees": client,
         "credit_expiry_location": advising_bank,
+        "beneficiary_selected_doc_req" : True,
         "expiration_date": '2020-04-24',
         "draft_presentation_date": '2020-04-22',
         "drafts_invoice_value": 1.00,

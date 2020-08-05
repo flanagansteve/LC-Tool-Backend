@@ -712,7 +712,7 @@ def mark_lc_something(request, lc_id, state_to_mark):
     if request.method == "POST":
         if request.user.is_authenticated:
             if state_to_mark == 'request':
-                if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(email=request.user.username).exists():
                     lc.requested = True
                     lc.save()
                     return JsonResponse({
@@ -722,7 +722,7 @@ def mark_lc_something(request, lc_id, state_to_mark):
                 else:
                     return HttpResponseForbidden('Only the beneficiary to an LC may request payment on it')
             elif state_to_mark == 'draw':
-                if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists():
+                if lc.beneficiary.businessemployee_set.filter(email=request.user.username).exists() or lc.advising_bank.bankemployee_set.filter(email=request.user.username).exists():
                     lc.drawn = True
                     lc.save()
                     return JsonResponse({
