@@ -141,7 +141,7 @@ def create_perfect_lc():
 
     populate_application(forwarding)
 
-    forwarding_employee_name = "Steve"
+    forwarding_employee_name = "Steve Advisor 2"
     forwarding_employee_email = "steve@3b.com"
     if forwarding.bankemployee_set.filter(email=forwarding_employee_name).exists():
         print(f"Bank employee {forwarding_employee_name} with email '{forwarding_employee_name}' is already in the database")
@@ -203,8 +203,8 @@ def create_perfect_lc():
 
     populate_application(advising_bank)
 
-    ad_employee_name = "Advisey McAdvisey"
-    ad_employee_email = "advisey@sbb.com"
+    ad_employee_name = "Steve Adviser"
+    ad_employee_email = "steve@sbb.com"
     if advising_bank.bankemployee_set.filter(email=ad_employee_email).exists():
         print(f"Bank employee {ad_employee_name} with email '{ad_employee_email}' is already in the database")
         ad_emp = advising_bank.bankemployee_set.get(email=ad_employee_email)
