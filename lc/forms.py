@@ -10,6 +10,15 @@ class BankInitiatedLC(forms.Form):
         self.fields['applicant_employee_contact'] = forms.EmailField(max_length=250)
 
 
+class IssuerSelectAdvisingBank(forms.Form):
+    def __init__(self, data):
+        super().__init__(data=data)
+        self.fields['name'] = forms.CharField(max_length=250)
+        self.fields['address'] = forms.CharField(max_length=250)
+        self.fields['country'] = forms.CharField(max_length=250)
+        self.fields['email'] = forms.EmailField(max_length=250)
+
+
 class DigitalLCBaseForm(forms.ModelForm):
     class Meta:
         model = DigitalLC

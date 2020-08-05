@@ -1,4 +1,5 @@
 from django.conf.urls import url
+
 from . import views
 
 """ Endpoints:
@@ -79,7 +80,8 @@ and receive back either
 'success':false,
 'reason':'This LC has been approved by both the issuer and beneficiary, and may not be revoked' ||
 }
-Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* request in the software, but a request we cannot honor in implementation.
+Note that an unsuccessful delete attempt is different from a bad request, forbidden, request, or 404. Its a *valid* 
+request in the software, but a request we cannot honor in implementation.
 
 2. /lc/by_bank/{bank_id}/
 # GET all the lcs from this bank (TODO: thats probably just for testing)
@@ -141,7 +143,8 @@ Note that an unsuccessful delete attempt is different from a bad request, forbid
 # as an employee of the issuer, client, or beneficiary,
 # to notify a teammate of some need on the LC.
 # If the teammate is not yet assigned to this LC, this will assign them to it.
-"evaluate" :  POST the following to approve of an LC, or disapprove with attached complaints during redlining, as either an employee of
+"evaluate" :  POST the following to approve of an LC, or disapprove with attached complaints during redlining, 
+as either an employee of
     (<lc for which id == lc_id>.issuer)
 or
     (<lc for which id == lc_id>.beneficiary)
@@ -167,7 +170,8 @@ as an employee of the beneficiary to create & submit a DocumentaryRequirement
         {
             'doc_req_id' : int of the doc reqs id
         }
-    if its for a DigitalLC we'll be adding this as an auxiliary DocumentaryRequirement, and return a JSON response with its ID:
+    if its for a DigitalLC we'll be adding this as an auxiliary DocumentaryRequirement, and return a JSON response 
+    with its ID:
         {
             'doc_req_id' : int of the doc reqs id
         }
@@ -214,7 +218,8 @@ and receive back
     'success': true || false,
     'doc_reqs':[{list of resultant doc reqs and their statuses}]
 }
-- as an employee of the beneficiary to approve/dispute any modifications made by the issuer to this doc req, if doc_req.modified_and_awaiting_beneficiary_approval, with
+- as an employee of the beneficiary to approve/dispute any modifications made by the issuer to this doc req, 
+if doc_req.modified_and_awaiting_beneficiary_approval, with
 {
     'approve': true || false,
     'complaints' : 'any complaints; blank if approve == true'
@@ -249,6 +254,10 @@ urlpatterns = [
     # /lc/by_bank/{bank_id}/{filter}
     url(r'^by_bank/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs, name='get_filtered_lcs'),
 
+    # /lc/by_bank_advisor/{bank_id}/{filter}
+    url(r'^by_bank_advisor/(?P<bank_id>[0-9]+)/(?P<filter>[\w\-]+)/$', views.get_filtered_lcs_advisor,
+        name='get_filtered_lcs_advisor'),
+
     # /lc/by_client/{business_id}/
     url(r'^by_client/(?P<business_id>[0-9]+)/$', views.get_lcs_by_client, name='get_lcs_by_client'),
 
@@ -268,20 +277,22 @@ urlpatterns = [
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/$', views.rud_doc_req, name='rud_doc_req'),
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/evaluate/
-    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req, name='evaluate_doc_req'),
-
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/evaluate/$', views.evaluate_doc_req,
+        name='evaluate_doc_req'),
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/file/
     url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/file/$', views.get_dr_file, name='get_dr_file'),
 
     # /lc/{lc_id}/doc_req/{doc_req_id}/autopopulate/
-    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/autopopulate/$', views.autopopulate_creatable_dr, name='autopopulate_creatable_dr'),
+    url(r'^(?P<lc_id>[0-9]+)/doc_req/(?P<doc_req_id>[0-9]+)/autopopulate/$', views.autopopulate_creatable_dr,
+        name='autopopulate_creatable_dr'),
 
     # /lc/supported_creatable_docs/
     url(r'^supported_creatable_docs/$', views.supported_creatable_docs, name='supported_creatable_docs'),
 
     # /lc/supported_creatable_docs/{doc_type}/
-    url(r'^supported_creatable_docs/(?P<doc_type>[\w\-]+)/$', views.supported_creatable_doc, name='supported_creatable_doc'),
+    url(r'^supported_creatable_docs/(?P<doc_type>[\w\-]+)/$', views.supported_creatable_doc,
+        name='supported_creatable_doc'),
 
     # /lc/digital_app_templates/
     url(r'^digital_app_templates/$', views.digital_app_templates, name='digital_app_templates'),
@@ -299,6 +310,10 @@ urlpatterns = [
     url(r'^check_file_for_boycott/$', views.check_file_for_boycott, name='check_file_for_boycott'),
 
     # /lc/clients_by_bank/{bank_id}
-    url(r'^clients_by_bank/(?P<bank_id>[0-9]+)/$', views.clients_by_bank, name='clients_by_bank')
+    url(r'^clients_by_bank/(?P<bank_id>[0-9]+)/$', views.clients_by_bank, name='clients_by_bank'),
+
+    # /lc/{lc_id}/issuer/select_advising_bank
+    url(r'^(?P<lc_id>[0-9]+)/issuer/select_advising_bank/$', views.issuer_select_advising_bank,
+        name='issuer_select_advising_bank')
 
 ]

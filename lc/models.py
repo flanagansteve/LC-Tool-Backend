@@ -97,6 +97,11 @@ class LC(models.Model):
                                       related_name='%(app_label)s_%(class)s_account_party', null=True, blank=True)
     advising_bank = models.ForeignKey(Bank, on_delete=models.CASCADE,
                                       related_name='%(app_label)s_%(class)s_advising_bank', null=True, blank=True)
+    beneficiary_selected_doc_req = models.BooleanField(default = False)
+
+    type_3_advising_bank = models.ForeignKey(Bank, on_delete=models.CASCADE,
+                                             related_name='%(app_label)s_%(class)s_type_3_advising_bank', null=True,
+                                             blank=True)
 
     # -- employees of the parties assigned -- #
     tasked_client_employees = models.ManyToManyField(BusinessEmployee,
@@ -115,22 +120,22 @@ class LC(models.Model):
 
     # -- the status of an LC -- #
     sanction_bank_approval = models.CharField(
-          max_length=10,
-          default=Status.INC,
-          choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
+            max_length=10,
+            default=Status.INC,
+            choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     sanction_auto_message = models.CharField(max_length=1000, null=True, blank=True)
 
     ofac_bank_approval = models.CharField(
-          max_length=10,
-          default=Status.INC,
-          choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
+            max_length=10,
+            default=Status.INC,
+            choices=[(tag, tag.value) for tag in Status]  # Choices is a list of Tuple
     )
     ofac_sanctions = models.ManyToManyField(SpeciallyDesignatedNational)
     import_license_approval = models.CharField(
-          max_length=10,
-          default=Status.INC,
-          choices=[(tag, tag.value) for tag in Status])  # Choices is a list of Tuple
+            max_length=10,
+            default=Status.INC,
+            choices=[(tag, tag.value) for tag in Status])  # Choices is a list of Tuple
 
     import_license_message = models.TextField(null=True, blank=True, default=" ")
     boycott_language_status = models.CharField(max_length=10, default=Status.INC,
@@ -173,9 +178,11 @@ class LC(models.Model):
             'id': self.id,
             'issuer': self.issuer.to_dict(),
             'tasked_client_employees': list(map(lambda emp: emp.to_dict(), self.tasked_client_employees.all())),
-            'tasked_beneficiary_employees': list(map(lambda emp: emp.to_dict(), self.tasked_beneficiary_employees.all())),
+            'tasked_beneficiary_employees': list(
+                map(lambda emp: emp.to_dict(), self.tasked_beneficiary_employees.all())),
             'tasked_issuer_employees': list(self.tasked_issuer_employees.values()),
-            'tasked_account_party_employees': list(map(lambda emp: emp.to_dict(), self.tasked_account_party_employees.all())),
+            'tasked_account_party_employees': list(
+                map(lambda emp: emp.to_dict(), self.tasked_account_party_employees.all())),
             'tasked_advising_bank_employees': list(self.tasked_advising_bank_employees.values()),
             'client_approved': self.client_approved,
             'beneficiary_approved': self.beneficiary_approved,
@@ -195,7 +202,8 @@ class LC(models.Model):
             'boycott_language_status': self.boycott_language_status,
             'boycott_language': boycott_to_dict(),
             'believable_price_of_goods_status': self.believable_price_of_goods_status,
-            'paid_out': self.paid_out
+            'paid_out': self.paid_out,
+            'beneficiary_selected_doc_req': self.beneficiary_selected_doc_req
         }
         if self.client:
             to_return['client'] = self.client.to_dict()
@@ -205,6 +213,8 @@ class LC(models.Model):
             to_return['account_party'] = self.account_party.to_dict()
         if self.advising_bank:
             to_return['advising_bank'] = self.advising_bank.to_dict()
+        if self.type_3_advising_bank:
+            to_return['type_3_advising_bank'] = self.type_3_advising_bank.to_dict()
         return to_return
 
 
@@ -241,7 +251,8 @@ class DigitalLC(LC):
     # Goes up to 999B,999M,999K,999.99
     credit_amt = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True)
     # How much client will cash secure
-    cash_secure = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True, default=decimal.Decimal('0.00'))
+    cash_secure = models.DecimalField(max_digits=17, decimal_places=2, null=True, blank=True,
+                                      default=decimal.Decimal('0.00'))
     # TODO this should technically be an enum
     currency_denomination = models.CharField(max_length=5, default='USD')
     applicant_and_ap_j_and_s_obligated = models.BooleanField(default=False)
@@ -271,7 +282,8 @@ class DigitalLC(LC):
     expiration_date = models.DateField(null=True, blank=True)
     draft_presentation_date = models.DateField(null=True, blank=True)
     # 100.00000 -> 0.00000, where 100.00000 == 100% on user input
-    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, blank=True, null=True, default=decimal.Decimal('100.00000'))
+    drafts_invoice_value = models.DecimalField(max_digits=8, decimal_places=5, blank=True, null=True,
+                                               default=decimal.Decimal('100.00000'))
     credit_availability = models.CharField(max_length=250, null=True, blank=True)
     paying_acceptance_and_discount_charges = models.ForeignKey(Business, on_delete=models.CASCADE,
                                                                related_name='%(app_label)s_%('
@@ -331,7 +343,8 @@ class DigitalLC(LC):
             'drafts_invoice_value': self.drafts_invoice_value,
             'credit_availability': self.credit_availability,
             'deferred_payment_date': self.deferred_payment_date,
-            'delegated_negotiating_banks': list(map(lambda bank: bank.to_dict(), self.delegated_negotiating_banks.all())),
+            'delegated_negotiating_banks': list(
+                map(lambda bank: bank.to_dict(), self.delegated_negotiating_banks.all())),
             'partial_shipment_allowed': self.partial_shipment_allowed,
             'transshipment_allowed': self.transshipment_allowed,
             'merch_charge_location': self.merch_charge_location,
@@ -373,7 +386,7 @@ class DigitalLCTemplate(models.Model):
     purchased_item = models.CharField(max_length=1000, blank=True, default='')
     advising_bank = models.CharField(max_length=250, blank=True, default='')
     forex_contract_num = models.CharField(max_length=250, blank=True, default='')
-    hts_code = models.CharField(max_length=15, blank=True, default = '')
+    hts_code = models.CharField(max_length=15, blank=True, default='')
     exchange_rate_tolerance = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     credit_delivery_means = models.CharField(max_length=250, blank=True, default='')
     currency_denomination = models.CharField(max_length=5, blank=True, default='')
@@ -549,12 +562,12 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         return (
             # TODO exact matches of the following 2 i unlikely -
             # ask justin how they enforce this
-              self.seller_name == self.for_lc.beneficiary.name and
-              self.buyer_name == self.for_lc.client.name and
-              self.currency == self.for_lc.currency_denomination and
-              # TODO this demands an exact match, which is unlikely for prose! ask justin
-              # self.goods_description == self.for_lc.goods_description and
-              self.signature
+                self.seller_name == self.for_lc.beneficiary.name and
+                self.buyer_name == self.for_lc.client.name and
+                self.currency == self.for_lc.currency_denomination and
+                # TODO this demands an exact match, which is unlikely for prose! ask justin
+                # self.goods_description == self.for_lc.goods_description and
+                self.signature
         )
 
     def to_dict(self):
@@ -595,29 +608,29 @@ class CommercialInvoiceRequirement(DocumentaryRequirement):
         pdf.set_font("Times", size=12)
         # TODO how to make multi cells line up horizontally
         pdf.multi_cell(border=1, w=90, h=6, txt=(
-              "Seller name: " + self.seller_name +
-              "\nSeller address: " + self.seller_address +
-              "\nShipped on: " + self.indicated_date_of_shipment +
-              "\nCountry of Export: " + self.country_of_export +
-              "\nIncoterms of sale: " + str(self.incoterms_of_sale) +
-              "\nReason for export: " + self.reason_for_export
+                "Seller name: " + self.seller_name +
+                "\nSeller address: " + self.seller_address +
+                "\nShipped on: " + self.indicated_date_of_shipment +
+                "\nCountry of Export: " + self.country_of_export +
+                "\nIncoterms of sale: " + str(self.incoterms_of_sale) +
+                "\nReason for export: " + self.reason_for_export
         ))
         """pdf.multi_cell(border=1, w=90, h=6, txt=(
 
         ))"""
         if self.consignee_name and self.consignee_address:
             pdf.multi_cell(border=1, w=90, h=6, txt=(
-                  "Consignee name: " + self.consignee_name +
-                  "\nConsignee address: " + self.consignee_address
+                    "Consignee name: " + self.consignee_name +
+                    "\nConsignee address: " + self.consignee_address
             ))
         else:
             pdf.multi_cell(border=1, w=90, h=6, txt=(
-                  "Consignee name: " + self.buyer_name +
-                  "\nConsignee address: " + self.buyer_address
+                    "Consignee name: " + self.buyer_name +
+                    "\nConsignee address: " + self.buyer_address
             ))
         pdf.multi_cell(border=1, w=90, h=6, txt=(
-              "Buyer name: " + self.buyer_name +
-              "\nBuyer address: " + self.buyer_address
+                "Buyer name: " + self.buyer_name +
+                "\nBuyer address: " + self.buyer_address
         ))
         writeln(pdf, "Goods Description:")
         # TODO need to somehow make this a paragraph instead of a line
@@ -690,11 +703,11 @@ class TransportDocumentRequirement(DocumentaryRequirement):
 
     def basics_satisfied(self):
         return (
-              self.carrier_name and
-              self.signed_by_carrier_or_master and
-              self.references_tandc_of_carriage and
-              ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
-               or (self.date_of_issuance <= self.for_lc.late_charge_date))
+                self.carrier_name and
+                self.signed_by_carrier_or_master and
+                self.references_tandc_of_carriage and
+                ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
+                 or (self.date_of_issuance <= self.for_lc.late_charge_date))
         )
 
     def to_dict(self):
@@ -739,11 +752,11 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.basics_satisfied() and
-              self.charge_location == self.for_lc.merch_charge_location and
-              self.place_of_dispatch == self.for_lc.merch_charge_location and
-              self.place_of_destination == self.for_lc.charge_transportation_location and
-              not self.subject_to_charter_party
+                self.basics_satisfied() and
+                self.charge_location == self.for_lc.merch_charge_location and
+                self.place_of_dispatch == self.for_lc.merch_charge_location and
+                self.place_of_destination == self.for_lc.charge_transportation_location and
+                not self.subject_to_charter_party
         )
 
     def to_dict(self):
@@ -779,25 +792,25 @@ class MultimodalTransportDocumentRequirement(TransportDocumentRequirement):
         pdf.set_font("Times", size=12)
         # TODO how to make multi cells line up horizontally
         pdf.multi_cell(border=1, w=90, h=6, txt=(
-              "Shipper name: " + self.carrier_name +
-              "\nShipper address: " + self.carrier_address +
-              "\nShipped on: " + self.indicated_date_of_shipment
+                "Shipper name: " + self.carrier_name +
+                "\nShipper address: " + self.carrier_address +
+                "\nShipped on: " + self.indicated_date_of_shipment
         ))
         pdf.multi_cell(border=1, w=90, h=6, txt=(
-              "Consignee name: " + self.consignee_name +
-              "\nConsignee address: " + self.consignee_address
+                "Consignee name: " + self.consignee_name +
+                "\nConsignee address: " + self.consignee_address
         ))
         pdf.multi_cell(border=1, w=90, h=6, txt=(
-              "Notifee name: " + self.notifee_name +
-              "\nNotifee address: " + self.notifee_address
+                "Notifee name: " + self.notifee_name +
+                "\nNotifee address: " + self.notifee_address
         ))
         if self.vessel_and_voyage:
             writeln(pdf, "Vessel and voyage: " + self.vessel_and_voyage)
         pdf.multi_cell(border=1, w=180, h=6, txt=(
-              "Place of dispatch: " + self.place_of_dispatch +
-              "\nPort of loading: " + str(self.port_of_loading) +
-              "\nPort of discharge: " + str(self.port_of_discharge) +
-              "\nPlace of receipt: " + self.place_of_destination
+                "Place of dispatch: " + self.place_of_dispatch +
+                "\nPort of loading: " + str(self.port_of_loading) +
+                "\nPort of discharge: " + str(self.port_of_discharge) +
+                "\nPlace of receipt: " + self.place_of_destination
         ))
         if self.subject_to_charter_party:
             writeln(pdf, "Subject to charty party: Yes")
@@ -837,11 +850,11 @@ class BillOfLadingRequirement(TransportDocumentRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.basics_satisfied() and
-              self.port_of_loading == self.for_lc.merch_charge_location and
-              not noncommital_shipment_indication_with_no_update and
-              self.port_of_destination == self.for_lc.charge_transportation_location and
-              not subject_to_charter_party
+                self.basics_satisfied() and
+                self.port_of_loading == self.for_lc.merch_charge_location and
+                not noncommital_shipment_indication_with_no_update and
+                self.port_of_destination == self.for_lc.charge_transportation_location and
+                not subject_to_charter_party
         )
 
 
@@ -871,13 +884,13 @@ class CharterPartyBillOfLadingRequirement(DocumentaryRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.carrying_vessel and
-              self.signed_by_master_owner_charterer and
-              self.port_of_loading == self.for_lc.merch_charge_location and
-              ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
-               or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
-              not noncommital_shipment_indication_with_no_update and
-              self.port_of_destination == self.for_lc.charge_transportation_location
+                self.carrying_vessel and
+                self.signed_by_master_owner_charterer and
+                self.port_of_loading == self.for_lc.merch_charge_location and
+                ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
+                 or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
+                not noncommital_shipment_indication_with_no_update and
+                self.port_of_destination == self.for_lc.charge_transportation_location
         )
 
 
@@ -889,10 +902,10 @@ class AirTransportDocument(TransportDocumentRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.basics_satisfied() and
-              self.airport_of_departure == self.for_lc.merch_charge_location and
-              self.airport_of_destination == self.for_lc.charge_transportation_location and
-              not subject_to_charter_party
+                self.basics_satisfied() and
+                self.airport_of_departure == self.for_lc.merch_charge_location and
+                self.airport_of_destination == self.for_lc.charge_transportation_location and
+                not subject_to_charter_party
         )
 
 
@@ -907,11 +920,11 @@ class RoadRailInlandWaterwayTransportDocumentsRequirement(TransportDocumentRequi
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              ((self.carrier_name and self.signed_by_carrier_agent_or_master) or self.stamped_by_rail_co) and
-              ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
-               or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
-              self.place_of_shipment == self.for_lc.merch_charge_location and
-              self.place_of_destination == self.for_lc.charge_transportation_location
+                ((self.carrier_name and self.signed_by_carrier_agent_or_master) or self.stamped_by_rail_co) and
+                ((self.indicated_date_of_shipment and (self.indicated_date_of_shipment <= self.for_lc.late_charge_date))
+                 or (self.date_of_issuance <= self.for_lc.late_charge_date)) and
+                self.place_of_shipment == self.for_lc.merch_charge_location and
+                self.place_of_destination == self.for_lc.charge_transportation_location
         )
 
 
@@ -925,10 +938,10 @@ class CourierReceiptRequirement(DocumentaryRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.courier_name and
-              self.stamped_or_signed_by_courier and
-              stamping_or_signing_location == self.for_lc.merch_charge_location and
-              self.date_of_pickup <= self.for_lc.late_charge_date
+                self.courier_name and
+                self.stamped_or_signed_by_courier and
+                stamping_or_signing_location == self.for_lc.merch_charge_location and
+                self.date_of_pickup <= self.for_lc.late_charge_date
         )
 
 
@@ -942,10 +955,10 @@ class PostReceiptRequirement(DocumentaryRequirement):
 
     def is_satisfied(self):
         return super().is_satisfied() or (
-              self.courier_name and
-              self.stamped_or_signed_by_courier and
-              stamping_or_signing_location == self.for_lc.charge_transportation_location and
-              self.date_of_stamping <= self.for_lc.late_charge_date
+                self.courier_name and
+                self.stamped_or_signed_by_courier and
+                stamping_or_signing_location == self.for_lc.charge_transportation_location and
+                self.date_of_stamping <= self.for_lc.late_charge_date
         )
 
 
