@@ -103,6 +103,11 @@ class LC(models.Model):
                                              related_name='%(app_label)s_%(class)s_type_3_advising_bank', null=True,
                                              blank=True)
 
+    issuer_selected_advising_bank = models.ForeignKey(Bank, on_delete=models.CASCADE,
+                                             related_name='%(app_label)s_%(class)s_issuer_selected_advising_bank', null=True,
+                                             blank=True) 
+    issuer_can_select_bene_advisor = models.BooleanField(default = False) 
+
     # -- employees of the parties assigned -- #
     tasked_client_employees = models.ManyToManyField(BusinessEmployee,
                                                      related_name='%(app_label)s_%(class)s_tasked_client_employees')
@@ -203,7 +208,9 @@ class LC(models.Model):
             'boycott_language': boycott_to_dict(),
             'believable_price_of_goods_status': self.believable_price_of_goods_status,
             'paid_out': self.paid_out,
-            'beneficiary_selected_doc_req': self.beneficiary_selected_doc_req
+            'beneficiary_selected_doc_req': self.beneficiary_selected_doc_req,
+            'issuer_can_select_bene_advisor' : self.issuer_can_select_bene_advisor,
+
         }
         if self.client:
             to_return['client'] = self.client.to_dict()
@@ -215,6 +222,8 @@ class LC(models.Model):
             to_return['advising_bank'] = self.advising_bank.to_dict()
         if self.type_3_advising_bank:
             to_return['type_3_advising_bank'] = self.type_3_advising_bank.to_dict()
+        if self.issuer_selected_advising_bank:
+            to_return['issuer_selected_advising_bank'] = self.issuer_selected_advising_bank.to_dict()
         return to_return
 
 
