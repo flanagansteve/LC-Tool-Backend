@@ -14,6 +14,7 @@ def create_perfect_lc():
     print("Adding fresh set of default LC questions")
     add_default_questions()
 
+# add Iona Import BUSINESS
     client_name = "Iona Imports"
     if Business.objects.filter(name=client_name).exists():
         print(f"Business {client_name} is already in the database")
@@ -40,6 +41,7 @@ def create_perfect_lc():
         print(f"Creating an authorized account for {client_name} with email '{client_employee_email}'")
         User.objects.create_user(username=client_employee_email, email=client_employee_email, password="password")
 
+# add Delvest BUSINESS
     beneficiary_name = "Delvest"
     if Business.objects.filter(name=beneficiary_name).exists():
         print(f"Business {beneficiary_name} is already in the database")
@@ -65,6 +67,7 @@ def create_perfect_lc():
         print(f"Creating an authorized account for {bene_employee_name} with email '{bene_employee_email}'")
         User.objects.create_user(username=bene_employee_email, email=bene_employee_email, password="password")
 
+    # add Best Bank BANK
     issuer_name = "Best Bank"
     issuer_country = "United States"
     mailing_address = "337 Huntington Avenue Boston, MA"
@@ -111,6 +114,7 @@ def create_perfect_lc():
         print(f"Creating an authorized account for {issuer_employee_name} with email '{issuer_employee_email}'")
         User.objects.create_user(username=issuer_employee_email, email=issuer_employee_email, password="password")
     
+    # Add Third Bank BANK
     forwarding_name = "Third Bank"
     forwarding_country = "United States"
     forwarding_address = "337 Huntington Avenue Boston, MA"
@@ -182,6 +186,7 @@ def create_perfect_lc():
         print(f"Creating an authorized account for {ap_employee_name} with email '{ap_employee_email}'")
         User.objects.create_user(username=ap_employee_email, email=ap_employee_email, password="password")
 
+# Add Second Best Bank BANK
     advising_bank_name = "Second Best Bank"
     advisor_country = "United States"
     advisor_address = "337 Huntington Avenue Boston, MA"
@@ -218,6 +223,7 @@ def create_perfect_lc():
         print(f"Creating an authorized account for {ad_employee_name} with email '{ad_employee_email}'")
         User.objects.create_user(username=ad_employee_email, email=ad_employee_email, password="password")
 
+# create the new LC
     lc_dict = {
         "issuer": issuer,
         "client": client,
@@ -376,4 +382,166 @@ def create_perfect_lc():
         else:
             print(f"Running believable price of goods check for HTS code {lc.hts_code}")
             believable_price_of_goods(lc.hts_code, lc.unit_of_measure)
+    print("Finished setting up LC")
+
+
+
+    # create the second LC
+    lc_dict2 = {
+        "issuer": issuer,
+        "client": client,
+        "beneficiary": beneficiary,
+        "account_party": account_party,
+        "advising_bank": advising_bank,
+        "application_date": datetime.datetime.now(),
+        "credit_delivery_means": 'Courier',
+        "credit_amt_verbal": 'Sixty Thousand Euros',
+        "credit_amt": 60000,
+        "cash_secure": 50,
+        "currency_denomination": 'EUR',
+        "applicant_and_ap_j_and_s_obligated": True,
+        "exchange_rate_tolerance": 0.01,
+        "hts_code": "2204.10.11",
+        "purchased_item": 'Champagne',
+        "unit_of_measure": 'kilograms',
+        "units_purchased": 600,
+        "unit_error_tolerance": 0.0002,
+        "confirmation_means": 'Confirmation by a bank selected by the beneficiary',
+        "paying_other_banks_fees": client,
+        "credit_expiry_location": issuer,
+        "beneficiary_selected_doc_req" : True,
+        "expiration_date": '2020-04-24',
+        "draft_presentation_date": '2020-04-22',
+        "drafts_invoice_value": 1.00,
+        "credit_availability": 'Payment on sight',
+        "paying_acceptance_and_discount_charges": client,
+        "deferred_payment_date": '2020-04-26',
+        "merch_charge_location": 'Boston',
+        "late_charge_date": '2020-04-25',
+        "charge_transportation_location": 'Needham',
+        "incoterms_to_show": '["EXW", "CPT"]',
+        "named_place_of_destination": 'Needham',
+        "doc_reception_notifees": 'My customer Freddys Drinks in Newton',
+        "other_instructions": 'Please re-write the entire LC in french too',
+        "merch_description": 'Class A champagne aged for 200 years',
+        "other_data": {
+            'An extra question on the bank\'s application would go here': 'and this is what the applicant responded'
+        }
+    }
+
+    if DigitalLC.objects.filter(**lc_dict2).exists():
+        print(
+                f"LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} with "
+                f"{lc_dict2['units_purchased']} {lc_dict2['unit_of_measure']} of {lc_dict2['purchased_item']} is already "
+                f"in "
+                f"the database; no new changes were made to it")
+    else:
+        print(
+                f"Creating new LC with client {client_name}, beneficiary {beneficiary_name}, and issuer {issuer_name} "
+                f"with {lc_dict2['units_purchased']} {lc_dict2['unit_of_measure']} of {lc_dict2['purchased_item']}")
+        lc2 = DigitalLC(**lc_dict2)
+        lc2.save()
+
+        if lc2.tasked_client_employees.filter(id=client_emp.id).exists():
+            print(
+                    f"Client employee {client_employee_name} with email '{client_employee_email}' is already tasked to "
+                    f"this LC")
+        else:
+            print(f"Tasking client employee {client_employee_name} with email '{client_employee_email}' to this LC")
+            lc2.tasked_client_employees.add(client_emp)
+
+        if lc2.tasked_beneficiary_employees.filter(id=bene_emp.id).exists():
+            print(
+                    f"Beneficiary employee {bene_employee_name} with email '{bene_employee_email}' is already tasked "
+                    f"to "
+                    f"this LC")
+        else:
+            print(f"Tasking beneficiary employee {bene_employee_name} with email '{bene_employee_email}' to this LC")
+            lc2.tasked_beneficiary_employees.add(bene_emp)
+
+        if lc2.tasked_issuer_employees.filter(id=issuer_emp.id).exists():
+            print(
+                    f"Issuer employee {issuer_employee_name} with email '{issuer_employee_email}' is already tasked to "
+                    f"this LC")
+        else:
+            print(f"Tasking issuer employee {issuer_employee_name} with email '{issuer_employee_email}' to this LC")
+            lc2.tasked_issuer_employees.add(issuer_emp)
+
+        if lc2.tasked_account_party_employees.filter(id=ap_emp.id).exists():
+            print(
+                    f"Account party employee {ap_employee_name} with email '{ap_employee_email}' is already tasked to "
+                    f"this LC")
+        else:
+            print(f"Tasking account party employee {ap_employee_name} with email '{ap_employee_email}' to this LC")
+            lc2.tasked_account_party_employees.add(ap_emp)
+
+        if lc2.tasked_advising_bank_employees.filter(id=ad_emp.id).exists():
+            print(
+                    f"Advising bank employee {ad_employee_name} with email '{ad_employee_email}' is already tasked to "
+                    f"this LC")
+        else:
+            print(f"Tasking advising bank employee {ad_employee_name} with email '{ad_employee_email}' to this LC")
+            lc2.tasked_advising_bank_employees.add(ad_emp)
+
+        if lc2.delegated_negotiating_banks.filter(id=issuer.id).exists():
+            print(f"Bank {issuer_name} is already tasked as a delegated negotiating bank for this LC")
+        else:
+            print(f"Tasking bank {issuer_name} as a delegated negotiating bank for this LC")
+            lc2.delegated_negotiating_banks.add(issuer)
+
+        required_values = (
+                "Version required: Original"
+                + "\nIncoterms to show: " + lc2.incoterms_to_show
+                + "\nNamed place of destination: " + lc2.named_place_of_destination
+        )
+
+        if lc2.documentaryrequirement_set.filter(type="commercial_invoice").exists():
+            print("LC already has a Commercial Invoice; skipping creation")
+        else:
+            print("Creating Commercial Invoice for LC")
+            test_ci = CommercialInvoiceRequirement(
+                    for_lc=lc2,
+                    doc_name="Commercial Invoice",
+                    type="commercial_invoice",
+                    required_values=required_values,
+                    due_date=lc.draft_presentation_date
+            )
+            test_ci.save()
+
+        if lc2.documentaryrequirement_set.filter(type="multimodal_bl").exists():
+            print("LC already has a Multimodal Bill of Lading; skipping creation")
+        else:
+            print("Creating Multimodal Bill of Lading for LC")
+            test_multiomodal_bl = MultimodalTransportDocumentRequirement(
+                    for_lc=lc2,
+                    doc_name="Multimodal Bill of Lading",
+                    type="multimodal_bl",
+                    due_date=lc2.draft_presentation_date,
+                    required_values="Marked EXW, CPT"
+            )
+            test_multiomodal_bl.save()
+
+        if lc2.documentaryrequirement_set.filter(doc_name="Packing List").exists():
+            print("LC already has a Packing List; skipping creation")
+        else:
+            print("Creating Packing List for LC")
+            lc2.documentaryrequirement_set.create(
+                    doc_name="Packing List",
+                    required_values="600 Bottles packed, Incoterms are correct, named place is correct.",
+                    due_date="2020-04-21"
+            )
+        lc2.save()
+        print("Running OFAC check for LC")
+        ofac(beneficiary.name, lc2)
+        print("Running sanction checks for countries of LC")
+        lc2.sanction_auto_message = sanction_approval(beneficiary.country, client.country)
+        print("Running licensing check for LC")
+        lc2.import_license_message = import_license(lc2)
+        if GoodsInfo.objects.filter(hts_code=lc2.hts_code.replace(".", "")[:6]).exists():
+            print(
+                    f"There is already goods information for HTS code {lc2.hts_code} through code "
+                    f"{lc2.hts_code.replace('.', '')[:6]}")
+        else:
+            print(f"Running believable price of goods check for HTS code {lc2.hts_code}")
+            believable_price_of_goods(lc2.hts_code, lc2.unit_of_measure)
     print("Finished setting up LC")

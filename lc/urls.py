@@ -312,8 +312,14 @@ urlpatterns = [
     # /lc/clients_by_bank/{bank_id}
     url(r'^clients_by_bank/(?P<bank_id>[0-9]+)/$', views.clients_by_bank, name='clients_by_bank'),
 
-    # /lc/{lc_id}/issuer/select_advising_bank
-    url(r'^(?P<lc_id>[0-9]+)/issuer/select_advising_bank/$', views.issuer_select_advising_bank,
-        name='issuer_select_advising_bank')
+    # /lc/{lc_id}/issuer/select_advising_bank for creating the forwarding bank
+    url(r'^(?P<lc_id>[0-9]+)/issuer/select_advising_bank/$', views.issuer_select_forwarding_bank,
+        name='issuer_select_forwarding_bank'),
+    
+
+    # /lc/{lc_id}/issuer/select_bene_advisor for creating the issuer-selected bank
+    
+    url(r'^(?P<lc_id>[0-9]+)/issuer/issuer_select_bene_advisor/$', views.issuer_select_bene_advisor,
+     name='issuer_select_bene_advisor')
 
 ]
