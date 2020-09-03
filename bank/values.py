@@ -71,10 +71,19 @@ default_questions = [
     {
         'question_text': 'Through what means will you forward the credit for this transaction, to either the beneficiary, your issuing bank, or a bank selected by your issuing bank?',
         'key': 'credit_delivery_means',
-        'type': 'multiple_choice_with_other',
+        'type': 'radio',
         'required': True,
-        'options': '["S.W.I.F.T", "Courier"]',
+        'options': '["S.W.I.F.T", "Courier", "Other"]',
         'section': 'Transaction Details'
+    },
+    {
+        'question_text': 'You selected Other:',
+        'key': 'credit_delivery_means_other',
+        'type': 'text',
+        'required': True,
+        'options': '',
+        'section': 'Transaction Details',
+        'disabled': '{"key": "credit_delivery_means", "answer": [null, "S.W.I.F.T", "Courier"]}'
     },
     {
         'question_text': 'What is the total size of this purchase, in words?',
@@ -286,7 +295,7 @@ default_questions = [
         'question_text': 'When should drafts be presented? If not specified, we will default to 21 days after the '
                          'date of shipment. This date must be prior to expiration of the LC.',
         'key': 'draft_presentation_date',
-        'type': 'date',
+        'type': 'date_ship',
         'required': False,
         'options': '',
         'section': 'Individual Party Responsibilities'
@@ -308,10 +317,28 @@ default_questions = [
                          'some number of days after the agreed draft date. Feel free to specify some other '
                          'alternative.',
         'key': 'credit_availability',
-        'type': 'multiple_choice_with_other',
+        'type': 'pay',
         'required': True,
-        'options': '["Payment at sight"]',
+        'options': '',
         'section': 'Individual Party Responsibilities'
+    },
+    {
+        'question_text': 'Credit will be made availabe acceptance some number of days after:',
+        'key': 'credit_availability_days_after',
+        'type': 'radio',
+        'required': True,
+        'options': '["sight", "the agreed shipment date", "the agreed invoice date", "the agreed draft date"]',
+        'section': 'Individual Party Responsibilities',
+        'disabled': '{"key": "credit_availability", "answer": [null, false]}'
+    },
+    {
+        'question_text': 'Please state the number of days after',
+        'key': 'credit_availability_days',
+        'type': 'decimal',
+        'required': True,
+        'options': '',
+        'section': 'Individual Party Responsibilities',
+        'disabled': '{"key": "credit_availability", "answer": [null, false]}'
     },
     {
         'question_text': 'Who are acceptance and discount charges for the account of?',
@@ -498,7 +525,7 @@ default_questions = [
         'type': 'radio',
         'required': True,
         'options': '["Freight Collect", "Freight Prepaid"]',
-        'section': '',
+        'section': ''
     },
     {
         'question_text': 'Please fill out the document requirements for the Packing List.',
@@ -593,7 +620,7 @@ default_questions = [
         'type': 'text',
         'required': True,
         'options': '',
-        'section': '',
+        'section': ''
     },
     {
         'question_text': 'Due Date',
@@ -601,7 +628,7 @@ default_questions = [
         'type': 'date',
         'required': True,
         'options': '',
-        'section': '',
+        'section': ''
     },
     {
         'question_text': 'Required Values',
@@ -609,7 +636,7 @@ default_questions = [
         'type': 'text',
         'required': True,
         'options': '',
-        'section': '',
+        'section': ''
     },
     {
         'question_text': 'Who should be notified when Drafts and accompanying documents are received? We will notify '
